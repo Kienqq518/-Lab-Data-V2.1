@@ -1,0 +1,43 @@
+<!-- @dsCard group="Components" viewport="700x300" name="状态与反馈" subtitle="StatusTag · StatusDot · UploadStatus · CollectBadge" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  body { margin:0; font-family:var(--font-sans); background:var(--white); color:var(--text-title); padding:22px; }
+  .grp { margin-bottom:18px; }
+  .lbl { font-size:11px; color:var(--text-secondary); margin-bottom:9px; }
+  .row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { StatusTag, StatusDot, UploadStatus, CollectBadge } = window.DesignSystem_52fd11;
+function Demo(){
+  return (
+    <div>
+      <div className="grp"><div className="lbl">StatusTag · 样品/任务状态</div><div className="row">
+        <StatusTag status="pending"/><StatusTag status="testing"/><StatusTag status="done"/><StatusTag status="overdue"/>
+      </div></div>
+      <div className="grp"><div className="lbl">StatusDot · 试验状态</div><div className="row">
+        <StatusDot status="pending"/><StatusDot status="testing"/><StatusDot status="done"/>
+      </div></div>
+      <div className="grp"><div className="lbl">UploadStatus · 上传状态</div><div className="row">
+        <UploadStatus status="pending"/><UploadStatus status="done"/>
+      </div></div>
+      <div className="grp"><div className="lbl">CollectBadge · 采集方式</div><div className="row">
+        <CollectBadge method="auto"/><CollectBadge method="ocr"/><CollectBadge method="ble"/><CollectBadge method="manual"/>
+      </div></div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body>
+</html>

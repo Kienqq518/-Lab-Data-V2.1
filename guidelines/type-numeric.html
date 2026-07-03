@@ -1,0 +1,28 @@
+<!-- @dsCard group="Type" viewport="700x180" name="数显读数" subtitle="tabular-nums 等宽数字，小数点对齐" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin:0; font-family:var(--font-sans); background:var(--white); color:var(--text-title); padding:20px 24px; }
+  .wrap { display:flex; gap:32px; align-items:flex-end; }
+  .read { display:flex; flex-direction:column; gap:4px; }
+  .v { font:var(--text-display); color:var(--blue-700); font-variant-numeric:tabular-nums; }
+  .u { font-size:13px; color:var(--text-secondary); }
+  .tbl { font-variant-numeric:tabular-nums; font-size:15px; line-height:1.7; color:var(--text-body); }
+  .tbl b { color:var(--text-title); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="read"><span class="v">159.88<span style="font-size:18px;color:var(--text-secondary)"> μΩ</span></span><span class="u">正向电阻</span></div>
+    <div class="read"><span class="v">0.1645</span><span class="u">结果</span></div>
+    <div class="tbl">
+      正向 &nbsp;<b>159.88</b><br>
+      反向 &nbsp;<b>143.10</b><br>
+      平均 &nbsp;<b>151.49</b>
+    </div>
+  </div>
+</body>
+</html>

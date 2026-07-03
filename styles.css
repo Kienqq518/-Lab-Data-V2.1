@@ -1,0 +1,9 @@
+/* ============================================================
+   数蚕 Lab Data 设计系统 · 全局入口
+   消费方只需 link 这一个文件。本文件只放 @import。
+   ============================================================ */
+@import "tokens/colors.css";
+@import "tokens/typography.css";
+@import "tokens/fonts.css";
+@import "tokens/spacing.css";
+@import "tokens/effects.css";

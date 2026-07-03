@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="采集方式色" subtitle="自动蓝 / 拍照紫 / 蓝牙青 / 手工灰" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin:0; font-family:var(--font-sans); background:var(--white); color:var(--text-title); padding:20px; }
+  .row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .cell { border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; padding:4px 10px; border-radius:var(--radius-pill); font-size:12px; font-weight:600; }
+  .ic { width:8px; height:8px; border-radius:50%; }
+  .name { font-size:13px; font-weight:600; }
+  .desc { font-size:11px; color:var(--text-secondary); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="cell"><span class="chip" style="background:var(--collect-auto-bg);color:var(--collect-auto)"><span class="ic" style="background:var(--collect-auto)"></span>⚡ 直连</span><div class="name">设备直连</div><div class="desc">联网设备实时读数</div></div>
+    <div class="cell"><span class="chip" style="background:var(--collect-ocr-bg);color:var(--collect-ocr)"><span class="ic" style="background:var(--collect-ocr)"></span>📷 拍照</span><div class="name">拍照识别 OCR</div><div class="desc">老旧无网设备屏幕</div></div>
+    <div class="cell"><span class="chip" style="background:var(--collect-ble-bg);color:var(--collect-ble)"><span class="ic" style="background:var(--collect-ble)"></span>🔵 蓝牙</span><div class="name">蓝牙同步</div><div class="desc">便携设备扫码连接</div></div>
+    <div class="cell"><span class="chip" style="background:var(--collect-manual-bg);color:var(--collect-manual)"><span class="ic" style="background:var(--collect-manual)"></span>✏️ 手工</span><div class="name">手工录入</div><div class="desc">辅助单机量具</div></div>
+  </div>
+</body>
+</html>

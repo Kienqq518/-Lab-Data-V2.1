@@ -1,0 +1,17 @@
+/* ============================================================
+   数蚕 Lab Data · 字体声明 @font-face
+   CJK 与数字读数均使用系统自带字体，通过 local() 解析，
+   无需下载二进制。若用户提供品牌字体文件，可在此补 url()。
+   ============================================================ */
+@font-face {
+  font-family: "PingFang SC";
+  src: local("PingFang SC"), local("PingFangSC-Regular");
+  font-weight: 400 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "SF Pro Display";
+  src: local("SF Pro Display"), local("SFProDisplay-Regular"), local(".SFNSDisplay");
+  font-weight: 400 700;
+  font-display: swap;
+}

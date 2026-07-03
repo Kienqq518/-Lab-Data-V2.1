@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  @keyframes lk-drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  @keyframes lk-fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes lk-pop-in { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
+  select.lk-sel { -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23828c9c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 12px center; }
+</style>
+</helmet>
+<div style="display:flex; height:100vh; width:100%; overflow:hidden; font-family:'PingFang SC','Microsoft YaHei','Noto Sans SC',-apple-system,sans-serif; color:#1a2233; background:#f4f6f9;">
+
+  <!-- ===== Sidebar ===== -->
+  <aside style="width:220px; flex:none; background:linear-gradient(180deg,#1d3f8c 0%,#162f6b 100%); color:#cdd8f0; display:flex; flex-direction:column; height:100%;">
+    <div style="display:flex; align-items:center; gap:10px; padding:18px 20px; border-bottom:1px solid rgba(255,255,255,0.08);">
+      <div style="width:30px; height:30px; border-radius:50%; background:#2563eb; display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; font-size:16px; flex:none;">S</div>
+      <span style="font-size:18px; font-weight:600; color:#fff; letter-spacing:0.5px;">Lab Data</span>
+    </div>
+    <nav style="flex:1; overflow-y:auto; padding:8px 0; font-size:14px;">
+      <sc-for list="{{ menu }}" as="m" hint-placeholder-count="9">
+        <div>
+          <div style="display:flex; align-items:center; gap:10px; padding:11px 20px; cursor:pointer; color:{{ m.color }}; background:{{ m.bg }};">
+            <span style="width:7px; height:7px; border-radius:2px; background:{{ m.dot }}; flex:none;"></span>
+            <span style="flex:1; font-weight:{{ m.weight }};">{{ m.label }}</span>
+            <span style="font-size:11px; opacity:0.5;">{{ m.caret }}</span>
+          </div>
+          <sc-for list="{{ m.children }}" as="c" hint-placeholder-count="0">
+            <div onClick="{{ c.click }}" style="padding:9px 20px 9px 38px; font-size:13px; cursor:pointer; color:{{ c.color }}; background:{{ c.bg }}; border-left:3px solid {{ c.bar }};">{{ c.label }}</div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+    <div style="padding:12px 20px; font-size:12px; color:rgba(255,255,255,0.4);">版本：V2.0</div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column; height:100%;">
+
+    <!-- Topbar -->
+    <header style="height:54px; flex:none; background:#fff; border-bottom:1px solid #e5e8ee; display:flex; align-items:center; justify-content:space-between; padding:0 20px;">
+      <div style="display:flex; align-items:center; gap:6px; font-size:13px; overflow:hidden;">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+          <div onClick="{{ t.click }}" style="display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:4px; white-space:nowrap; cursor:pointer; color:{{ t.color }}; background:{{ t.bg }};">
+            <span>{{ t.label }}</span>
+            <span style="opacity:0.5; font-size:12px;">{{ t.close }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; align-items:center; gap:14px; flex:none;">
+        <span style="font-size:14px; font-weight:600; color:#1d3f8c;">实验室数智化系统</span>
+        <div style="width:32px; height:32px; border-radius:6px; background:linear-gradient(135deg,#86aef6,#2563eb);"></div>
+      </div>
+    </header>
+
+    <!-- Scroll body -->
+    <div style="flex:1; overflow-y:auto; padding:18px 22px;">
+
+      <!-- ============ 设备管理 ============ -->
+      <sc-if value="{{ isDevices }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <sc-if value="{{ isDirect }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:10px; background:#fff7e6; border:1px solid #ffe2a8; color:#a85d00; border-radius:8px; padding:11px 16px; margin-bottom:16px; font-size:13.5px; animation:lk-fade-in .2s ease-out;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+              <span>数蚕 LIMS 直连模式下，设备信息由 LIMS 同步，<b style="color:#8a4d00;">不允许在此新增、编辑或启停设备</b>。如需修改请前往 LIMS 设备管理，或在「系统设置」关闭直连。</span>
+            </div>
+          </sc-if>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h1 style="font-size:18px; font-weight:600; margin:0; display:flex; align-items:center; gap:10px;">
+              <span style="width:4px; height:16px; background:#2563eb; border-radius:2px;"></span>设备管理
+            </h1>
+            <div style="display:flex; gap:10px;">
+              <div style="display:flex; align-items:center; gap:6px; background:#eef1f5; border-radius:7px; padding:3px;">
+                <button onClick="{{ setStandalone }}" style="border:none; cursor:pointer; font-size:12.5px; padding:5px 12px; border-radius:5px; background:{{ standaloneTabBg }}; color:{{ standaloneTabFg }}; font-weight:500;">非直连·可操作</button>
+                <button onClick="{{ setDirect }}" style="border:none; cursor:pointer; font-size:12.5px; padding:5px 12px; border-radius:5px; background:{{ directTabBg }}; color:{{ directTabFg }}; font-weight:500;">LIMS 直连·只读</button>
+              </div>
+              <button onClick="{{ openNewDevice }}" disabled="{{ isDirect }}" style="display:flex; align-items:center; gap:6px; border:none; cursor:{{ actionCursor }}; font-size:13.5px; padding:8px 16px; border-radius:7px; background:#2563eb; color:#fff; opacity:{{ actionOpacity }};">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增
+              </button>
+              <button disabled="{{ isDirect }}" style="display:flex; align-items:center; gap:6px; border:none; cursor:{{ actionCursor }}; font-size:13.5px; padding:8px 16px; border-radius:7px; background:#1d3f8c; color:#fff; opacity:{{ actionOpacity }};">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>导入
+              </button>
+            </div>
+          </div>
+
+          <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; padding:18px 20px; margin-bottom:16px; display:flex; align-items:center; gap:28px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13.5px; color:#5b6677;">设备编号</span>
+              <div style="width:200px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; padding:0 12px; font-size:13px; color:#aab2bf;">请输入</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13.5px; color:#5b6677;">设备名称</span>
+              <div style="width:200px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; padding:0 12px; font-size:13px; color:#aab2bf;">请输入</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13.5px; color:#5b6677;">采集方式</span>
+              <div style="width:160px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-size:13px; color:#aab2bf;">请选择<span style="font-size:10px;">▾</span></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-left:auto;">
+              <button style="border:1px solid #cdd3dc; background:#fff; color:#5b6677; cursor:pointer; font-size:13.5px; padding:7px 18px; border-radius:7px;">重置</button>
+              <button style="border:none; background:#2563eb; color:#fff; cursor:pointer; font-size:13.5px; padding:7px 20px; border-radius:7px;">查询</button>
+            </div>
+          </div>
+
+          <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; overflow:hidden;">
+            <div style="display:flex; align-items:center; padding:0 18px; height:46px; background:#f7f9fc; border-bottom:1px solid #e5e8ee; font-size:13px; font-weight:600; color:#3c465c;">
+              <div style="width:48px; flex:none;">序号</div>
+              <div style="width:150px; flex:none;">设备编号</div>
+              <div style="flex:1; min-width:160px;">设备名称</div>
+              <div style="width:110px; flex:none;">型号</div>
+              <div style="width:100px; flex:none;">所属部门</div>
+              <div style="width:130px; flex:none;">所在区域<span style="color:#aab2bf; font-weight:400;">（工位）</span></div>
+              <div style="width:168px; flex:none;">采集方式</div>
+              <div style="width:84px; flex:none; text-align:center;">启用状态</div>
+              <div style="width:64px; flex:none; text-align:center;">操作</div>
+            </div>
+            <sc-for list="{{ devRows }}" as="r" hint-placeholder-count="10">
+              <div style="display:flex; align-items:center; padding:0 18px; min-height:54px; border-bottom:1px solid #f0f2f6; font-size:13.5px; color:#3c465c;">
+                <div style="width:48px; flex:none; color:#828c9c;">{{ r.idx }}</div>
+                <div style="width:150px; flex:none; font-variant-numeric:tabular-nums;">{{ r.code }}</div>
+                <div style="flex:1; min-width:160px; color:#1a2233; padding-right:10px;">{{ r.name }}</div>
+                <div style="width:110px; flex:none; color:#5b6677;">{{ r.model }}</div>
+                <div style="width:100px; flex:none; color:#5b6677;">{{ r.dept }}</div>
+                <div style="width:130px; flex:none; color:#5b6677;">{{ r.area }}</div>
+                <div style="width:168px; flex:none;">
+                  <span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:6px; font-size:12.5px; font-weight:500; background:{{ r.mBg }}; color:{{ r.mFg }};">
+                    <span style="width:7px; height:7px; border-radius:50%; background:{{ r.mDot }}; flex:none;"></span>{{ r.mLabel }}
+                  </span>
+                </div>
+                <div style="width:84px; flex:none; display:flex; justify-content:center;">
+                  <button onClick="{{ r.toggle }}" style="border:none; cursor:{{ toggleCursor }}; padding:0; background:transparent;">
+                    <span style="display:inline-block; width:38px; height:21px; border-radius:999px; background:{{ r.swBg }}; position:relative; transition:background .15s; opacity:{{ toggleOpacity }};">
+                      <span style="position:absolute; top:2px; left:{{ r.swX }}; width:17px; height:17px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 2px rgba(0,0,0,0.2);"></span>
+                    </span>
+                  </button>
+                </div>
+                <div style="width:64px; flex:none; text-align:center;">
+                  <button onClick="{{ r.edit }}" disabled="{{ isDirect }}" style="border:none; background:transparent; cursor:{{ actionCursor }}; font-size:13.5px; color:{{ editLinkColor }}; padding:4px;">编辑</button>
+                </div>
+              </div>
+            </sc-for>
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:14px; padding:14px 18px; font-size:13px; color:#5b6677;">
+              <span>共 32 条</span>
+              <span style="border:1px solid #e5e8ee; border-radius:6px; padding:4px 10px;">10条/页 ▾</span>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px; color:#aab2bf;">‹</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; background:#2563eb; color:#fff;">1</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px;">2</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px;">3</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px; color:#aab2bf;">›</span>
+              </div>
+            </div>
+          </div>
+          <div style="height:8px;"></div>
+        </div>
+      </sc-if>
+
+      <!-- ============ 数据识别规则 ============ -->
+      <sc-if value="{{ isRules }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h1 style="font-size:18px; font-weight:600; margin:0; display:flex; align-items:center; gap:10px;">
+              <span style="width:4px; height:16px; background:#2563eb; border-radius:2px;"></span>数据识别规则
+            </h1>
+            <button onClick="{{ openNewRule }}" style="display:flex; align-items:center; gap:6px; border:none; cursor:pointer; font-size:13.5px; padding:8px 16px; border-radius:7px; background:#2563eb; color:#fff;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增
+            </button>
+          </div>
+
+          <div style="display:flex; align-items:flex-start; gap:10px; background:#eef4ff; border:1px solid #cfe0ff; color:#1d54c4; border-radius:8px; padding:11px 16px; margin-bottom:16px; font-size:13px; line-height:1.6;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <span>一条规则 = <b>一个试验表 + 一个设备（型号·名称）</b>。同型号·同名称的设备读数屏版面一致，视为一类——LIMS 试验检测页所选的具体那台设备，只要型号与名称一致即可命中该规则。</span>
+          </div>
+
+          <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; padding:18px 20px; margin-bottom:16px; display:flex; align-items:center; gap:26px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13.5px; color:#5b6677; flex:none;">试验表名</span>
+              <div style="width:180px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; padding:0 12px; font-size:13px; color:#aab2bf;">请输入</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13.5px; color:#5b6677; flex:none;">设备</span>
+              <div style="width:200px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-size:13px; color:#aab2bf;">请选择<span style="font-size:10px;">▾</span></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13.5px; color:#5b6677; flex:none;">验证状态</span>
+              <div style="width:140px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-size:13px; color:#aab2bf;">请选择<span style="font-size:10px;">▾</span></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-left:auto;">
+              <button style="border:1px solid #cdd3dc; background:#fff; color:#5b6677; cursor:pointer; font-size:13.5px; padding:7px 18px; border-radius:7px;">重置</button>
+              <button style="border:none; background:#2563eb; color:#fff; cursor:pointer; font-size:13.5px; padding:7px 20px; border-radius:7px;">查询</button>
+            </div>
+          </div>
+
+          <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; overflow:hidden;">
+            <div style="display:flex; align-items:center; padding:0 18px; height:46px; background:#f7f9fc; border-bottom:1px solid #e5e8ee; font-size:13px; font-weight:600; color:#3c465c;">
+              <div style="width:48px; flex:none;">序号</div>
+              <div style="width:230px; flex:none;">试验表名</div>
+              <div style="width:230px; flex:none;">设备<span style="color:#aab2bf; font-weight:400;">（型号·名称）</span></div>
+              <div style="flex:1; min-width:180px;">数据识别规则</div>
+              <div style="width:90px; flex:none;">验证状态</div>
+              <div style="width:96px; flex:none; text-align:right;">操作</div>
+            </div>
+            <sc-for list="{{ ruleRows }}" as="r" hint-placeholder-count="8">
+              <div style="display:flex; align-items:center; padding:0 18px; min-height:56px; border-bottom:1px solid #f0f2f6; font-size:13.5px; color:#3c465c;">
+                <div style="width:48px; flex:none; color:#828c9c;">{{ r.idx }}</div>
+                <div style="width:230px; flex:none; color:#1a2233; padding-right:10px;">{{ r.tableLabel }}</div>
+                <div style="width:230px; flex:none; color:#3c465c; padding-right:10px;">
+                  <div style="font-weight:500;">{{ r.devName }}</div>
+                  <div style="font-size:12px; color:#828c9c; font-variant-numeric:tabular-nums;">{{ r.devModel }}</div>
+                </div>
+                <div style="flex:1; min-width:180px; color:#5b6677; font-size:12.5px; font-family:'SF Mono',Menlo,Consolas,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:12px;">{{ r.rule }}</div>
+                <div style="width:90px; flex:none;">
+                  <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:6px; font-size:12px; font-weight:500; background:{{ r.stBg }}; color:{{ r.stFg }};"><span style="width:6px; height:6px; border-radius:50%; background:{{ r.stDot }};"></span>{{ r.stLabel }}</span>
+                </div>
+                <div style="width:96px; flex:none; text-align:right; display:flex; gap:12px; justify-content:flex-end;">
+                  <button onClick="{{ r.edit }}" style="border:none; background:transparent; cursor:pointer; font-size:13.5px; color:#2563eb; padding:4px 0;">编辑</button>
+                  <button onClick="{{ r.del }}" style="border:none; background:transparent; cursor:pointer; font-size:13.5px; color:#e23b3b; padding:4px 0;">删除</button>
+                </div>
+              </div>
+            </sc-for>
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:14px; padding:14px 18px; font-size:13px; color:#5b6677;">
+              <span>共 {{ ruleTotal }} 条</span>
+              <span style="border:1px solid #e5e8ee; border-radius:6px; padding:4px 10px;">10条/页 ▾</span>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px; color:#aab2bf;">‹</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; background:#2563eb; color:#fff;">1</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px; color:#aab2bf;">›</span>
+              </div>
+            </div>
+          </div>
+          <div style="height:8px;"></div>
+        </div>
+      </sc-if>
+
+      <!-- ============ 关系配置 ============ -->
+      <sc-if value="{{ isRelations }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h1 style="font-size:18px; font-weight:600; margin:0; display:flex; align-items:center; gap:10px;">
+              <span style="width:4px; height:16px; background:#2563eb; border-radius:2px;"></span>采集表与试验项关系
+            </h1>
+            <button style="display:flex; align-items:center; gap:6px; border:none; cursor:pointer; font-size:13.5px; padding:8px 16px; border-radius:7px; background:#2563eb; color:#fff;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>一键同步试验表
+            </button>
+          </div>
+
+          <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; padding:18px 20px; margin-bottom:16px; display:flex; align-items:center; gap:28px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13.5px; color:#5b6677; flex:none;">试验项</span>
+              <div style="width:200px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; padding:0 12px; font-size:13px; color:#aab2bf;">请输入</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13.5px; color:#5b6677; flex:none;">采集表</span>
+              <div style="width:220px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; padding:0 12px; font-size:13px; color:#aab2bf;">请输入</div>
+            </div>
+            <div style="display:flex; gap:10px; margin-left:auto;">
+              <button style="border:1px solid #cdd3dc; background:#fff; color:#5b6677; cursor:pointer; font-size:13.5px; padding:7px 18px; border-radius:7px;">重置</button>
+              <button style="border:none; background:#2563eb; color:#fff; cursor:pointer; font-size:13.5px; padding:7px 20px; border-radius:7px;">查询</button>
+              <button onClick="{{ openNewRel }}" style="display:flex; align-items:center; gap:6px; border:none; background:#1d3f8c; color:#fff; cursor:pointer; font-size:13.5px; padding:7px 18px; border-radius:7px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增</button>
+            </div>
+          </div>
+
+          <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; overflow:hidden;">
+            <div style="display:flex; align-items:center; padding:0 18px; height:46px; background:#f7f9fc; border-bottom:1px solid #e5e8ee; font-size:13px; font-weight:600; color:#3c465c;">
+              <div style="width:48px; flex:none;">序号</div>
+              <div style="width:340px; flex:none;">试验项</div>
+              <div style="flex:1; min-width:200px;">采集表</div>
+              <div style="width:96px; flex:none; text-align:right;">操作</div>
+            </div>
+            <sc-for list="{{ relRows }}" as="r" hint-placeholder-count="10">
+              <div style="display:flex; align-items:center; padding:0 18px; min-height:54px; border-bottom:1px solid #f0f2f6; font-size:13.5px; color:#3c465c;">
+                <div style="width:48px; flex:none; color:#828c9c;">{{ r.idx }}</div>
+                <div style="width:340px; flex:none; color:#1a2233; padding-right:10px;">{{ r.item }}</div>
+                <div style="flex:1; min-width:200px; color:#5b6677; padding-right:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.table }}</div>
+                <div style="width:96px; flex:none; text-align:right; display:flex; gap:12px; justify-content:flex-end;">
+                  <button onClick="{{ r.edit }}" style="border:none; background:transparent; cursor:pointer; font-size:13.5px; color:#2563eb; padding:4px 0;">编辑</button>
+                  <button onClick="{{ r.del }}" style="border:none; background:transparent; cursor:pointer; font-size:13.5px; color:#e23b3b; padding:4px 0;">删除</button>
+                </div>
+              </div>
+            </sc-for>
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:14px; padding:14px 18px; font-size:13px; color:#5b6677;">
+              <span>共 {{ relTotal }} 条</span>
+              <span style="border:1px solid #e5e8ee; border-radius:6px; padding:4px 10px;">10条/页 ▾</span>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px; color:#aab2bf;">‹</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; background:#2563eb; color:#fff;">1</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px;">2</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px;">3</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px;">4</span>
+                <span style="color:#aab2bf;">…</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px;">42</span>
+                <span style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:1px solid #e5e8ee; border-radius:6px; color:#aab2bf;">›</span>
+              </div>
+            </div>
+          </div>
+          <div style="height:8px;"></div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- ===== Device edit drawer ===== -->
+  <sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; inset:0; z-index:50;">
+      <div onClick="{{ closeDrawer }}" style="position:absolute; inset:0; background:rgba(16,22,38,0.45); animation:lk-fade-in .15s ease-out;"></div>
+      <div style="position:absolute; top:0; right:0; height:100%; width:460px; background:#fff; box-shadow:-4px 0 24px rgba(0,0,0,0.12); display:flex; flex-direction:column; animation:lk-drawer-in .22s ease-out;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid #e5e8ee;">
+          <span style="font-size:16px; font-weight:600;">{{ drawerTitle }}</span>
+          <button onClick="{{ closeDrawer }}" style="border:none; background:transparent; cursor:pointer; font-size:20px; color:#828c9c; line-height:1;">×</button>
+        </div>
+        <div style="flex:1; overflow-y:auto; padding:22px 24px; display:flex; flex-direction:column; gap:18px;">
+          <div style="display:flex; flex-direction:column; gap:7px;">
+            <label style="font-size:13px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 设备名称</label>
+            <div style="height:38px; border:1px solid #e5e8ee; border-radius:7px; display:flex; align-items:center; padding:0 12px; font-size:13.5px; color:#1a2233; background:#f7f9fc;">{{ editName }}</div>
+          </div>
+          <div style="display:flex; gap:14px;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
+              <label style="font-size:13px; color:#5b6677;">设备编号</label>
+              <div style="height:38px; border:1px solid #e5e8ee; border-radius:7px; display:flex; align-items:center; padding:0 12px; font-size:13.5px; color:#1a2233; background:#f7f9fc;">{{ editCode }}</div>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
+              <label style="font-size:13px; color:#5b6677;">所在区域（工位）</label>
+              <div style="height:38px; border:1px solid #e5e8ee; border-radius:7px; display:flex; align-items:center; padding:0 12px; font-size:13.5px; color:#1a2233; background:#f7f9fc;">{{ editArea }}</div>
+            </div>
+          </div>
+          <div style="height:1px; background:#f0f2f6; margin:2px 0;"></div>
+          <div style="display:flex; flex-direction:column; gap:11px;">
+            <label style="font-size:13px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 采集方式 <span style="color:#aab2bf;">— 决定 App 检测员采集页的录入交互</span></label>
+            <sc-for list="{{ methodOptions }}" as="o" hint-placeholder-count="4">
+              <div onClick="{{ o.pick }}" style="border:1.5px solid {{ o.border }}; background:{{ o.cardBg }}; border-radius:9px; padding:12px 14px; cursor:pointer; display:flex; gap:11px; align-items:flex-start;">
+                <span style="width:16px; height:16px; border-radius:50%; border:1.5px solid {{ o.radioBorder }}; flex:none; margin-top:2px; display:flex; align-items:center; justify-content:center;">
+                  <span style="width:8px; height:8px; border-radius:50%; background:{{ o.radioDot }};"></span>
+                </span>
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:14px; font-weight:600; color:#1a2233;">{{ o.label }}</span>
+                    <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:5px; font-size:11.5px; background:{{ o.tagBg }}; color:{{ o.tagFg }};"><span style="width:6px;height:6px;border-radius:50%;background:{{ o.dot }};"></span>{{ o.tag }}</span>
+                  </div>
+                  <div style="font-size:12.5px; color:#828c9c; margin-top:4px; line-height:1.5;">{{ o.desc }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ showExternal }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#f4f9fa; border:1px solid #cdeef1; border-radius:9px; padding:13px 15px; display:flex; align-items:flex-start; gap:11px; animation:lk-fade-in .18s ease-out;">
+              <button onClick="{{ toggleExternal }}" style="border:none; background:transparent; cursor:pointer; padding:0; margin-top:1px;">
+                <span style="display:inline-block; width:36px; height:20px; border-radius:999px; background:{{ extSwBg }}; position:relative;">
+                  <span style="position:absolute; top:2px; left:{{ extSwX }}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.2); transition:left .15s;"></span>
+                </span>
+              </button>
+              <div style="flex:1;">
+                <div style="font-size:13.5px; font-weight:600; color:#0a8a96;">外部程序采集（电子天平类）</div>
+                <div style="font-size:12.5px; color:#5b6677; margin-top:3px; line-height:1.5;">受串口/通讯协议限制，由工业平板上的采集程序与设备通讯并写库。开启后 App 该设备<b>不显示采集按钮</b>，仅保留手工录入与查看已采数据。</div>
+              </div>
+            </div>
+          </sc-if>
+          <div style="background:#f7f9fc; border-radius:8px; padding:12px 14px; font-size:12.5px; color:#5b6677; line-height:1.6;">
+            <b style="color:#3c465c;">说明</b>　手工录入对前三种方式均为通用兜底（直采/识别失败时回退）；「图像采集」下 App 是否显示「拍照/上传图片」，还取决于该试验项在<b>数据识别规则</b>中的「验证状态 = 已通过」。
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:12px; padding:16px 24px; border-top:1px solid #e5e8ee;">
+          <button onClick="{{ closeDrawer }}" style="border:1px solid #cdd3dc; background:#fff; color:#5b6677; cursor:pointer; font-size:14px; padding:8px 22px; border-radius:7px;">取消</button>
+          <button onClick="{{ saveDrawer }}" style="border:none; background:#2563eb; color:#fff; cursor:pointer; font-size:14px; padding:8px 26px; border-radius:7px;">确定</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===== Rule add/edit modal ===== -->
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;">
+      <div onClick="{{ closeModal }}" style="position:absolute; inset:0; background:rgba(16,22,38,0.45); animation:lk-fade-in .15s ease-out;"></div>
+      <div style="position:relative; width:720px; max-width:92vw; background:#fff; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.22); animation:lk-pop-in .2s ease-out; display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid #e5e8ee;">
+          <span style="font-size:16px; font-weight:600;">{{ modalTitle }}</span>
+          <button onClick="{{ closeModal }}" style="border:none; background:transparent; cursor:pointer; font-size:20px; color:#828c9c; line-height:1;">×</button>
+        </div>
+        <div style="padding:24px; display:flex; flex-direction:column; gap:18px;">
+          <div style="display:flex; align-items:center; gap:16px;">
+            <label style="width:84px; flex:none; text-align:right; font-size:13.5px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 规则来源</label>
+            <div style="width:280px; height:38px; border:1px solid #e5e8ee; border-radius:7px; background:#f4f6f9; display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-size:13.5px; color:#5b6677;">手动配置<span style="font-size:10px; color:#aab2bf;">▾</span></div>
+          </div>
+          <div style="display:flex; gap:22px;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
+              <label style="font-size:13.5px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 试验表名</label>
+              <select class="lk-sel" value="{{ form.table }}" onChange="{{ onTable }}" style="height:38px; border:1px solid #e5e8ee; border-radius:7px; padding:0 30px 0 12px; font-size:13.5px; color:{{ tableColor }}; background-color:#fff; cursor:pointer; width:100%;">
+                <option value="">请选择试验表</option>
+                <sc-for list="{{ tableOptions }}" as="o" hint-placeholder-count="0">
+                  <option value="{{ o.code }}">{{ o.label }}</option>
+                </sc-for>
+              </select>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
+              <label style="font-size:13.5px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 设备 <span style="color:#aab2bf; font-weight:400;">（型号·名称）</span></label>
+              <select class="lk-sel" value="{{ form.device }}" onChange="{{ onDevice }}" disabled="{{ deviceDisabled }}" style="height:38px; border:1px solid #e5e8ee; border-radius:7px; padding:0 30px 0 12px; font-size:13.5px; color:{{ deviceColor }}; background-color:{{ deviceBg }}; cursor:{{ deviceCursor }}; width:100%;">
+                <option value="">{{ devicePlaceholder }}</option>
+                <sc-for list="{{ deviceOptions }}" as="o" hint-placeholder-count="0">
+                  <option value="{{ o.value }}">{{ o.label }}</option>
+                </sc-for>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:7px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <label style="font-size:13.5px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 数据识别规则</label>
+              <button onClick="{{ formatRule }}" style="border:none; background:transparent; color:#2563eb; cursor:pointer; font-size:13px;">格式化</button>
+            </div>
+            <textarea value="{{ form.rule }}" onChange="{{ onRule }}" placeholder="多个字段以逗号分隔" style="min-height:120px; border:1px solid #e5e8ee; border-radius:7px; padding:10px 12px; font-size:12.5px; font-family:'SF Mono',Menlo,Consolas,monospace; color:#1a2233; resize:vertical; line-height:1.6;"></textarea>
+          </div>
+          <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:8px; background:#fdecec; border:1px solid #f7c5c5; color:#c0392b; border-radius:7px; padding:9px 13px; font-size:13px; animation:lk-fade-in .15s ease-out;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e23b3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+              {{ errorMsg }}
+            </div>
+          </sc-if>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:12px; padding:16px 24px; border-top:1px solid #e5e8ee;">
+          <button onClick="{{ closeModal }}" style="border:1px solid #cdd3dc; background:#fff; color:#5b6677; cursor:pointer; font-size:14px; padding:8px 22px; border-radius:7px;">取消</button>
+          <button onClick="{{ saveModal }}" style="border:none; background:#2563eb; color:#fff; cursor:pointer; font-size:14px; padding:8px 26px; border-radius:7px;">确定</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===== Relation add/edit modal ===== -->
+  <sc-if value="{{ relModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;">
+      <div onClick="{{ closeRelModal }}" style="position:absolute; inset:0; background:rgba(16,22,38,0.45); animation:lk-fade-in .15s ease-out;"></div>
+      <div style="position:relative; width:760px; max-width:92vw; background:#fff; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.22); animation:lk-pop-in .2s ease-out; display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid #e5e8ee;">
+          <span style="font-size:16px; font-weight:600;">{{ relModalTitle }}</span>
+          <button onClick="{{ closeRelModal }}" style="border:none; background:transparent; cursor:pointer; font-size:20px; color:#828c9c; line-height:1;">×</button>
+        </div>
+        <div style="padding:24px; display:flex; flex-direction:column; gap:18px;">
+          <div style="display:flex; gap:22px; align-items:flex-start;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
+              <label style="font-size:13.5px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 试验项</label>
+              <select class="lk-sel" value="{{ relForm.item }}" onChange="{{ onRelItem }}" style="height:38px; border:1px solid #e5e8ee; border-radius:7px; padding:0 30px 0 12px; font-size:13.5px; color:{{ relItemColor }}; background-color:#fff; cursor:pointer; width:100%;">
+                <option value="">请选择</option>
+                <sc-for list="{{ relItemOptions }}" as="o" hint-placeholder-count="0">
+                  <option value="{{ o }}">{{ o }}</option>
+                </sc-for>
+              </select>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
+              <label style="font-size:13.5px; color:#5b6677; display:flex; align-items:center; gap:5px;"><span><span style="color:#e23b3b;">*</span> 采集表</span><span style="width:15px; height:15px; border-radius:50%; border:1px solid #c2c9d4; color:#9aa3b2; font-size:11px; display:inline-flex; align-items:center; justify-content:center; flex:none;">?</span></label>
+              <select class="lk-sel" value="{{ relForm.table }}" onChange="{{ onRelTable }}" style="height:38px; border:1px solid #e5e8ee; border-radius:7px; padding:0 30px 0 12px; font-size:13.5px; color:{{ relTableColor }}; background-color:#fff; cursor:pointer; width:100%;">
+                <option value="">请选择</option>
+                <sc-for list="{{ relTableOptions }}" as="o" hint-placeholder-count="0">
+                  <option value="{{ o }}">{{ o }}</option>
+                </sc-for>
+              </select>
+              <div style="font-size:12px; color:#9aa3b2; line-height:1.5;">如该下拉列表搜索不到，则需去数据库创建该表</div>
+            </div>
+          </div>
+          <sc-if value="{{ relHasError }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:8px; background:#fdecec; border:1px solid #f7c5c5; color:#c0392b; border-radius:7px; padding:9px 13px; font-size:13px; animation:lk-fade-in .15s ease-out;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e23b3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+              {{ relErrorMsg }}
+            </div>
+          </sc-if>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:12px; padding:16px 24px; border-top:1px solid #e5e8ee;">
+          <button onClick="{{ closeRelModal }}" style="border:1px solid #cdd3dc; background:#fff; color:#5b6677; cursor:pointer; font-size:14px; padding:8px 22px; border-radius:7px;">取消</button>
+          <button onClick="{{ saveRelModal }}" style="border:none; background:#2563eb; color:#fff; cursor:pointer; font-size:14px; padding:8px 26px; border-radius:7px;">确定</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = {
+    page: 'devices',
+    // 设备管理
+    mode: 'standalone',
+    drawerOpen: false,
+    devEditIdx: null,
+    methodSel: 'direct',
+    external: false,
+    devRows: [
+      { code: 'JZ-001',    name: '万能试验机',                    model: 'WNSYJ',     dept: '应敏科技',     area: '力学检测室2',   method: 'direct',  on: true },
+      { code: 'YM-WRH-01', name: '电缆直流电阻快速测量系统-无人化版', model: 'YM-WRH-01', dept: '应敏科技',     area: '无人化试验室', method: 'direct',  on: true },
+      { code: 'YM-S03',    name: '智能型数字电桥',                 model: 'QJ36-ZS',   dept: '应敏科技',     area: '力学检测室2',   method: 'ocr',     on: true },
+      { code: 'DL-27',     name: '数显卡尺',                      model: '(0-200)mm', dept: '材料检测组',   area: '力学检测室1',   method: 'ble',     on: true },
+      { code: 'YM-FMK',    name: '电子天平（砝码库）',             model: 'YM-FMK',    dept: '应敏科技',     area: '无人化试验室', method: 'ble', external: true, on: true },
+      { code: 'YM-WRH-07', name: '热延伸试验箱',                  model: 'YRSC-200I', dept: '应敏科技',     area: '无人化试验室', method: 'ocr',     on: true },
+      { code: 'SL-005',    name: '安全帽冲击试验机',               model: 'YFM-20I',   dept: '安全工器具检测组', area: '力学检测室1', method: 'ocr', on: true },
+      { code: 'LX-05',     name: '微机控制电子万能试验机',          model: 'LD26504',   dept: '实链检测',     area: '力学检测室1',   method: 'direct',  on: true },
+      { code: 'SL-008',    name: '操作杆动态弯曲试验机',           model: 'YFW-20I',   dept: '高压检测组',   area: '力学检测室1',   method: 'manual',  on: false },
+      { code: 'YWD-11F',   name: '全自动绝缘厚度测试仪（无人化版）', model: 'YWD-11F',   dept: '应敏科技',     area: '无人化试验室', method: 'direct',  on: true },
+    ],
+    // 数据识别规则
+    modalOpen: false,
+    ruleEditIdx: null,
+    form: { table: '', device: '', rule: '' },
+    ruleError: '',
+    ruleRows: [
+      { table: 'sc_zldz',         device: '智能型数字电桥|QJ36-ZS',                   rule: 'zx-正向-1-Reg(\\d*\\.?\\d+),fx-反向-2-Reg(\\d*\\.?\\d+),pj-平均-3-Reg(\\d*\\.?\\d+),wb-温补-4-Reg(\\d*\\.?\\d+),jg-结果-5-Reg(\\d*\\.?\\d+)', status: 'pending' },
+      { table: 'sc_zldz',         device: '电缆直流电阻快速测量系统-无人化版|YM-WRH-01', rule: 'wd-温度-1-Reg(\\d*\\.?\\d+),sd-湿度-2-Reg(\\d*\\.?\\d+),scdz-实测电阻-3-Reg(\\d*\\.?\\d+),dz20-20度电阻-4-Reg(\\d*\\.?\\d+)', status: 'passed' },
+      { table: 'sc_gpnysy',       device: '工频耐压试验装置|YDJ-150',                  rule: 'cd-re-\\d*\\.?\\d+-t-Pre1000,bcz-re-\\d*\\.?\\d+-t-Pre1000,syz-re-\\d*\\.?\\d+-t-Pre1000', status: 'passed' },
+      { table: 't_jyysy',         device: '绝缘油介电强度测试仪|HCJ-9201',             rule: 'jcdy-ro-宗源-1', status: 'passed' },
+      { table: 'hntdg_ccpc',      device: '激光测距尺寸检测仪|LS-200',                 rule: 'a1-re-\\d*\\.?\\d+-t-Pre1000,a5-re-\\d*\\.?\\d+-t-Pre1000,a7-re-\\d*\\.?\\d+-t-Pre1000', status: 'pending' },
+      { table: 't_jbfd',          device: '局部放电检测仪|PDS-9',                      rule: 'jzsl-s-[1-1-Sub1-comma].-Reg(\\d*\\.?\\d+)-For00.0,yqzh-s-1)-1-Sub1', status: 'pending' },
+      { table: 'jgt_gcczjc_hxcf', device: '直读光谱仪|Q4-TASMAN',                      rule: 'c-o-CH01-1-Reg(\\d*\\.?\\d+),si-o-CH02-1-Reg(\\d*\\.?\\d+),mn-o-CH03-1-Reg(\\d*\\.?\\d+)', status: 'passed' },
+      { table: 'sc_wgjc',         device: '工业相机视觉台|CV-X',                       rule: 'bh-col-打保-变比误差|1', status: 'passed' },
+    ],
+    // 采集表与试验项关系
+    relRows: [
+      { item: '电力电缆-直流电阻', table: 'dldl_zldz【电力电缆-直流电阻】' },
+      { item: '导电鞋-电阻实验', table: 'ddx_dzsy【导电鞋-电阻试验】' },
+      { item: 'test0619_a_b_c', table: 'test0619_a_b_c【test0619_a_b_c】' },
+      { item: '绝缘斗臂车-绝缘吊臂工频耐压试验', table: 'aq_976_28_jydbgpnysy【绝缘斗臂车-绝缘吊臂工频耐压试验耐压试验】' },
+      { item: '脚扣-脚扣静态性能试验', table: 'aq_1741_25_jkjtxnsy【脚扣-脚扣静态性能试验耐压试验】' },
+      { item: '脚扣-脚扣疲劳性能', table: 'aq_1741_25_jkplxn【脚扣-脚扣疲劳性能耐压试验】' },
+      { item: '脚扣-标识耐久性试验', table: 'aq_1741_25_bsnjxjc【脚扣-标识耐久性试验耐压试验】' },
+      { item: '安全帽-交流耐压试验', table: 'aq_1741_29_xldlsy【安全帽-交流耐压试验耐压试验】' },
+      { item: '软梯（绝缘软梯）-边绳静负荷试验', table: 'aq_1741_21_bsjfhsy【软梯（绝缘软梯）-边绳静负荷试验耐压试验】' },
+      { item: '软梯（绝缘软梯）-软梯头踏档静负荷试验', table: 'aq_1741_21_rttjfhsy【软梯（绝缘软梯）-软梯头踏档静负荷试验耐压试…】' },
+    ],
+    relModalOpen: false,
+    relEditIdx: null,
+    relForm: { item: '', table: '' },
+    relError: '',
+  };
+
+  METHODS = {
+    direct:  { label: '设备直采', tag: '直连', desc: '设备有通讯接口、可直连读数；App 一键采集，失败可切手输。',          bg:'#eef4ff', fg:'#1d54c4', dot:'#2563eb' },
+    ocr:     { label: '图像采集', tag: 'OCR',  desc: '无直连但有读数屏，已配「数据识别规则」；App 拍照识别回填，识别差时手输矫正。', bg:'#efeaff', fg:'#6a48e0', dot:'#7c5cff' },
+    ble:     { label: '蓝牙/串口', tag: '节点', desc: '数显卡尺、电子天平等智能采集节点；连接后同步读数，可手输。',        bg:'#e2f7f9', fg:'#0a8a96', dot:'#0fb5c4' },
+    manual:  { label: '人工录入', tag: '手工', desc: '以上均不支持，仅现场手工录入数据。',                            bg:'#eef1f5', fg:'#5b6677', dot:'#828c9c' },
+  };
+
+  REL_ITEMS = ['电力电缆-直流电阻', '导电鞋-电阻实验', 'test0619_a_b_c', '绝缘斗臂车-绝缘吊臂工频耐压试验', '脚扣-脚扣静态性能试验', '脚扣-脚扣疲劳性能', '脚扣-标识耐久性试验', '安全帽-交流耐压试验', '软梯（绝缘软梯）-边绳静负荷试验', '软梯（绝缘软梯）-软梯头踏档静负荷试验'];
+  REL_TABLES = ['dldl_zldz【电力电缆-直流电阻】', 'ddx_dzsy【导电鞋-电阻试验】', 'test0619_a_b_c【test0619_a_b_c】', 'aq_976_28_jydbgpnysy【绝缘斗臂车-绝缘吊臂工频耐压试验耐压试验】', 'aq_1741_25_jkjtxnsy【脚扣-脚扣静态性能试验耐压试验】', 'aq_1741_25_jkplxn【脚扣-脚扣疲劳性能耐压试验】', 'aq_1741_25_bsnjxjc【脚扣-标识耐久性试验耐压试验】', 'aq_1741_29_xldlsy【安全帽-交流耐压试验耐压试验】', 'aq_1741_21_bsjfhsy【软梯（绝缘软梯）-边绳静负荷试验耐压试验】'];
+
+  TESTS = [
+    { code: 'sc_zldz',         label: 'sc_zldz【直流电阻试验】',          devices: [ ['智能型数字电桥', 'QJ36-ZS'], ['电缆直流电阻快速测量系统-无人化版', 'YM-WRH-01'] ] },
+    { code: 'sc_gpnysy',       label: 'sc_gpnysy【工频耐压试验】',        devices: [ ['工频耐压试验装置', 'YDJ-150'] ] },
+    { code: 't_jyysy',         label: 't_jyysy【绝缘液试验】',            devices: [ ['绝缘油介电强度测试仪', 'HCJ-9201'] ] },
+    { code: 'hntdg_ccpc',      label: 'hntdg_ccpc【环形混凝土电杆-尺寸偏差】', devices: [ ['激光测距尺寸检测仪', 'LS-200'] ] },
+    { code: 't_jbfd',          label: 't_jbfd【局部放电试验】',          devices: [ ['局部放电检测仪', 'PDS-9'] ] },
+    { code: 'jgt_gcczjc_hxcf', label: 'jgt_gcczjc_hxcf【角钢塔-钢材材质测量】', devices: [ ['直读光谱仪', 'Q4-TASMAN'] ] },
+    { code: 'sc_wgjc',         label: 'sc_wgjc【外观检查】',             devices: [ ['工业相机视觉台', 'CV-X'] ] },
+  ];
+
+  STATUS = {
+    pending: { label: '未验证', bg: '#eef1f5', fg: '#5b6677', dot: '#828c9c' },
+    passed:  { label: '已通过', bg: '#e7f6ec', fg: '#1b8a5a', dot: '#23a866' },
+    failed:  { label: '未通过', bg: '#fdecec', fg: '#c0392b', dot: '#e23b3b' },
+  };
+
+  meta(r) {
+    if (r.method === 'ble' && r.external) return { label: '外部程序采集', bg:'#e2f7f9', fg:'#0a8a96', dot:'#11a3b0' };
+    const m = this.METHODS[r.method];
+    return { label: m.label, bg: m.bg, fg: m.fg, dot: m.dot };
+  }
+  tableLabel(code) { const t = this.TESTS.find((x) => x.code === code); return t ? t.label : code; }
+
+  renderVals() {
+    const s = this.state;
+    const isDevices = s.page === 'devices';
+    const isRules = s.page === 'rules';
+    const isRelations = s.page === 'relations';
+    const isDirect = s.mode === 'direct';
+    const goDevices = () => this.setState({ page: 'devices' });
+    const goRules = () => this.setState({ page: 'rules' });
+    const goRelations = () => this.setState({ page: 'relations' });
+
+    // ----- sidebar menu -----
+    const item = (label) => ({ label, color: '#cdd8f0', bg: 'transparent', dot: 'rgba(255,255,255,0.25)', weight: 400, caret: '', children: [] });
+    const grp = (label, active, children) => ({ label, color: active ? '#fff' : '#cdd8f0', bg: 'transparent', dot: active ? '#4a82f0' : 'rgba(255,255,255,0.25)', weight: active ? 600 : 400, caret: '▾', children: children || [] });
+    const child = (label, active, click) => ({ label, color: active ? '#fff' : '#aebbd8', bg: active ? 'rgba(37,99,235,0.28)' : 'transparent', bar: active ? '#4a82f0' : 'transparent', click: click || (() => {}) });
+    const menu = [
+      item('首页'), item('数据源管理'), grp('任务管理', false),
+      grp('基础数据管理', isDevices || isRelations, [
+        child('设备管理', isDevices, goDevices),
+        child('关系配置', isRelations, goRelations),
+        child('第三方试验表', false),
+      ]),
+      grp('设备配置', false),
+      grp('图片采集配置', isRules, [
+        child('数据识别规则', isRules, goRules),
+        child('图像识别调试', false),
+      ]),
+      grp('任务日志', false), grp('系统设置', false),
+    ];
+
+    // ----- topbar tabs -----
+    const tab = (label, active, click) => ({ label, close: '×', color: active ? '#2563eb' : '#5b6677', bg: active ? '#eef4ff' : '#f4f6f9', click: click || (() => {}) });
+    const tabs = [
+      { label: '首页', close: '', color: '#5b6677', bg: '#f4f6f9', click: () => {} },
+      tab('设备管理', isDevices, goDevices),
+      tab('关系配置', isRelations, goRelations),
+      tab('数据识别规则', isRules, goRules),
+      tab('图像识别调试', false),
+    ];
+
+    // ----- device rows -----
+    const devRows = s.devRows.map((r, i) => {
+      const m = this.meta(r);
+      return {
+        idx: i + 1, code: r.code, name: r.name, model: r.model, dept: r.dept, area: r.area,
+        mLabel: m.label, mBg: m.bg, mFg: m.fg, mDot: m.dot,
+        swBg: r.on ? '#2563eb' : '#cdd3dc', swX: r.on ? '19px' : '2px',
+        toggle: () => { if (isDirect) return; this.setState((st) => { const rs = st.devRows.slice(); rs[i] = { ...rs[i], on: !rs[i].on }; return { devRows: rs }; }); },
+        edit: () => { if (isDirect) return; this.openEditDevice(i); },
+      };
+    });
+    const er = s.devEditIdx != null ? s.devRows[s.devEditIdx] : null;
+    const methodOptions = Object.keys(this.METHODS).map((key) => {
+      const m = this.METHODS[key];
+      const sel = s.methodSel === key;
+      return { label: m.label, tag: m.tag, desc: m.desc, dot: m.dot, tagBg: m.bg, tagFg: m.fg,
+        border: sel ? '#2563eb' : '#e5e8ee', cardBg: sel ? '#f5f9ff' : '#fff',
+        radioBorder: sel ? '#2563eb' : '#cdd3dc', radioDot: sel ? '#2563eb' : 'transparent',
+        pick: () => this.setState({ methodSel: key }) };
+    });
+
+    // ----- rule rows -----
+    const ruleRows = s.ruleRows.map((r, i) => {
+      const st = this.STATUS[r.status] || this.STATUS.pending;
+      const parts = r.device.split('|');
+      return {
+        idx: i + 1, tableLabel: this.tableLabel(r.table), devName: parts[0], devModel: parts[1], rule: r.rule,
+        stLabel: st.label, stBg: st.bg, stFg: st.fg, stDot: st.dot,
+        edit: () => this.openEditRule(i),
+        del: () => this.setState((p) => ({ ruleRows: p.ruleRows.filter((_, k) => k !== i) })),
+      };
+    });
+    const relRows = s.relRows.map((r, i) => ({
+      idx: i + 1, item: r.item, table: r.table,
+      edit: () => this.openEditRel(i),
+      del: () => this.setState((p) => ({ relRows: p.relRows.filter((_, k) => k !== i) })),
+    }));
+
+    const tableOptions = this.TESTS.map((t) => ({ code: t.code, label: t.label }));
+    const curTest = this.TESTS.find((t) => t.code === s.form.table);
+    const deviceOptions = curTest ? curTest.devices.map((d) => ({ value: d[0] + '|' + d[1], label: d[0] + '（' + d[1] + '）' })) : [];
+    const deviceDisabled = !s.form.table;
+
+    return {
+      menu, tabs, isDevices, isRules, isRelations, relRows, relTotal: 419,
+      // device
+      isDirect, devRows,
+      standaloneTabBg: isDirect ? 'transparent' : '#fff',
+      standaloneTabFg: isDirect ? '#828c9c' : '#2563eb',
+      directTabBg: isDirect ? '#fff' : 'transparent',
+      directTabFg: isDirect ? '#a85d00' : '#828c9c',
+      actionCursor: isDirect ? 'not-allowed' : 'pointer',
+      actionOpacity: isDirect ? '0.45' : '1',
+      toggleCursor: isDirect ? 'not-allowed' : 'pointer',
+      toggleOpacity: isDirect ? '0.5' : '1',
+      editLinkColor: isDirect ? '#aab2bf' : '#2563eb',
+      setStandalone: () => this.setState({ mode: 'standalone' }),
+      setDirect: () => this.setState({ mode: 'direct', drawerOpen: false }),
+      openNewDevice: () => { if (isDirect) return; this.setState({ drawerOpen: true, devEditIdx: null, methodSel: 'direct', external: false }); },
+      drawerOpen: s.drawerOpen,
+      drawerTitle: s.devEditIdx == null ? '新增设备' : '编辑设备',
+      editName: er ? er.name : '—', editCode: er ? er.code : '—', editArea: er ? er.area : '—',
+      methodOptions,
+      showExternal: s.methodSel === 'ble',
+      extSwBg: s.external ? '#0fb5c4' : '#cdd3dc',
+      extSwX: s.external ? '18px' : '2px',
+      toggleExternal: () => this.setState((st) => ({ external: !st.external })),
+      closeDrawer: () => this.setState({ drawerOpen: false }),
+      saveDrawer: () => this.setState((st) => {
+        if (st.devEditIdx == null) return { drawerOpen: false };
+        const rs = st.devRows.slice();
+        rs[st.devEditIdx] = { ...rs[st.devEditIdx], method: st.methodSel, external: st.methodSel === 'ble' ? st.external : false };
+        return { devRows: rs, drawerOpen: false };
+      }),
+      // rules
+      ruleRows, ruleTotal: s.ruleRows.length,
+      modalOpen: s.modalOpen,
+      modalTitle: s.ruleEditIdx == null ? '新增数据识别规则' : '编辑数据识别规则',
+      form: s.form, tableOptions, deviceOptions, deviceDisabled,
+      tableColor: s.form.table ? '#1a2233' : '#aab2bf',
+      deviceColor: s.form.device ? '#1a2233' : '#aab2bf',
+      deviceBg: deviceDisabled ? '#f4f6f9' : '#fff',
+      deviceCursor: deviceDisabled ? 'not-allowed' : 'pointer',
+      devicePlaceholder: deviceDisabled ? '请先选择试验表' : '请选择设备',
+      hasError: !!s.ruleError, errorMsg: s.ruleError,
+      openNewRule: () => this.setState({ modalOpen: true, ruleEditIdx: null, form: { table: '', device: '', rule: '' }, ruleError: '' }),
+      closeModal: () => this.setState({ modalOpen: false, ruleError: '' }),
+      onTable: (e) => this.setState((p) => ({ form: { ...p.form, table: e.target.value, device: '' }, ruleError: '' })),
+      onDevice: (e) => this.setState((p) => ({ form: { ...p.form, device: e.target.value }, ruleError: '' })),
+      onRule: (e) => this.setState((p) => ({ form: { ...p.form, rule: e.target.value } })),
+      formatRule: () => this.setState((p) => ({ form: { ...p.form, rule: p.form.rule.split(',').map((x) => x.trim()).filter(Boolean).join(',\n') } })),
+      saveModal: () => this.saveRule(),
+      // 关系配置新增/编辑弹窗
+      relModalOpen: s.relModalOpen,
+      relModalTitle: s.relEditIdx == null ? '新增详情' : '编辑详情',
+      relForm: s.relForm,
+      relItemOptions: this.REL_ITEMS,
+      relTableOptions: this.REL_TABLES,
+      relItemColor: s.relForm.item ? '#1a2233' : '#aab2bf',
+      relTableColor: s.relForm.table ? '#1a2233' : '#aab2bf',
+      relHasError: !!s.relError, relErrorMsg: s.relError,
+      openNewRel: () => this.setState({ relModalOpen: true, relEditIdx: null, relForm: { item: '', table: '' }, relError: '' }),
+      closeRelModal: () => this.setState({ relModalOpen: false, relError: '' }),
+      onRelItem: (e) => this.setState((p) => ({ relForm: { ...p.relForm, item: e.target.value }, relError: '' })),
+      onRelTable: (e) => this.setState((p) => ({ relForm: { ...p.relForm, table: e.target.value }, relError: '' })),
+      saveRelModal: () => this.saveRel(),
+    };
+  }
+
+  openEditDevice(i) {
+    const r = this.state.devRows[i];
+    this.setState({ drawerOpen: true, devEditIdx: i, methodSel: r.method, external: !!r.external });
+  }
+  openEditRule(i) {
+    const r = this.state.ruleRows[i];
+    this.setState({ modalOpen: true, ruleEditIdx: i, form: { table: r.table, device: r.device, rule: r.rule }, ruleError: '' });
+  }
+  saveRule() {
+    const { form, ruleEditIdx, ruleRows } = this.state;
+    if (!form.table || !form.device) { this.setState({ ruleError: '「试验表名」与「设备」均为必填项' }); return; }
+    const dup = ruleRows.findIndex((r) => r.table === form.table && r.device === form.device);
+    if (dup !== -1 && dup !== ruleEditIdx) { this.setState({ ruleError: '该「试验表 + 设备」已存在识别规则，不可重复创建（请改为编辑）' }); return; }
+    const rule = form.rule.trim() || '（未配置）';
+    this.setState((p) => {
+      const next = p.ruleRows.slice();
+      if (p.ruleEditIdx == null) next.push({ table: form.table, device: form.device, rule, status: 'pending' });
+      else next[p.ruleEditIdx] = { ...next[p.ruleEditIdx], table: form.table, device: form.device, rule };
+      return { ruleRows: next, modalOpen: false, ruleError: '' };
+    });
+  }
+  openEditRel(i) {
+    const r = this.state.relRows[i];
+    this.setState({ relModalOpen: true, relEditIdx: i, relForm: { item: r.item, table: r.table }, relError: '' });
+  }
+  saveRel() {
+    const { relForm, relEditIdx } = this.state;
+    if (!relForm.item || !relForm.table) { this.setState({ relError: '「试验项」与「采集表」均为必填项' }); return; }
+    this.setState((p) => {
+      const next = p.relRows.slice();
+      if (p.relEditIdx == null) next.unshift({ item: relForm.item, table: relForm.table });
+      else next[p.relEditIdx] = { item: relForm.item, table: relForm.table };
+      return { relRows: next, relModalOpen: false, relError: '' };
+    });
+  }
+}
+</script>
+</body>
+</html>

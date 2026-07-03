@@ -1,0 +1,59 @@
+<!-- @dsCard group="Brand" viewport="700x280" name="状态徽章体系" subtitle="原样沉淀客户「状态分类」表 · 任务/样品/试验/上传四维度" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin:0; font-family:var(--font-sans); background:var(--white); color:var(--text-title); padding:18px 22px; }
+  table { width:100%; border-collapse:collapse; }
+  td, th { text-align:left; padding:10px 8px; border-bottom:1px solid var(--divider); vertical-align:middle; }
+  th { font-size:12px; color:var(--text-secondary); font-weight:600; }
+  .dim { font-size:13px; font-weight:600; color:var(--text-title); width:130px; }
+  .cells { display:flex; gap:8px; flex-wrap:wrap; }
+  .tag { padding:2px 10px; border-radius:var(--radius-pill); font-size:12px; font-weight:600; }
+  .dotc { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text-body); }
+  .dot { width:11px; height:11px; border-radius:50%; }
+  .up { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; }
+  .upi { width:14px; height:14px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:9px; }
+</style>
+</head>
+<body>
+  <table>
+    <tr><th>维度</th><th>取值</th></tr>
+    <tr>
+      <td class="dim">任务状态</td>
+      <td><div class="cells">
+        <span class="tag" style="background:var(--status-pending-bg);color:var(--status-pending-fg)">未检测</span>
+        <span class="tag" style="background:var(--status-testing-bg);color:var(--status-testing-fg)">检测中</span>
+        <span class="tag" style="background:var(--status-done-bg);color:var(--status-done-fg)">已完成</span>
+        <span class="tag" style="background:var(--status-overdue-bg);color:var(--status-overdue-fg)">已逾期</span>
+      </div></td>
+    </tr>
+    <tr>
+      <td class="dim">样品检测状态<br><span style="font-weight:400;font-size:11px;color:var(--text-secondary)">胶囊标签 Tag</span></td>
+      <td><div class="cells">
+        <span class="tag" style="background:var(--status-pending-bg);color:var(--status-pending-fg)">未检测</span>
+        <span class="tag" style="background:var(--status-testing-bg);color:var(--status-testing-fg)">检测中</span>
+        <span class="tag" style="background:var(--status-done-bg);color:var(--status-done-fg)">已完成</span>
+        <span class="tag" style="background:var(--status-overdue-bg);color:var(--status-overdue-fg)">已逾期</span>
+      </div></td>
+    </tr>
+    <tr>
+      <td class="dim">试验状态<br><span style="font-weight:400;font-size:11px;color:var(--text-secondary)">实心圆点 Dot</span></td>
+      <td><div class="cells" style="gap:18px">
+        <span class="dotc"><span class="dot" style="background:var(--status-pending-dot)"></span>未检测</span>
+        <span class="dotc"><span class="dot" style="background:var(--status-testing)"></span>检测中</span>
+        <span class="dotc"><span class="dot" style="background:var(--status-done)"></span>已检测</span>
+      </div></td>
+    </tr>
+    <tr>
+      <td class="dim">试验单次上传<br><span style="font-weight:400;font-size:11px;color:var(--text-secondary)">图标</span></td>
+      <td><div class="cells" style="gap:18px">
+        <span class="up" style="color:var(--upload-pending)"><span class="upi" style="background:var(--upload-pending)">!</span>未上传</span>
+        <span class="up" style="color:var(--upload-done)"><span class="upi" style="background:var(--upload-done)">✓</span>已上传</span>
+      </div></td>
+    </tr>
+  </table>
+</body>
+</html>

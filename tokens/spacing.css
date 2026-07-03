@@ -1,0 +1,36 @@
+/* ============================================================
+   数蚕 Lab Data · 间距 Tokens
+   4px 基准栅格。平板竖屏页面边距默认 20px。
+   ============================================================ */
+:root {
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---- 语义别名 ---- */
+  --gap-page: 20px;        /* 页面左右安全边距 */
+  --gap-section: 24px;     /* 区块之间 */
+  --gap-card: 16px;        /* 卡片内边距 */
+  --gap-card-tight: 12px;
+  --gap-list: 12px;        /* 列表项之间 */
+  --gap-inline: 8px;       /* 行内元素间距 */
+
+  /* ---- 触控目标 ---- */
+  --touch-min: 44px;       /* 最小可点击高度（平板手指） */
+  --control-h: 48px;       /* 标准输入/按钮高度 */
+  --control-h-sm: 36px;
+
+  /* ---- 关键尺寸 ---- */
+  --tabbar-h: 64px;        /* 底部 Tab 栏 */
+  --appbar-h: 56px;        /* 顶部导航栏 */
+  --device-frame-w: 800px; /* Y700 竖屏逻辑宽 */
+  --device-frame-h: 1280px;
+}

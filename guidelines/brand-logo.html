@@ -1,0 +1,31 @@
+<!-- @dsCard group="Brand" viewport="700x200" name="Logo" subtitle="圆形 S 标 · 横版组合 Lab Data" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin:0; font-family:var(--font-sans); background:var(--white); color:var(--text-title); padding:24px; display:flex; gap:28px; align-items:center; }
+  .tile { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .panel { width:130px; height:120px; border-radius:var(--radius-lg); display:flex; align-items:center; justify-content:center; border:1px solid var(--border-default); }
+  .lab { font-size:11px; color:var(--text-secondary); }
+  .lock { display:flex; align-items:center; gap:12px; }
+  .lock .name { font-size:26px; font-weight:700; letter-spacing:-0.01em; color:var(--blue-700); }
+  .lock .name small { display:block; font-size:11px; font-weight:500; letter-spacing:0.04em; color:var(--text-secondary); }
+</style>
+</head>
+<body>
+  <div class="tile">
+    <div class="panel" style="background:var(--white)"><img src="../assets/logo-mark.png" alt="logo" style="width:72px;height:72px"></div>
+    <span class="lab">白底</span>
+  </div>
+  <div class="tile">
+    <div class="panel" style="background:var(--blue-700)"><img src="../assets/logo-mark.png" alt="logo" style="width:72px;height:72px;filter:brightness(0) invert(1)"></div>
+    <span class="lab">深蓝底（反白）</span>
+  </div>
+  <div class="lock">
+    <img src="../assets/logo-mark.png" alt="logo" style="width:56px;height:56px">
+    <span class="name">Lab Data<small>实验室数智化系统</small></span>
+  </div>
+</body>
+</html>

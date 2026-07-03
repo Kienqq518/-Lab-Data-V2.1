@@ -1,0 +1,28 @@
+<!-- @dsCard group="Spacing" viewport="700x160" name="圆角与阴影" subtitle="徽章6 / 按钮8 / 卡片12 / 弹窗16 · 轻阴影体系" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin:0; font-family:var(--font-sans); background:var(--gray-50); color:var(--text-title); padding:20px; }
+  .row { display:flex; gap:16px; align-items:center; }
+  .item { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .box { width:72px; height:56px; background:var(--white); border:1px solid var(--border-default); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-secondary); }
+  .lab { font-size:11px; color:var(--text-secondary); }
+  .sep { width:1px; height:56px; background:var(--border-default); margin:0 4px; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="item"><div class="box" style="border-radius:var(--radius-sm)">6</div><span class="lab">徽章</span></div>
+    <div class="item"><div class="box" style="border-radius:var(--radius-md)">8</div><span class="lab">按钮/输入</span></div>
+    <div class="item"><div class="box" style="border-radius:var(--radius-lg)">12</div><span class="lab">卡片</span></div>
+    <div class="item"><div class="box" style="border-radius:var(--radius-xl)">16</div><span class="lab">弹窗</span></div>
+    <div class="item"><div class="box" style="border-radius:var(--radius-pill);width:90px">pill</div><span class="lab">胶囊</span></div>
+    <div class="sep"></div>
+    <div class="item"><div class="box" style="border-radius:var(--radius-lg);border:0;box-shadow:var(--shadow-card)">card</div><span class="lab">卡片阴影</span></div>
+    <div class="item"><div class="box" style="border-radius:var(--radius-lg);border:0;box-shadow:var(--shadow-lg)">lg</div><span class="lab">浮层阴影</span></div>
+  </div>
+</body>
+</html>

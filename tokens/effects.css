@@ -1,0 +1,36 @@
+/* ============================================================
+   数蚕 Lab Data · 圆角 / 阴影 / 描边 / 动效 Tokens
+   卡片走"轻阴影 + 极淡描边"，不用重投影、不用彩色左边框。
+   ============================================================ */
+:root {
+  /* ---- 圆角 Radius ---- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;     /* 徽章/小标签 */
+  --radius-md: 8px;     /* 按钮/输入框 */
+  --radius-lg: 12px;    /* 卡片 */
+  --radius-xl: 16px;    /* 大卡片/弹窗 */
+  --radius-2xl: 20px;
+  --radius-pill: 999px; /* 胶囊/状态标签 */
+
+  /* ---- 阴影 Shadow ---- */
+  --shadow-xs: 0 1px 2px rgba(26, 34, 51, 0.04);
+  --shadow-sm: 0 1px 3px rgba(26, 34, 51, 0.06), 0 1px 2px rgba(26, 34, 51, 0.04);
+  --shadow-card: 0 2px 8px rgba(26, 34, 51, 0.06);
+  --shadow-md: 0 4px 16px rgba(26, 34, 51, 0.08);
+  --shadow-lg: 0 8px 28px rgba(26, 34, 51, 0.12);
+  --shadow-tabbar: 0 -2px 12px rgba(26, 34, 51, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(37, 99, 235, 0.18);
+
+  /* ---- 描边 ---- */
+  --border-w: 1px;          /* @kind spacing */
+  --border-w-strong: 1.5px; /* @kind spacing */
+
+  /* ---- 动效 Motion ---- */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);    /* @kind other */
+  --ease-in-out: cubic-bezier(0.45, 0, 0.2, 1);     /* @kind other */
+  --dur-fast: 120ms;   /* @kind other */
+  --dur-base: 200ms;   /* @kind other */
+  --dur-slow: 320ms;   /* @kind other */
+  /* 按压：轻微缩放 + 加深，无弹跳 */
+  --press-scale: 0.97; /* @kind other */
+}

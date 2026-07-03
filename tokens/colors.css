@@ -1,0 +1,96 @@
+/* ============================================================
+   数蚕 Lab Data · 颜色 Tokens
+   品牌深蓝取自 Logo (#1D3F8C)，交互蓝取自 Web 操作按钮 (#2563EB)
+   语义状态严格对齐「状态分类」规范表
+   ============================================================ */
+:root {
+  /* ---- 品牌蓝阶 Brand / Blue scale ---- */
+  --blue-900: #14275a;
+  --blue-800: #1a347a;
+  --blue-700: #1d3f8c;   /* 品牌主色 · Logo 深蓝 */
+  --blue-600: #2150b0;
+  --blue-500: #2563eb;   /* 交互/操作主色 · 按钮 */
+  --blue-400: #4a82f0;
+  --blue-300: #86aef6;
+  --blue-200: #c2d6fb;
+  --blue-100: #dce8ff;
+  --blue-50:  #eef4ff;   /* 选中/高亮浅底 */
+
+  /* ---- 中性灰阶 Neutral ---- */
+  --gray-900: #1a2233;   /* 主标题 */
+  --gray-800: #28324a;
+  --gray-700: #3c465c;   /* 正文强调 */
+  --gray-600: #5b6677;   /* 正文 */
+  --gray-500: #828c9c;   /* 次要文字 */
+  --gray-400: #aab2bf;   /* 占位/禁用文字 */
+  --gray-300: #cdd3dc;   /* 深边框 */
+  --gray-200: #e5e8ee;   /* 常规边框/分隔线 */
+  --gray-100: #eef1f5;   /* 浅分隔/hover 底 */
+  --gray-50:  #f4f6f9;   /* 页面底色 */
+  --white:    #ffffff;
+
+  /* ---- 语义状态 Semantic（对齐状态分类表）---- */
+  /* 未检测 · 印章黄（与「未检测」标志水印统一）*/
+  --status-pending:      #e8a93a;
+  --status-pending-bg:   #fff3dc;
+  --status-pending-fg:   #97640f;
+  /* 试验状态实心圆点「未检测」· 印章水印黄填充 */
+  --status-pending-dot:  #ffd58c;
+  /* 检测中 · 浅蓝 */
+  --status-testing:      #93bdf5;
+  --status-testing-bg:   #e8f1fd;
+  --status-testing-fg:   #4f8be0;
+  /* 已完成 / 已检测 · 绿 */
+  --status-done:         #1faa54;
+  --status-done-bg:      #dcf6e6;
+  --status-done-fg:      #157f3e;
+  /* 已逾期 · 红 */
+  --status-overdue:      #e23b3b;
+  --status-overdue-bg:   #fde3e3;
+  --status-overdue-fg:   #c22a2a;
+
+  /* 上传状态 */
+  --upload-pending: #f59e0b;   /* 未上传 · 橙告警 */
+  --upload-done:    #1faa54;   /* 已上传 · 绿 */
+
+  /* ---- 采集方式 Collection methods ---- */
+  --collect-auto:    #2563eb;  /* ⚡ 自动采集 · 联网设备 */
+  --collect-auto-bg: #eef4ff;
+  --collect-ocr:     #7c5cff;  /* 📷 拍照识别 · 老旧设备 */
+  --collect-ocr-bg:  #efeaff;
+  --collect-ble:     #0fb5c4;  /* 🔵 蓝牙同步 · 便携设备 */
+  --collect-ble-bg:  #e2f7f9;
+  --collect-manual:  #828c9c;  /* ✏️ 手工录入 · 单机设备 */
+  --collect-manual-bg:#eef1f5;
+
+  /* ---- 功能反馈 ---- */
+  --success: #1faa54;
+  --warning: #f59e0b;
+  --danger:  #e23b3b;
+  --info:    #2563eb;
+
+  /* ============================================================
+     语义别名 Semantic aliases —— 组件请优先引用这一层
+     ============================================================ */
+  --brand:            var(--blue-700);
+  --brand-action:     var(--blue-500);
+  --brand-action-press:var(--blue-600);
+
+  --bg-app:           var(--gray-50);
+  --surface-card:     var(--white);
+  --surface-sunken:   var(--gray-100);
+  --surface-hover:    var(--gray-100);
+  --surface-selected: var(--blue-50);
+
+  --text-title:       var(--gray-900);
+  --text-body:        var(--gray-700);
+  --text-secondary:   var(--gray-500);
+  --text-placeholder: var(--gray-400);
+  --text-on-brand:    var(--white);
+  --text-link:        var(--blue-500);
+
+  --border-default:   var(--gray-200);
+  --border-strong:    var(--gray-300);
+  --border-focus:     var(--blue-500);
+  --divider:          var(--gray-100);
+}

@@ -1,0 +1,50 @@
+/* ============================================================
+   数蚕 Lab Data · 字体 Tokens
+   CJK 走系统字体栈（PingFang SC / 微软雅黑 / Noto Sans SC），
+   仪表读数用 tabular-nums 等宽数字，保证小数点对齐。
+   尺寸面向 800×1280 平板竖屏（Y700）。
+   ============================================================ */
+:root {
+  /* ---- 字族 Families ---- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC",
+               "HarmonyOS Sans SC", "Microsoft YaHei", "Noto Sans SC",
+               "Source Han Sans SC", "Helvetica Neue", Arial, sans-serif;
+  /* 数显读数：等宽数字，Latin 部分用紧凑无衬线，CJK 回落系统栈 */
+  --font-numeric: "SF Pro Display", "DIN Alternate", "Bahnschrift",
+                  "Helvetica Neue", var(--font-sans);
+
+  /* ---- 字号阶 Scale ---- */
+  --fs-display: 40px;   /* 仪表大读数 */
+  --fs-h1: 28px;        /* 页面主标题 */
+  --fs-h2: 22px;        /* 区块标题 */
+  --fs-h3: 19px;        /* 卡片标题 */
+  --fs-lg: 17px;        /* 强调正文 */
+  --fs-base: 15px;      /* 正文（基准） */
+  --fs-sm: 13px;        /* 次要信息 */
+  --fs-xs: 12px;        /* 标签/徽章/辅助 */
+
+  /* ---- 字重 Weight ---- */
+  --fw-regular: 400;  /* @kind font */
+  --fw-medium: 500;   /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold: 700;     /* @kind font */
+
+  /* ---- 行高 Line-height ---- */
+  --lh-tight: 1.2;    /* @kind font */
+  --lh-snug: 1.35;    /* @kind font */
+  --lh-normal: 1.5;   /* @kind font */
+  --lh-relaxed: 1.65; /* @kind font */
+
+  /* ---- 字间距 ---- */
+  --ls-tight: 0; /* @kind font */
+  --ls-normal: 0;      /* @kind font */
+  --ls-wide: 0.04em;   /* @kind font */
+
+  /* ---- 语义别名 ---- */
+  --text-display: var(--fw-bold) var(--fs-display)/var(--lh-tight) var(--font-numeric);
+  --text-h1: var(--fw-semibold) var(--fs-h1)/var(--lh-snug) var(--font-sans);
+  --text-h2: var(--fw-semibold) var(--fs-h2)/var(--lh-snug) var(--font-sans);
+  --text-h3: var(--fw-semibold) var(--fs-h3)/var(--lh-snug) var(--font-sans);
+}
+
+.num-tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
