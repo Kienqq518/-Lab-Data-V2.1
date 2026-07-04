@@ -2,6 +2,7 @@ import React from 'react';
 import { AppBar, Button, Card, CollectBadge, FieldRow, UploadStatus } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import { CollectStructured } from './CollectStructured.jsx';
+import { isCompositeItem } from './collect-model.js';
 
 /* 采集详情（L4）— 基础/设备/环境 + 按「采集方式」自适应的 N 次字段录入 + 汇总 + 上传
    试验次数 N = 样段数量 × 试样数量 × 测试芯数（随 LIMS 任务下发，检测员不可改）。
@@ -51,7 +52,7 @@ import { CollectStructured } from './CollectStructured.jsx';
 
   function Collect({ ctx, onBack, onDone }) {
     // 含「试验子项」的试验项（如 结构尺寸检查—导体&绝缘厚度&金属屏蔽）走专用的子项/设备切换体验
-    if (ctx.item && ctx.item.subs && ctx.item.subs.length) {
+    if (isCompositeItem(ctx.item)) {
       return <CollectStructured ctx={ctx} onBack={onBack} onDone={onDone} />;
     }
     const dev = ctx.device || {};

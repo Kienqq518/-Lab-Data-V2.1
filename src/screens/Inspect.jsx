@@ -225,10 +225,11 @@ import { MOCK as M } from '../mock.js';
               {its.length ? its.map((t, i) => {
                 const dev = M.devices.find((d) => d.id === t.device);
                 const tpl = dev ? (dev.items.find((x) => x.name === t.name) || {}).tpl : undefined;
+                const itemCtx = { ...t, tpl };
                 return (
                   <TestItemCard key={i} name={t.name} device={dev ? dev.name : ''} method={t.method || (dev && dev.method)}
                     status={t.status} upload={t.upload}
-                    onClick={() => onCollect({ sample: cur, device: dev, item: { name: t.name, tpl, count: t.count, subs: t.subs, phased: t.phased }, method: t.method || (dev && dev.method), status: t.status, flow: t.flow })} />
+                    onClick={() => onCollect({ sample: cur, device: dev, item: itemCtx, method: t.method || (dev && dev.method), status: t.status, flow: t.flow })} />
                 );
               }) : (
                 <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>无匹配试验项</div>
@@ -264,10 +265,12 @@ import { MOCK as M } from '../mock.js';
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
             {sample.tests.map((t, i) => {
               const dev = M.devices.find((d) => d.id === t.device);
+              const tpl = dev ? (dev.items.find((x) => x.name === t.name) || {}).tpl : undefined;
+              const itemCtx = { ...t, tpl };
               return (
                 <TestItemCard key={i} name={t.name} device={dev ? dev.name : ''} method={t.method}
                   status={t.status} upload={t.upload}
-                  onClick={() => onCollect({ sample, device: dev, item: { name: t.name, tpl: (dev.items.find((x) => x.name === t.name) || {}).tpl, count: t.count, subs: t.subs, phased: t.phased }, method: t.method, status: t.status, flow: t.flow })} />
+                  onClick={() => onCollect({ sample, device: dev, item: itemCtx, method: t.method, status: t.status, flow: t.flow })} />
               );
             })}
           </div>
