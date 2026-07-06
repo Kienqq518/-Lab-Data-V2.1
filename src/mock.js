@@ -421,6 +421,18 @@
 
   // 数采 Web「设备采集配置」：试验项（采集表名）→ 已配置采集关系的「设备直连(auto)」设备 id 列表。
   // 仅对 auto 设备生效；未配置的 auto 设备在切换设备抽屉中置灰不可选（无采集关系无法回传数据）。
+  // 切换设备抽屉：实验室扩展设备（与复合试验子项弹窗同源）
+  const drawerDevices = [
+    { id: 'sz-waterbath', name: '恒温水浴槽', code: 'WB-202', model: 'HH-S8', station: 'sz', method: 'auto' },
+    { id: 'sz-logger', name: '水煮温度记录仪', code: 'WT-06', model: 'TLOG-8', station: 'sz', method: 'ble' },
+    { id: 'ny-power', name: '工频耐压试验装置', code: 'NY-10K-01', model: 'YD-15kVA/50kV', station: 'ny', method: 'auto' },
+    { id: 'ny-leak', name: '泄漏电流采集器', code: 'LC-308', model: 'LCM-4', station: 'ny', method: 'ble' },
+    { id: 'ld-impulse', name: '雷电冲击电压发生器', code: 'LI-1200', model: 'LIG-400kV', station: 'ld', method: 'auto' },
+    { id: 'rs-burn', name: '电缆燃烧试验箱', code: 'BRN-05', model: 'CFT-900', station: 'rs', method: 'auto' },
+    { id: 'by-ratio', name: '变压器变比测试仪', code: 'TR-03', model: 'TTR-332', station: 'by', method: 'ble' },
+    { id: 'free-meter', name: '便携式万用表', code: 'MM-21', model: 'UT-171B', station: null, method: 'manual' },
+  ];
+
   const deviceCollectConfig = {
     '结构尺寸检查—导体&绝缘厚度&金属屏蔽': ['thk', 'mech'],
     '结构尺寸检查—非金属护套&钢带铠装': [],
@@ -458,5 +470,64 @@
       || candidates[0]
       || null;
   }
+  function resolveTestDevice(item) {
+    return resolveLiteDevice(item) || devices.find((d) => d.id === item?.device) || null;
+  }
+  function getDeviceDrawerPool(item) {
+    const testName = item?.name;
+    const seen = new Set();
+    const pool = [];
+    function add(d) {
+      if (!d || seen.has(d.id)) return;
+      seen.add(d.id);
+      pool.push(d);
+    }
+    (item?.candidateDevices || []).forEach(add);
+    if (item?.device) add(devices.find((d) => d.id === item.device));
+    if (testName) {
+      devices.filter((d) => (d.items || []).some((it) => it.name === testName)).forEach(add);
+    }
+    devices.forEach(add);
+    drawerDevices.forEach(add);
+    add(visualInspectionDevice);
+    return pool;
+  }
+  function isDeviceBlockedForTest(testName, device) {
+    if (!device || device.visual) return false;
+    if (device.method !== 'auto') return false;
+    const allowed = deviceCollectConfig[testName] || [];
+    return !allowed.includes(device.id);
+  }
+  function testCardInfo(t) {
+    if (Array.isArray(t.subs) && t.subs.length) {
+      const methods = [];
+      const names = [];
+      t.subs.forEach((sub) => {
+        const m = sub.method || sub.device?.method;
+        if (m && !methods.includes(m)) methods.push(m);
+        const nm = sub.device?.name;
+        if (nm && !names.includes(nm)) names.push(nm);
+      });
+      return { methods, method: methods[0] || 'auto', deviceText: names.join('、') };
+    }
+    const dev = resolveTestDevice(t);
+    const method = t.method || (dev && dev.method) || 'auto';
+    return { methods: [method], method, deviceText: dev ? dev.name : (t.limsLite ? '手工录入' : '') };
+  }
+  function buildCollectCtx({ sample, item, task, stationId, extra = {} }) {
+    const dev = resolveTestDevice(item);
+    const tpl = dev ? (dev.items?.find((x) => x.name === item.name) || {}).tpl : undefined;
+    return {
+      sample,
+      device: dev,
+      item: { ...item, tpl },
+      method: item.method || (dev && dev.method),
+      status: item.status,
+      flow: item.flow,
+      stationId,
+      task,
+      ...extra,
+    };
+  }
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, resolveLiteDevice };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx };

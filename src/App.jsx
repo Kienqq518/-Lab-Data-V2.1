@@ -162,6 +162,7 @@ function App() {
               <div className="overlay-screen">
                 <QuickTasks
                   filter={quickFilter}
+                  stationId={stationId}
                   restore={quickRestore}
                   onBack={() => { setOverlay(null); setQuickFilter(null); setQuickRestore(null); }}
                   onCollect={(collectCtx) => {

@@ -41,16 +41,7 @@ const STATION_OPTIONS = [
   { value: 'by', label: '变压器工位' },
   { value: 'none', label: '未绑定工位' },
 ];
-const DRAWER_MOCK_DEVICES = [
-  { id: 'sz-waterbath', name: '恒温水浴槽', code: 'WB-202', model: 'HH-S8', station: 'sz', method: 'auto' },
-  { id: 'sz-logger', name: '水煮温度记录仪', code: 'WT-06', model: 'TLOG-8', station: 'sz', method: 'ble' },
-  { id: 'ny-power', name: '工频耐压试验装置', code: 'NY-10K-01', model: 'YD-15kVA/50kV', station: 'ny', method: 'auto' },
-  { id: 'ny-leak', name: '泄漏电流采集器', code: 'LC-308', model: 'LCM-4', station: 'ny', method: 'ble' },
-  { id: 'ld-impulse', name: '雷电冲击电压发生器', code: 'LI-1200', model: 'LIG-400kV', station: 'ld', method: 'auto' },
-  { id: 'rs-burn', name: '电缆燃烧试验箱', code: 'BRN-05', model: 'CFT-900', station: 'rs', method: 'auto' },
-  { id: 'by-ratio', name: '变压器变比测试仪', code: 'TR-03', model: 'TTR-332', station: 'by', method: 'ble' },
-  { id: 'free-meter', name: '便携式万用表', code: 'MM-21', model: 'UT-171B', station: null, method: 'manual' },
-];
+const DRAWER_MOCK_DEVICES = MOCK.drawerDevices;
 
 function genVal(field, cellIndex) {
   if (FIXED[field.key]) return FIXED[field.key];

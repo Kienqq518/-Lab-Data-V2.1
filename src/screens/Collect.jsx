@@ -69,11 +69,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
     const [dev, setDev] = React.useState(ctx.device || {});
     const [devSwitchOpen, setDevSwitchOpen] = React.useState(false);
     const method = dev.method || ctx.method || (ctx.device && ctx.device.method) || 'auto';
-    const itemDevices = React.useMemo(() => {
-      const testName = ctx.item?.name;
-      if (!testName) return [];
-      return M.devices.filter((d) => (d.items || []).some((it) => it.name === testName));
-    }, [ctx.item?.name]);
+    const itemDevices = React.useMemo(() => M.getDeviceDrawerPool(ctx.item), [ctx.item]);
     const tpl = ctx.item?.tpl ? M.fieldTpl[ctx.item.tpl] : M.fieldTpl.size;
     const rule = (M.testRules && M.testRules[ctx.item?.name]) || {};
     const isDensityTpl = ctx.item?.tpl === 'density';
@@ -379,7 +375,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
           <Section title="设备信息" icon="cpu" extra={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CollectBadge method={method} size="sm" />
-              {!flowLocked && itemDevices.length > 0 && (
+              {!flowLocked && itemDevices.length > 1 && (
                 <Button size="sm" variant="secondary" onClick={() => setDevSwitchOpen(true)} style={{ height: 28, padding: '0 12px' }}>切换设备</Button>
               )}
             </div>
@@ -691,6 +687,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
             currentId={dev.id}
             onSelect={(d) => { setDev(d); setDevSwitchOpen(false); }}
             onClose={() => setDevSwitchOpen(false)}
+            isBlocked={(d) => M.isDeviceBlockedForTest(ctx.item?.name, d)}
           />
         )}
 

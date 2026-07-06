@@ -21,12 +21,7 @@ function CollectLite({ ctx, onBack, onDone }) {
   const demoVals = ctx.item?.doneVals || {};
   const N = ctx.item?.count ?? 1;
 
-  const itemDevices = React.useMemo(() => {
-    if (ctx.item?.candidateDevices?.length) return ctx.item.candidateDevices;
-    const testName = ctx.item?.name;
-    if (!testName) return [];
-    return M.devices.filter((d) => (d.items || []).some((it) => it.name === testName));
-  }, [ctx.item?.candidateDevices, ctx.item?.name]);
+  const itemDevices = React.useMemo(() => M.getDeviceDrawerPool(ctx.item), [ctx.item]);
 
   const initialDev = M.resolveLiteDevice(ctx.item) || ctx.device || itemDevices[0] || { name: '手工录入', code: '—', model: '—', method: 'manual' };
 
@@ -193,6 +188,7 @@ function CollectLite({ ctx, onBack, onDone }) {
           currentId={dev.id}
           onSelect={(d) => { setDev(d); setDevSwitchOpen(false); }}
           onClose={() => setDevSwitchOpen(false)}
+          isBlocked={(d) => M.isDeviceBlockedForTest(ctx.item?.name, d)}
         />
       )}
     </div>

@@ -62,7 +62,7 @@ import { MOCK as M } from '../mock.js';
     function openDevice(d) { setDevice(d); setQ(''); setView('device'); }
     function openTask(t) {
       setTask(t);
-      const first = M.samples.filter((s) => s.code.startsWith(t.code))[0];
+      const first = M.taskSamples(t)[0];
       setTaskSample(first ? first.id : null);
       setCameFrom('device');
       setFromSampleId(null);
@@ -88,20 +88,7 @@ import { MOCK as M } from '../mock.js';
 
     // 试验项卡展示信息：复合试验项（含子项）汇总多台设备与多种采集方式
     function testCardInfo(t) {
-      if (Array.isArray(t.subs) && t.subs.length) {
-        const methods = [];
-        const names = [];
-        t.subs.forEach((sub) => {
-          const m = sub.method || sub.device?.method;
-          if (m && !methods.includes(m)) methods.push(m);
-          const nm = sub.device?.name;
-          if (nm && !names.includes(nm)) names.push(nm);
-        });
-        return { methods, method: methods[0] || 'auto', deviceText: names.join('、') };
-      }
-      const dev = M.resolveLiteDevice(t) || M.devices.find((d) => d.id === t.device);
-      const method = t.method || (dev && dev.method) || 'auto';
-      return { methods: [method], method, deviceText: dev ? dev.name : (t.limsLite ? '手工录入' : '') };
+      return M.testCardInfo(t);
     }
 
     // 试验项是否可用当前设备（用于按设备 L3 高亮）
@@ -237,7 +224,7 @@ import { MOCK as M } from '../mock.js';
     }
 
     // ===== L3：样品(左) + 对应试验项(右) 主从布局（按设备 / 按样品共用）=====
-    const tSamples = M.samples.filter((s) => task && s.code.startsWith(task.code));
+    const tSamples = M.taskSamples(task);
     const cur = tSamples.find((s) => s.id === taskSample) || tSamples[0];
     const ql2 = q.trim().toLowerCase();
     const its = cur ? cur.tests.filter((t) => !ql2
@@ -321,16 +308,13 @@ import { MOCK as M } from '../mock.js';
           {/* 右：当前样品的试验项 */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
             {its.length ? its.map((t, i) => {
-              const dev = M.resolveLiteDevice(t);
-              const tpl = dev ? (dev.items?.find((x) => x.name === t.name) || {}).tpl : undefined;
-              const itemCtx = { ...t, tpl };
               const info = testCardInfo(t);
               const usable = cameFrom === 'device' && deviceUsable(t);
               return (
                 <TestItemCard key={i} name={t.name} device={info.deviceText} method={info.method} methods={info.methods}
                   status={t.status} highlighted={usable} overdueTag={t.overdueTag}
                   style={usable ? { border: '1.5px solid var(--brand-action)', boxShadow: '0 0 0 2px rgba(37,99,235,0.14)' } : undefined}
-                  onClick={() => onCollect({ sample: cur, device: dev, item: itemCtx, method: t.method || (dev && dev.method), status: t.status, flow: t.flow, stationId, task })}
+                  onClick={() => onCollect(M.buildCollectCtx({ sample: cur, item: t, task, stationId }))}
                 />
               );
             }) : (
