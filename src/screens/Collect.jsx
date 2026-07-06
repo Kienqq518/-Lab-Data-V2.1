@@ -3,6 +3,7 @@ import { AppBar, Button, Card, CollectBadge, FieldRow, UploadStatus } from '../d
 import { MOCK as M } from '../mock.js';
 import { CollectStructured } from './CollectStructured.jsx';
 import { isCompositeItem } from './collect-model.js';
+import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 
 /* 采集详情（L4）— 基础/设备/环境 + 按「采集方式」自适应的 N 次字段录入 + 汇总 + 上传
    试验次数 N = 样段数量 × 试样数量 × 测试芯数（随 LIMS 任务下发，检测员不可改）。
@@ -96,19 +97,10 @@ import { isCompositeItem } from './collect-model.js';
     const [busy, setBusy] = React.useState(null);   // 'all' | time index | null
     const [phase, setPhase] = React.useState(ctx.status === 'done' ? 'done' : 'idle'); // idle|filled|uploading|done
     const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
-    // 环境数据来源（两种方案）：
-    //   guard = 安全管家物联节点：上位机物理绑定具体温湿度物联节点，经安全管家平台取数
-    //           → 标识 = 安全管家 + 物联节点名称 + 节点编号
-    //   wifi  = 数采系统直连传感器：传感器经 Wi-Fi 主动上报至数采系统（RS-WS-WIFI-6）
-    //           → 标识 = 采集方式类型文本 + 传感器型号（型号不单独作标识）
-    const GUARD_NODES = {
-      thk:  { nodeName: '温湿度RK2D', code: 'D1XQ988PK03P' },
-      hext: { nodeName: '温湿度PT8F', code: 'D1XQ977QK21M' },
-    };
-    const isGuardEnv = !!GUARD_NODES[dev.id];
-    const envSrc = isGuardEnv
-      ? { scheme: 'guard', platform: '安全管家', node: GUARD_NODES[dev.id].nodeName, code: GUARD_NODES[dev.id].code }
-      : { scheme: 'wifi', typeLabel: '独立温湿度传感器', model: 'RS-WS-WIFI-6' };
+    const envMock = React.useMemo(
+      () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`),
+      [ctx.sample?.code, ctx.item?.name],
+    );
     const [activeTime, setActiveTime] = React.useState(0);
     const [scenes, setScenes] = React.useState({});
     const [shootIdx, setShootIdx] = React.useState(null);   // 拍照识别取景页目标次序
@@ -323,30 +315,13 @@ import { isCompositeItem } from './collect-model.js';
             )}
           </Section>
 
-          {/* 环境信息 */}
-          <Section title={
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              环境信息
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, fontSize: 'var(--fs-xs)', fontWeight: 600, lineHeight: 1.6, color: isGuardEnv ? 'var(--collect-ble,#0a8a96)' : 'var(--collect-auto,#1d54c4)', background: isGuardEnv ? 'rgba(10,138,150,0.10)' : 'rgba(29,84,196,0.10)', border: '1px solid ' + (isGuardEnv ? 'rgba(10,138,150,0.25)' : 'rgba(29,84,196,0.25)') }}>
-                {isGuardEnv
-                  ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                  : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0 M1.42 9a16 16 0 0 1 21.16 0 M8.53 16.11a6 6 0 0 1 6.95 0 M12 20h.01"/></svg>}
-                {isGuardEnv ? '安全管家' : '独立传感器'}
-                <span style={{ width: 1, height: 11, background: 'currentColor', opacity: 0.3, margin: '0 1px' }}></span>
-                {isGuardEnv
-                  ? <React.Fragment><span style={{ fontWeight: 600 }}>{envSrc.node}</span><span style={{ fontWeight: 400, opacity: 0.75, fontFamily: 'var(--font-mono,monospace)' }}>({envSrc.code})</span></React.Fragment>
-                  : <span style={{ fontWeight: 500, fontFamily: 'var(--font-mono,monospace)' }}>{envSrc.model}</span>}
-              </span>
-            </span>
-          } icon="thermometer" extra={
-            <button onClick={() => setEnv({ wd: (20 + Math.random() * 3).toFixed(1), sd: (28 + Math.random() * 8).toFixed(1) })}
-              style={{ border: 'none', background: 'transparent', color: 'var(--brand-action)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-sm)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
-              刷新
-            </button>}>
-            {/* 环境室温 / 湿度 */}
-            <Grid items={[['环境室温', `${env.wd} ℃`], ['环境湿度', `${env.sd} %RH`]]} />
-          </Section>
+          <EnvInfoSection
+            envMock={envMock}
+            env={env}
+            onRefresh={() => setEnv({ wd: (20 + Math.random() * 3).toFixed(1), sd: (28 + Math.random() * 8).toFixed(1) })}
+            Section={Section}
+            Grid={Grid}
+          />
 
           {/* 试验数据 —— N 组并列字段卡 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '2px 2px -2px' }}>
@@ -490,11 +465,11 @@ import { isCompositeItem } from './collect-model.js';
                                 识别参照图 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>· 仅一张 · 对应本次识别数据来源</span>
                               </div>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                                {(attachments[i] || []).map((a) => (
+                                {getOcrReferenceAttachments(attachments[i], { filled, flowLocked, isOcr: true }).map((a) => (
                                   <div key={a.id} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
                                     <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono,monospace)' }}>{a.kind === 'photo' ? '拍照' : '上传'}</span>
-                                    {!flowLocked && <button onClick={() => removeAttach(i, a.id)} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
+                                    {!flowLocked && !a.mock && <button onClick={() => removeAttach(i, a.id)} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
                                   </div>
                                 ))}
                                 {!flowLocked && (attachments[i] || []).length < 1 && (
