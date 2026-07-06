@@ -5,8 +5,8 @@ import { MOCK as M } from '../mock.js';
 /* 快捷入口 L2 任务列表 → L3 样品+试验项 → L4 采集（与检测模块 L3/L4 共用） */
 
 const FILTER_CFG = {
-  pending: { title: '待检任务', hint: '存在待检测试验项、且尚无检测中试验的委托任务' },
-  testing: { title: '检测中任务', hint: '存在检测中试验项或任务状态为检测中的委托任务' },
+  pending: { title: '待检任务', hint: '任务状态为「未检测」的委托任务' },
+  testing: { title: '检测中任务', hint: '任务状态为「检测中」或「已逾期」的委托任务' },
 };
 
 function parseDeadline(s) {
@@ -27,7 +27,7 @@ function sortTasks(list, filter) {
 }
 
 function testCardInfo(t) {
-  const dev = M.devices.find((d) => d.id === t.device);
+  const dev = M.resolveLiteDevice(t) || M.devices.find((d) => d.id === t.device);
   const method = t.method || (dev && dev.method) || 'manual';
   return { methods: [method], method, deviceText: dev ? dev.name : (t.limsLite ? '手工录入' : '') };
 }
@@ -76,9 +76,7 @@ function QuickTasks({ filter, onBack, onCollect, restore }) {
   }
 
   function openCollect(sample, item) {
-    const dev = item.candidateDevices?.find((d) => d.id === item.device)
-      || (item.device ? M.devices.find((d) => d.id === item.device) : null)
-      || item.candidateDevices?.[0];
+    const dev = M.resolveLiteDevice(item);
     const tpl = dev ? (dev.items?.find((x) => x.name === item.name) || {}).tpl : undefined;
     onCollect?.({
       sample,

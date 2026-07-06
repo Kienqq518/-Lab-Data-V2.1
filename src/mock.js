@@ -181,6 +181,27 @@
   const rodBendDevice = { id: 'rodbend', name: '安全工器具力学试验机', code: 'AQ-MECH-01', model: 'YWL-10', station: null, method: 'manual' };
   const rodBendDeviceAlt = { id: 'rodbend2', name: '安全工器具力学试验机（便携）', code: 'AQ-MECH-02', model: 'YWL-5', station: null, method: 'manual' };
   const rodAppDevice = { id: 'tmk', name: '台式测厚仪', code: 'DF291968', model: '(0~12.7)mm/0.001mm', station: 'zy', method: 'manual' };
+  const visualInspectionDevice = { id: 'visual', name: '目测', code: '—', model: '不连接设备', station: null, method: 'manual', visual: true };
+  const rodAcDrawerDevices = [
+    rodAcDevice, rodAcDeviceAlt,
+    { id: 'ny-power', name: '工频耐压试验装置', code: 'NY-10K-01', model: 'YD-15kVA/50kV', station: 'ny', method: 'auto' },
+    { id: 'ny-leak', name: '泄漏电流采集器', code: 'LC-308', model: 'LCM-4', station: 'ny', method: 'ble' },
+    { id: 'rodhv-daq', name: '耐压数据采集单元', code: 'DAQ-NY-01', model: 'USB-6010', station: 'ny', method: 'serial' },
+    visualInspectionDevice,
+  ];
+  const rodAppDrawerDevices = [
+    visualInspectionDevice, rodAppDevice, caliperDevice,
+    { id: 'cal2', name: '蓝牙数显卡尺（便携）', code: 'BT-CAL-09', model: 'IP54-150', station: null, method: 'ble' },
+    { id: 'ir', name: '手持式红外热像仪', code: 'IR-808', model: 'FLIR-E8', station: null, method: 'ble' },
+    { id: 'thk', name: '全自动绝缘厚度测试仪', code: 'YM-WRH-02', model: 'YWD-11F', station: 'zy', method: 'auto' },
+  ];
+  const rodBendDrawerDevices = [
+    rodBendDevice, rodBendDeviceAlt,
+    { id: 'mech', name: '电缆绝缘层机械性能试验机', code: 'YM-WRH-03', model: 'YWL-5D', station: 'zy', method: 'auto' },
+    { id: 'sz-logger', name: '水煮温度记录仪', code: 'WT-06', model: 'TLOG-8', station: 'sz', method: 'ble' },
+    { id: 'free-meter', name: '便携式万用表', code: 'MM-21', model: 'UT-171B', station: null, method: 'manual' },
+    visualInspectionDevice,
+  ];
 
   const doneItem = (name, device, method, extra = {}) => ({ name, device, method, status: 'done', upload: 'done', ...extra });
   const overdueDoneItem = (name, device, method, extra = {}) => doneItem(name, device, method, { overdueTag: 'overdue_done', ...extra });
@@ -280,13 +301,13 @@
     { id: 's6', code: 'SC2026/00490101', name: '绝缘操作杆', status: 'testing', cable: false, client: '国网浙江省电力有限公司',
       tests: [
         { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', device: 'rodhv', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodAcFields,
-          candidateDevices: [rodAcDevice, rodAcDeviceAlt] },
-        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', device: 'tmk', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodAppearanceFields,
-          candidateDevices: [rodAppDevice] },
+          candidateDevices: rodAcDrawerDevices },
+        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', device: 'visual', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodAppearanceFields,
+          candidateDevices: rodAppDrawerDevices },
         { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodBendDynamicFields,
-          candidateDevices: [rodBendDevice, rodBendDeviceAlt] },
+          candidateDevices: rodBendDrawerDevices },
         { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodBendStaticFields,
-          candidateDevices: [rodBendDevice, rodBendDeviceAlt] },
+          candidateDevices: rodBendDrawerDevices },
       ] },
     // —— 已检任务样品（status=done，供已检任务 L2-L4 钻取）——
     { id: 's98a', code: 'SC2026/00998-01', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
@@ -342,7 +363,7 @@
       tests: [
         { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', device: 'rodhv', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodAcFields,
           doneVals: { bzz: '45', syz: '45', sj: '1', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' } },
-        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', device: 'tmk', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodAppearanceFields,
+        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', device: 'visual', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodAppearanceFields,
           doneVals: { wg: '无缺陷', yxjccd: '1.0', beizhu: '', jl: '合格' } },
         { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodBendDynamicFields,
           doneVals: { syc: '1', bzz: '1', syz: '93', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' } },
@@ -411,16 +432,18 @@
     return taskSamples(task).flatMap((s) => s.tests || []);
   }
   function isPendingTask(task) {
-    if (task.status === 'done') return false;
-    const tests = taskTests(task);
-    const hasPending = tests.some((t) => t.status === 'pending');
-    const hasTesting = tests.some((t) => t.status === 'testing');
-    return hasPending && !hasTesting;
+    return task.status === 'pending';
   }
   function isTestingTask(task) {
-    if (task.status === 'done') return false;
-    if (task.status === 'testing' || task.status === 'overdue') return true;
-    return taskTests(task).some((t) => t.status === 'testing');
+    return task.status === 'testing' || task.status === 'overdue';
+  }
+  function resolveLiteDevice(item) {
+    const candidates = item?.candidateDevices || [];
+    return candidates.find((d) => d.id === item?.device)
+      || devices.find((d) => d.id === item?.device)
+      || (item?.device === 'visual' ? visualInspectionDevice : null)
+      || candidates[0]
+      || null;
   }
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, resolveLiteDevice };

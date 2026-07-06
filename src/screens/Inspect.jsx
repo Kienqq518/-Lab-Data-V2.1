@@ -99,7 +99,7 @@ import { MOCK as M } from '../mock.js';
         });
         return { methods, method: methods[0] || 'auto', deviceText: names.join('、') };
       }
-      const dev = M.devices.find((d) => d.id === t.device);
+      const dev = M.resolveLiteDevice(t) || M.devices.find((d) => d.id === t.device);
       const method = t.method || (dev && dev.method) || 'auto';
       return { methods: [method], method, deviceText: dev ? dev.name : (t.limsLite ? '手工录入' : '') };
     }
@@ -321,9 +321,7 @@ import { MOCK as M } from '../mock.js';
           {/* 右：当前样品的试验项 */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
             {its.length ? its.map((t, i) => {
-              const dev = t.candidateDevices?.find((d) => d.id === t.device)
-                || (t.device ? M.devices.find((d) => d.id === t.device) : null)
-                || t.candidateDevices?.[0];
+              const dev = M.resolveLiteDevice(t);
               const tpl = dev ? (dev.items?.find((x) => x.name === t.name) || {}).tpl : undefined;
               const itemCtx = { ...t, tpl };
               const info = testCardInfo(t);
