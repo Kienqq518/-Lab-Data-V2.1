@@ -18,8 +18,24 @@ function CollectLite({ ctx, onBack, onDone }) {
   const measureFields = fields.filter((f) => f.key !== 'jl' && f.key !== 'bhgyy');
   const isReview = !!(ctx.reviewMode || ctx.status === 'done');
   const demoVals = ctx.item?.doneVals || {};
-  const method = ctx.method || ctx.item?.method || ctx.device?.method || 'manual';
-  const dev = ctx.device || M.devices.find((d) => d.id === ctx.item?.device) || { name: '手工录入', code: '—', model: '—', method: 'manual' };
+  const N = ctx.item?.count ?? 1;
+
+  const itemDevices = React.useMemo(() => {
+    if (ctx.item?.candidateDevices?.length) return ctx.item.candidateDevices;
+    const testName = ctx.item?.name;
+    if (!testName) return [];
+    return M.devices.filter((d) => (d.items || []).some((it) => it.name === testName));
+  }, [ctx.item?.candidateDevices, ctx.item?.name]);
+
+  const initialDev = ctx.device
+    || itemDevices.find((d) => d.id === ctx.item?.device)
+    || M.devices.find((d) => d.id === ctx.item?.device)
+    || itemDevices[0]
+    || { name: '手工录入', code: '—', model: '—', method: 'manual' };
+
+  const [dev, setDev] = React.useState(initialDev);
+  const [devSwitchOpen, setDevSwitchOpen] = React.useState(false);
+  const method = dev.method || ctx.method || ctx.item?.method || 'manual';
 
   const [demoFlow, setDemoFlow] = React.useState(null);
   const flow = demoFlow ? DEMO_FLOWS[demoFlow] : (ctx.flow || ctx.item?.flow || { node: '试验检测' });
@@ -33,19 +49,26 @@ function CollectLite({ ctx, onBack, onDone }) {
     return init;
   });
   const [uploaded, setUploaded] = React.useState(isReview);
+  const [uploading, setUploading] = React.useState(false);
   const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
   const envMock = React.useMemo(
     () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`),
     [ctx.sample?.code, ctx.item?.name],
   );
 
+  const inspectState = (uploaded || isReview) ? 'done' : uploading ? 'doing' : 'todo';
+
   function setField(key, value) {
-    if (readOnly || uploaded) return;
+    if (readOnly || uploaded || uploading) return;
     setVals((prev) => ({ ...prev, [key]: value }));
   }
 
   function upload() {
-    setUploaded(true);
+    setUploading(true);
+    setTimeout(() => {
+      setUploading(false);
+      setUploaded(true);
+    }, 600);
   }
 
   const fail = vals.jl === '不合格';
@@ -53,6 +76,7 @@ function CollectLite({ ctx, onBack, onDone }) {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
       <AppBar title={ctx.item?.name || '试验检测'} onBack={onBack} />
+      <Stamp state={inspectState} />
       <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
         <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
       </div>
@@ -62,6 +86,7 @@ function CollectLite({ ctx, onBack, onDone }) {
             ['样品编号', ctx.sample?.code || '—'],
             ['样品名称', ctx.sample?.name || '—'],
             ['试验名称', ctx.item?.name || '—'],
+            ['试验次数', `${N} 次`],
             ...(ctx.task?.detectDeadline ? [['检测时效', ctx.task.detectDeadline]] : []),
           ]} />
           {ctx.item?.overdueTag && M.overdueTagLabel?.[ctx.item.overdueTag] && (
@@ -69,9 +94,17 @@ function CollectLite({ ctx, onBack, onDone }) {
               {M.overdueTagLabel[ctx.item.overdueTag]}
             </div>
           )}
+          <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>试验次数随任务下发 · 不可修改</div>
         </Section>
 
-        <Section title="设备信息" icon="cpu" extra={<CollectBadge method={method} size="sm" />}>
+        <Section title="设备信息" icon="cpu" extra={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CollectBadge method={method} size="sm" />
+            {!flowLocked && !isReview && itemDevices.length > 1 && (
+              <Button size="sm" variant="secondary" onClick={() => setDevSwitchOpen(true)} style={{ height: 28, padding: '0 12px' }}>切换设备</Button>
+            )}
+          </div>
+        }>
           <Grid items={[['检测设备', dev.name || '—'], ['设备编号', dev.code || '—'], ['设备型号', dev.model || '—']]} />
         </Section>
 
@@ -84,14 +117,17 @@ function CollectLite({ ctx, onBack, onDone }) {
         />
 
         <Card padding="0">
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--divider)', fontSize: 'var(--fs-base)', fontWeight: 600 }}>试验参数</div>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--divider)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>试验参数</span>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>共 {N} 次</span>
+          </div>
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {measureFields.map((f) => (
               f.options
-                ? <SelectField key={f.key} field={f} value={vals[f.key] || ''} readOnly={readOnly || uploaded}
+                ? <SelectField key={f.key} field={f} value={vals[f.key] || ''} readOnly={readOnly || uploaded || uploading}
                     onChange={(v) => setField(f.key, v)} />
                 : <FieldRow key={f.key} label={f.label} unit={f.unit} required={f.required !== false}
-                    value={vals[f.key] || ''} readOnly={readOnly || uploaded}
+                    value={vals[f.key] || ''} readOnly={readOnly || uploaded || uploading}
                     placeholder="请输入"
                     onChange={(e) => setField(f.key, e.target.value)} />
             ))}
@@ -102,10 +138,10 @@ function CollectLite({ ctx, onBack, onDone }) {
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--divider)', fontSize: 'var(--fs-base)', fontWeight: 600 }}>结论</div>
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <SelectField field={{ label: '结论', key: 'jl', options: CONCLUSION_OPTIONS, required: true }}
-              value={vals.jl || ''} readOnly={readOnly || uploaded}
+              value={vals.jl || ''} readOnly={readOnly || uploaded || uploading}
               onChange={(v) => setField('jl', v)} />
             {fail && (
-              <FieldRow label="不合格原因" value={vals.bhgyy || ''} readOnly={readOnly || uploaded}
+              <FieldRow label="不合格原因" value={vals.bhgyy || ''} readOnly={readOnly || uploaded || uploading}
                 placeholder="请输入不合格原因"
                 onChange={(e) => setField('bhgyy', e.target.value)} />
             )}
@@ -136,8 +172,63 @@ function CollectLite({ ctx, onBack, onDone }) {
           ? <Button block onClick={onBack}>返回（数据已锁定）</Button>
           : uploaded
           ? <Button block onClick={onDone}>完成并退出</Button>
-          : <Button block onClick={upload}>上传结果</Button>}
+          : <Button block disabled={uploading} onClick={upload}>{uploading ? '上传中…' : '上传结果'}</Button>}
       </div>
+
+      {devSwitchOpen && (
+        <React.Fragment>
+          <div onClick={() => setDevSwitchOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 150, background: 'rgba(15,23,42,0.45)' }} />
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 151, background: 'var(--white)', borderRadius: '16px 16px 0 0', boxShadow: 'var(--shadow-lg)', maxHeight: '70%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '16px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>切换设备</span>
+              <button onClick={() => setDevSwitchOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 20, lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ padding: '0 16px 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>选择本次采集使用的设备</div>
+            <div style={{ padding: '4px 16px 16px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
+              {itemDevices.map((d) => {
+                const on = d.id === dev.id;
+                return (
+                  <button key={d.id} onClick={() => { setDev(d); setDevSwitchOpen(false); }} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
+                    borderRadius: 'var(--radius-md)', border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'), background: on ? 'var(--surface-selected)' : 'var(--white)',
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-title)' }}>{d.name}</div>
+                      <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>编号 {d.code} · 型号 {d.model}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
+                      <CollectBadge method={d.method} size="sm" />
+                      {on && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </React.Fragment>
+      )}
+    </div>
+  );
+}
+
+function Stamp({ state }) {
+  const C = { todo: { label: '未检测', color: '#E8A93A', fill: 'rgba(245,196,99,0.14)' }, doing: { label: '检测中', color: '#5B95E8', fill: 'rgba(127,176,242,0.16)' }, done: { label: '已检测', color: '#4FB97E', fill: 'rgba(134,214,166,0.16)' } }[state];
+  const cx = 110, cy = 110, R = 100;
+  const stars = Array.from({ length: 30 }, (_, i) => {
+    const a = (i / 30) * Math.PI * 2 - Math.PI / 2;
+    const r = R - 9;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    return <circle key={i} cx={x} cy={y} r={i % 2 ? 2.2 : 3.4} fill={C.color} />;
+  });
+  return (
+    <div aria-label={C.label} style={{ position: 'absolute', top: 46, right: 8, width: 120, height: 120, zIndex: 6, pointerEvents: 'none', opacity: 0.9, transform: 'rotate(-15deg)' }}>
+      <svg viewBox="0 0 220 220" width="120" height="120">
+        <circle cx={cx} cy={cy} r={R} fill={C.fill} stroke={C.color} strokeWidth="6" />
+        <circle cx={cx} cy={cy} r={R - 13} fill="none" stroke={C.color} strokeWidth="2.5" />
+        {stars}
+        <text x={cx} y={cy + 6} textAnchor="middle" dominantBaseline="middle" transform={`rotate(-8 ${cx} ${cy})`} fill={C.color} fontSize="60" fontWeight="900" letterSpacing="1" style={{ fontFamily: 'var(--font-sans, sans-serif)' }}>{C.label}</text>
+      </svg>
     </div>
   );
 }

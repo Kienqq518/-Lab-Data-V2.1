@@ -1,9 +1,14 @@
 import React from 'react';
 import { Card, SectionTitle, SegmentedSwitch } from '../design-system.js';
+import { MOCK as M } from '../mock.js';
 
 /* 首页（检测员）— 公司名 / 轮播 / 快捷入口 / 检测模块入口 / 个人检测统计 */
 
   function Home({ onEnterInspect, onQuick }) {
+    const pendingCount = M.tasks.filter(M.isPendingTask).length;
+    const testingCount = M.tasks.filter(M.isTestingTask).length;
+    const doneCount = M.tasks.filter((t) => t.status === 'done' && t.doneAt).length;
+
     return (
       <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-section)' }}>
         <SectionTitle>杭州数蚕智能科技有限公司</SectionTitle>
@@ -24,9 +29,9 @@ import { Card, SectionTitle, SegmentedSwitch } from '../design-system.js';
           <SectionTitle style={{ marginBottom: 6 }}>快捷入口</SectionTitle>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>按「委托任务」统计：以任务下分配给本检测员的试验项完成度划分</div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <Quick label="待检任务" count={6} tone="pending" icon="inbox" onClick={() => onQuick?.('pending')} />
-            <Quick label="检测中任务" count={3} tone="testing" icon="loader" onClick={() => onQuick?.('testing')} />
-            <Quick label="已检任务" count={6} tone="done" icon="check" onClick={() => onQuick?.('done')} />
+            <Quick label="待检任务" count={pendingCount} tone="pending" icon="inbox" onClick={() => onQuick?.('pending')} />
+            <Quick label="检测中任务" count={testingCount} tone="testing" icon="loader" onClick={() => onQuick?.('testing')} />
+            <Quick label="已检任务" count={doneCount} tone="done" icon="check" onClick={() => onQuick?.('done')} />
           </div>
         </div>
 

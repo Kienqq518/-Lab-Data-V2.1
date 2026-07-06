@@ -101,7 +101,7 @@ import { MOCK as M } from '../mock.js';
       }
       const dev = M.devices.find((d) => d.id === t.device);
       const method = t.method || (dev && dev.method) || 'auto';
-      return { methods: [method], method, deviceText: dev ? dev.name : '' };
+      return { methods: [method], method, deviceText: dev ? dev.name : (t.limsLite ? '手工录入' : '') };
     }
 
     // 试验项是否可用当前设备（用于按设备 L3 高亮）
@@ -321,8 +321,10 @@ import { MOCK as M } from '../mock.js';
           {/* 右：当前样品的试验项 */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
             {its.length ? its.map((t, i) => {
-              const dev = M.devices.find((d) => d.id === t.device);
-              const tpl = dev ? (dev.items.find((x) => x.name === t.name) || {}).tpl : undefined;
+              const dev = t.candidateDevices?.find((d) => d.id === t.device)
+                || (t.device ? M.devices.find((d) => d.id === t.device) : null)
+                || t.candidateDevices?.[0];
+              const tpl = dev ? (dev.items?.find((x) => x.name === t.name) || {}).tpl : undefined;
               const itemCtx = { ...t, tpl };
               const info = testCardInfo(t);
               const usable = cameFrom === 'device' && deviceUsable(t);

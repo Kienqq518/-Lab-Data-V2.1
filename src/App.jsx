@@ -7,6 +7,7 @@ import { Home } from './screens/Home.jsx';
 import { Inspect } from './screens/Inspect.jsx';
 import { Login } from './screens/Login.jsx';
 import { Mine } from './screens/Mine.jsx';
+import { QuickTasks } from './screens/QuickTasks.jsx';
 
 function StatusBar({ onBrand }) {
   return (
@@ -92,7 +93,15 @@ function App() {
   const [overlay, setOverlay] = React.useState(null);
   const [stationId, setStationId] = React.useState('zy');
   const [ctx, setCtx] = React.useState(null);
+  const [quickFilter, setQuickFilter] = React.useState(null);
+  const [quickRestore, setQuickRestore] = React.useState(null);
   const [sheet, setSheet] = React.useState(false);
+
+  function closeCollect() {
+    if (ctx?.reviewMode) setOverlay('done');
+    else if (ctx?.quickEntry) setOverlay('quick');
+    else setOverlay(null);
+  }
 
   let body;
   if (!authed) {
@@ -104,7 +113,10 @@ function App() {
           {tab === 'home' && (
             <Home
               onEnterInspect={() => setTab('inspect')}
-              onQuick={(kind) => { if (kind === 'done') setOverlay('done'); else setTab('inspect'); }}
+              onQuick={(kind) => {
+                if (kind === 'done') setOverlay('done');
+                else { setQuickFilter(kind); setQuickRestore(null); setOverlay('quick'); }
+              }}
             />
           )}
           {tab === 'inspect' && (
@@ -141,8 +153,22 @@ function App() {
               <div className="overlay-screen">
                 <Collect
                   ctx={ctx}
-                  onBack={() => setOverlay(ctx?.reviewMode ? 'done' : null)}
-                  onDone={() => setOverlay(ctx?.reviewMode ? 'done' : null)}
+                  onBack={closeCollect}
+                  onDone={closeCollect}
+                />
+              </div>
+            )}
+            {authed && overlay === 'quick' && quickFilter && (
+              <div className="overlay-screen">
+                <QuickTasks
+                  filter={quickFilter}
+                  restore={quickRestore}
+                  onBack={() => { setOverlay(null); setQuickFilter(null); setQuickRestore(null); }}
+                  onCollect={(collectCtx) => {
+                    setQuickRestore(collectCtx.quickRestore || null);
+                    setCtx(collectCtx);
+                    setOverlay('collect');
+                  }}
                 />
               </div>
             )}

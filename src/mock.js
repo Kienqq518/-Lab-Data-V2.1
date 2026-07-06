@@ -111,7 +111,11 @@
     // ===== 安全工器具 · 绝缘操作杆 =====
     { id: 'rodhv', name: '工频耐压试验装置', code: 'NY-150', model: '150kV', station: 'ny', method: 'manual',
       items: [ { name: '绝缘操作杆 - 交流耐压试验' } ] },
+    { id: 'rodhv2', name: '工频耐压试验装置（备用）', code: 'NY-151', model: '150kV-B', station: 'ny', method: 'manual',
+      items: [ { name: '绝缘操作杆 - 交流耐压试验' } ] },
     { id: 'rodbend', name: '安全工器具力学试验机', code: 'AQ-MECH-01', model: 'YWL-10', station: null, method: 'manual',
+      items: [ { name: '绝缘操作杆 - 抗弯动负荷试验' }, { name: '绝缘操作杆 - 抗弯静负荷试验' } ] },
+    { id: 'rodbend2', name: '安全工器具力学试验机（便携）', code: 'AQ-MECH-02', model: 'YWL-5', station: null, method: 'manual',
       items: [ { name: '绝缘操作杆 - 抗弯动负荷试验' }, { name: '绝缘操作杆 - 抗弯静负荷试验' } ] },
   ];
 
@@ -171,6 +175,12 @@
     { key: 'ztms', label: '状态描述' },
     ...rodEnvFields,
   ];
+
+  const rodAcDevice = { id: 'rodhv', name: '工频耐压试验装置', code: 'NY-150', model: '150kV', station: 'ny', method: 'manual' };
+  const rodAcDeviceAlt = { id: 'rodhv2', name: '工频耐压试验装置（备用）', code: 'NY-151', model: '150kV-B', station: 'ny', method: 'manual' };
+  const rodBendDevice = { id: 'rodbend', name: '安全工器具力学试验机', code: 'AQ-MECH-01', model: 'YWL-10', station: null, method: 'manual' };
+  const rodBendDeviceAlt = { id: 'rodbend2', name: '安全工器具力学试验机（便携）', code: 'AQ-MECH-02', model: 'YWL-5', station: null, method: 'manual' };
+  const rodAppDevice = { id: 'tmk', name: '台式测厚仪', code: 'DF291968', model: '(0~12.7)mm/0.001mm', station: 'zy', method: 'manual' };
 
   const doneItem = (name, device, method, extra = {}) => ({ name, device, method, status: 'done', upload: 'done', ...extra });
   const overdueDoneItem = (name, device, method, extra = {}) => doneItem(name, device, method, { overdueTag: 'overdue_done', ...extra });
@@ -269,10 +279,14 @@
     // 安全工器具 · 绝缘操作杆（轻量 LIMS，参数平铺 + 手工结论）
     { id: 's6', code: 'SC2026/00490101', name: '绝缘操作杆', status: 'testing', cable: false, client: '国网浙江省电力有限公司',
       tests: [
-        { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', device: 'rodhv', method: 'manual', limsLite: true, status: 'pending', fields: rodAcFields },
-        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', device: 'tmk', method: 'manual', limsLite: true, status: 'pending', fields: rodAppearanceFields },
-        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', fields: rodBendDynamicFields },
-        { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', fields: rodBendStaticFields },
+        { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', device: 'rodhv', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodAcFields,
+          candidateDevices: [rodAcDevice, rodAcDeviceAlt] },
+        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', device: 'tmk', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodAppearanceFields,
+          candidateDevices: [rodAppDevice] },
+        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodBendDynamicFields,
+          candidateDevices: [rodBendDevice, rodBendDeviceAlt] },
+        { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodBendStaticFields,
+          candidateDevices: [rodBendDevice, rodBendDeviceAlt] },
       ] },
     // —— 已检任务样品（status=done，供已检任务 L2-L4 钻取）——
     { id: 's98a', code: 'SC2026/00998-01', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
@@ -390,4 +404,23 @@
     '密度测量': [],
   };
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station) };
+  function taskSamples(task) {
+    return samples.filter((s) => s.code.startsWith(task.code));
+  }
+  function taskTests(task) {
+    return taskSamples(task).flatMap((s) => s.tests || []);
+  }
+  function isPendingTask(task) {
+    if (task.status === 'done') return false;
+    const tests = taskTests(task);
+    const hasPending = tests.some((t) => t.status === 'pending');
+    const hasTesting = tests.some((t) => t.status === 'testing');
+    return hasPending && !hasTesting;
+  }
+  function isTestingTask(task) {
+    if (task.status === 'done') return false;
+    if (task.status === 'testing' || task.status === 'overdue') return true;
+    return taskTests(task).some((t) => t.status === 'testing');
+  }
+
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask };
