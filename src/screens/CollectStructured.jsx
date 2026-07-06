@@ -17,8 +17,8 @@ import {
 } from './collect-model.js';
 
 /* 采集详情（L4·复合试验项）
-   一个试验项含多个试验子项，每个子项绑定自己的设备、采集方式与字段。
-   页面以试验子项为工作单元：切子项才切设备/字段，避免读数串设备。 */
+   试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
+   每条采集记录保存采集时使用的设备，避免后续换设备影响历史读数。 */
 
 const FIXED = { jg: '紧压绞合圆形' };
 const BASE = { gs: 8, zj: 8.00, tdhd: 10.00, tk1: 13, dg1: 14, tk2: 15, dg2: 14, tk3: 13, dg3: 14, tk4: 15, dg4: 14, tk5: 13, dg5: 14 };
@@ -28,6 +28,27 @@ const DEMO_FLOWS = {
   returned: { node: '试验检测', returned: true, returnReason: '绝缘厚度测量第 2 个点位与标准限值偏差较大，请复核后重新上传', returnedFrom: '数据审核', by: '张伟', role: '数据审核', at: '07-04 10:20' },
   locked: { node: '组内审核' },
 };
+const DEVICE_ORDER = ['cal', 'mech', 'tmk'];
+const CONDUCTOR_STRUCTURE_OPTIONS = ['实心导体', '非紧压绞合圆形', '紧压绞合圆形', '绞合成型'];
+const STATION_OPTIONS = [
+  { value: 'zy', label: '电缆制样工位' },
+  { value: 'sz', label: '水煮试验工位' },
+  { value: 'ny', label: '耐压工位' },
+  { value: 'ld', label: '雷电冲击工位' },
+  { value: 'rs', label: '电缆燃烧工位' },
+  { value: 'by', label: '变压器工位' },
+  { value: 'none', label: '未绑定工位' },
+];
+const DRAWER_MOCK_DEVICES = [
+  { id: 'sz-waterbath', name: '恒温水浴槽', code: 'WB-202', model: 'HH-S8', station: 'sz', method: 'auto' },
+  { id: 'sz-logger', name: '水煮温度记录仪', code: 'WT-06', model: 'TLOG-8', station: 'sz', method: 'ble' },
+  { id: 'ny-power', name: '工频耐压试验装置', code: 'NY-10K-01', model: 'YD-15kVA/50kV', station: 'ny', method: 'auto' },
+  { id: 'ny-leak', name: '泄漏电流采集器', code: 'LC-308', model: 'LCM-4', station: 'ny', method: 'ble' },
+  { id: 'ld-impulse', name: '雷电冲击电压发生器', code: 'LI-1200', model: 'LIG-400kV', station: 'ld', method: 'auto' },
+  { id: 'rs-burn', name: '电缆燃烧试验箱', code: 'BRN-05', model: 'CFT-900', station: 'rs', method: 'auto' },
+  { id: 'by-ratio', name: '变压器变比测试仪', code: 'TR-03', model: 'TTR-332', station: 'by', method: 'ble' },
+  { id: 'free-meter', name: '便携式万用表', code: 'MM-21', model: 'UT-171B', station: null, method: 'manual' },
+];
 
 function genVal(field, cellIndex) {
   if (FIXED[field.key]) return FIXED[field.key];
@@ -40,22 +61,29 @@ function genVal(field, cellIndex) {
 
 function CollectStructured({ ctx, onBack, onDone }) {
   const baseSubs = React.useMemo(() => getSubItems(ctx), [ctx]);
-  const [selectedDevices, setSelectedDevices] = React.useState(() => {
-    const initial = {};
-    baseSubs.forEach((sub) => { initial[sub.id] = sub.device; });
-    return initial;
-  });
-  const subs = React.useMemo(() => baseSubs.map((sub) => ({
-    ...sub,
-    device: selectedDevices[sub.id] || sub.device,
-  })), [baseSubs, selectedDevices]);
+  const subs = baseSubs;
+  const configuredDevices = React.useMemo(() => sortDevicePool(uniqueDevices(
+    baseSubs.flatMap((sub) => [sub.device, ...(sub.candidateDevices || [])])
+  )), [baseSubs]);
+  const deviceCatalog = React.useMemo(() => sortDevicePool(uniqueDevices([
+    ...configuredDevices,
+    ...DRAWER_MOCK_DEVICES,
+  ])), [configuredDevices]);
+  const [pooledDeviceIds, setPooledDeviceIds] = React.useState(() => configuredDevices.map((device) => device.id));
+  const availableDevices = React.useMemo(
+    () => deviceCatalog.filter((device) => pooledDeviceIds.includes(device.id)),
+    [deviceCatalog, pooledDeviceIds]
+  );
+  const firstDevice = availableDevices[0] || normalizeDevice(null);
+  const [currentDeviceId, setCurrentDeviceId] = React.useState(firstDevice.id);
+  const [deviceDrawerOpen, setDeviceDrawerOpen] = React.useState(false);
 
   const [activeSubId, setActiveSubId] = React.useState(subs[0]?.id || '');
-  const [cells, setCells] = React.useState(() => toCellMap(createCollectCells(ctx, selectedDevices)));
+  const [cells, setCells] = React.useState(() => toCellMap(createCollectCells(ctx)));
   const [activeCellKey, setActiveCellKey] = React.useState('');
   const [busy, setBusy] = React.useState(null);
   const [demoFlow, setDemoFlow] = React.useState(null);
-  const [deviceNotice, setDeviceNotice] = React.useState('');
+  const [deviceError, setDeviceError] = React.useState('');
 
   const flow = demoFlow ? DEMO_FLOWS[demoFlow] : (ctx.flow || ctx.item?.flow || DEMO_FLOWS.normal);
   const flowLocked = isFlowLocked(flow);
@@ -65,10 +93,20 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const activeSub = subs.find((sub) => sub.id === activeSubId) || subs[0];
   const activeCells = React.useMemo(() => sortCells(Object.values(cells).filter((cell) => cell.subItemId === activeSub?.id)), [cells, activeSub?.id]);
   const activeCell = cells[activeCellKey] || activeCells[0];
-  const activeDevice = activeSub?.device || normalizeDevice(null);
-  const method = activeDevice.method || activeSub?.method || 'manual';
+  const currentDevice = availableDevices.find((device) => device.id === currentDeviceId) || firstDevice;
+  const method = currentDevice.method || 'manual';
   const caps = getMethodCapabilities(method, ctx.ocrVerified !== false);
   const mainTimes = Math.max(1, ...subs.map((sub) => Object.values(cells).filter((cell) => cell.subItemId === sub.id).length));
+
+  React.useEffect(() => {
+    if (!availableDevices.length) {
+      if (currentDeviceId) setCurrentDeviceId('');
+      return;
+    }
+    if (!availableDevices.some((device) => device.id === currentDeviceId)) {
+      setCurrentDeviceId(availableDevices[0].id);
+    }
+  }, [availableDevices, currentDeviceId]);
 
   React.useEffect(() => {
     if (!activeSub && subs[0]) setActiveSubId(subs[0].id);
@@ -97,10 +135,10 @@ function CollectStructured({ ctx, onBack, onDone }) {
     setTimeout(() => {
       setCells((prev) => {
         let next = prev;
-        const device = selectedDevices[sub.id] || sub.device;
         sortCells(Object.values(prev).filter((cell) => cell.subItemId === sub.id)).forEach((cell) => {
           if (cell.status !== 'uploaded' || flowReturned) {
-            next = markCellFilled(next, cell.key, fillValues(sub, cell), { deviceId: device.id, source: device.method || sub.method });
+            next = markCellFilled(next, cell.key, fillValues(sub, cell), { deviceId: currentDevice.id, source: method });
+            if (method === 'auto') next = markCellUploaded(next, cell.key);
           }
         });
         return next;
@@ -113,9 +151,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
     if (!sub || !cell || flowLocked) return;
     setBusy('c-' + cell.key);
     setTimeout(() => {
-      const device = selectedDevices[sub.id] || sub.device;
       setCells((prev) => {
-        let next = markCellFilled(prev, cell.key, fillValues(sub, cell), { deviceId: device.id, source: device.method || sub.method });
+        let next = markCellFilled(prev, cell.key, fillValues(sub, cell), { deviceId: currentDevice.id, source: method });
         if (method === 'ocr') {
           next = updateCell(next, cell.key, (cur) => ({
             ...cur,
@@ -148,6 +185,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
         status: 'filled',
         uploadedAt: null,
         collectedAt: cur.collectedAt || '2026-07-04 12:00:00',
+        deviceId: cur.deviceId || currentDevice.id,
+        source: cur.source || method,
       };
     }));
   }
@@ -180,8 +219,22 @@ function CollectStructured({ ctx, onBack, onDone }) {
     if (flowLocked) return;
     setCells((prev) => Object.fromEntries(Object.values(prev).map((cell) => [
       cell.key,
-      cell.status === 'uploaded' ? cell : { ...cell, status: 'idle', vals: {}, attachments: [], uploadedAt: null, collectedAt: null },
+      cell.status === 'uploaded' ? cell : { ...cell, status: 'idle', vals: {}, attachments: [], uploadedAt: null, collectedAt: null, deviceId: null, source: null },
     ])));
+  }
+
+  function resetCell(cellKey) {
+    if (flowLocked) return;
+    setCells((prev) => updateCell(prev, cellKey, (cell) => ({
+      ...cell,
+      status: 'idle',
+      vals: {},
+      attachments: [],
+      uploadedAt: null,
+      collectedAt: null,
+      deviceId: null,
+      source: null,
+    })));
   }
 
   function addAttach(cellKey, kind = 'upload') {
@@ -200,16 +253,25 @@ function CollectStructured({ ctx, onBack, onDone }) {
     })));
   }
 
-  function switchCandidateDevice(device) {
-    if (!activeSub || flowLocked) return;
-    const normalized = normalizeDevice(device, device.method || activeSub.method);
-    const collected = activeCells.some((cell) => cell.status !== 'idle');
-    setSelectedDevices((prev) => ({ ...prev, [activeSub.id]: normalized }));
-    setCells((prev) => Object.fromEntries(Object.values(prev).map((cell) => {
-      if (cell.subItemId !== activeSub.id || cell.status !== 'idle') return [cell.key, cell];
-      return [cell.key, { ...cell, deviceId: normalized.id, source: normalized.method }];
-    })));
-    setDeviceNotice(collected ? '已采集的数据保留原采集设备，新采集数据将使用当前设备' : '');
+  function switchCurrentDevice(device) {
+    const normalized = normalizeDevice(device, device.method);
+    setPooledDeviceIds((prev) => prev.includes(normalized.id) ? prev : [...prev, normalized.id]);
+    setCurrentDeviceId(normalized.id);
+    setDeviceError('');
+    setDeviceDrawerOpen(false);
+  }
+
+  function removePoolDevice(device) {
+    const usedCells = Object.values(cells).filter((cell) => cell.deviceId === device.id && cell.status !== 'idle');
+    if (usedCells.length) {
+      const usedSubNames = Array.from(new Set(usedCells.map((cell) => cell.subName || '当前试验子项')));
+      setDeviceError(`${usedSubNames.join('、')}已采集完成，不能删除已使用设备`);
+      return;
+    }
+    setDeviceError('');
+    const nextDevices = availableDevices.filter((item) => item.id !== device.id);
+    setPooledDeviceIds((prev) => prev.filter((id) => id !== device.id));
+    if (currentDeviceId === device.id) setCurrentDeviceId(nextDevices[0]?.id || '');
   }
 
   if (!subs.length) {
@@ -223,15 +285,14 @@ function CollectStructured({ ctx, onBack, onDone }) {
     );
   }
 
-  const candidates = uniqueDevices([activeSub.device, ...(activeSub.candidateDevices || [])]);
-  const deviceMissing = !activeDevice || activeDevice.name === '未配置设备';
+  const deviceMissing = !currentDeviceId || !currentDevice || currentDevice.name === '未配置设备';
   const methodMissing = !method;
   const fieldMissing = !activeSub.fields.length;
   const methodHint = {
-    auto: '设备直连 · 上位机算毕整批写库，点下方「一键采集」整批回填，不可手输',
+    auto: '设备直连 · 上位机算毕整批写库，点下方「一键采集」整批回填并上传，不可手输',
     ocr: caps.ocrReady ? '拍照识别 · 逐条拍摄仪器读数屏自动识别，识别结果可校正' : '识别规则未通过验证，已回退手工录入',
-    ble: '蓝牙数显卡尺 · 逐相连接同步读数，也可手动输入；可附参照图',
-    manual: '单机设备 · 读数由检测员手工录入',
+    ble: '蓝牙数显卡尺 · 逐相连接同步读数，也可手动输入',
+    manual: '读数由检测员手工录入',
     external: '外部程序采集 · 数据由工业平板代采写库，可查看已采数据或补录',
   }[method] || '缺少采集方式，请先维护设备采集配置';
   const allCurrentSubFilled = activeCells.length > 0 && activeCells.every((cell) => cell.status !== 'idle');
@@ -256,42 +317,28 @@ function CollectStructured({ ctx, onBack, onDone }) {
         </Section>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Section title="设备信息" icon="cpu" extra={<CollectBadge method={method || 'manual'} size="sm" />}>
-          {candidates.length > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-              {candidates.map((device) => {
-                const on = device.id === activeDevice.id;
-                return (
-                  <button key={device.id} onClick={() => switchCandidateDevice(device)} disabled={flowLocked} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, padding: '6px 12px', borderRadius: 'var(--radius-pill)',
-                    border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                    background: on ? 'var(--surface-selected)' : 'var(--white)',
-                    color: on ? 'var(--brand-action)' : 'var(--text-body)',
-                    fontSize: 'var(--fs-sm)', fontWeight: on ? 600 : 400,
-                    cursor: flowLocked ? 'not-allowed' : 'pointer',
-                  }}>
-                    <CollectDot method={device.method} on={on} />
-                    <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
-                  </button>
-                );
-              })}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Section title="设备信息" icon="cpu" compact extra={<CollectBadge method={method || 'manual'} size="sm" />}>
+          <DevicePool
+            devices={availableDevices}
+            currentDevice={currentDevice}
+            onSwitch={switchCurrentDevice}
+            onRemove={removePoolDevice}
+            onOpenDrawer={() => setDeviceDrawerOpen(true)}
+          />
+          {deviceError && (
+            <div style={{ margin: '0 0 6px', fontSize: 'var(--fs-xs)', color: 'var(--danger,#e23b3b)', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <AlertCircleIcon />
+              <span>{deviceError}</span>
             </div>
           )}
-          <Grid items={[['当前子项', activeSub.name], ['检测设备', activeDevice.name], ['设备编号', activeDevice.code], ['设备型号', activeDevice.model]]} />
-          <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'flex-start', gap: 5, lineHeight: 1.5 }}>
-            <InfoIcon />
-            <span>当前设备随试验子项联动；候选设备只在当前子项内切换，避免读数串设备</span>
-          </div>
-          {deviceNotice && (
-            <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--status-pending-fg,#97640f)', lineHeight: 1.5 }}>{deviceNotice}</div>
-          )}
+          <DeviceMeta device={currentDevice} />
         </Section>
 
         {(deviceMissing || methodMissing || fieldMissing) && (
           <ConfigError
-            title="当前子项配置异常"
-            body={deviceMissing ? '缺少子项设备，请先维护设备采集配置。' : methodMissing ? '缺少设备采集方式，请先维护采集方式。' : '缺少试验字段模板，请先维护字段配置。'}
+            title="当前配置异常"
+            body={deviceMissing ? '缺少可用采集设备，请先维护任务设备配置。' : methodMissing ? '缺少设备采集方式，请先维护采集方式。' : '缺少试验字段模板，请先维护字段配置。'}
           />
         )}
 
@@ -299,51 +346,31 @@ function CollectStructured({ ctx, onBack, onDone }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <GridIcon />
-              <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>试验子项</span>
+              <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>试验数据</span>
             </div>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>已上传 {summary.uploaded}/{summary.total}</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, subs.length)}, minmax(0, 1fr))`, gap: 8 }}>
-            {subs.map((sub) => {
-              const on = sub.id === activeSub.id;
-              const subSummary = summary.bySub[sub.id] || { label: '待采集', uploaded: 0, total: 0, state: 'pending' };
-              return (
-                <button key={sub.id} onClick={() => { setActiveSubId(sub.id); setDeviceNotice(''); }} style={{
-                  minHeight: 62, padding: '9px 10px', borderRadius: 'var(--radius-md)', border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                  background: on ? 'var(--surface-selected)' : 'var(--white)', cursor: 'pointer', textAlign: 'left',
-                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 5,
-                }}>
-                  <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: on ? 'var(--brand-action)' : 'var(--text-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.name}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 'var(--fs-xs)', color: statusColor(subSummary.state) }}>
-                    <span>{subSummary.label}</span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{subSummary.uploaded}/{subSummary.total}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <SubItemSwitches subs={subs} activeSub={activeSub} summary={summary} onSelect={setActiveSubId} />
         </div>
-
-        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '0 2px', lineHeight: 1.5 }}>{methodHint}</div>
 
         {caps.canBatch && !allCurrentSubFilled && !flowLocked && !fieldMissing && (
           <Card padding="18px">
             <div style={{ textAlign: 'center' }}>
               {busy === 'all-' + activeSub.id
                 ? <div style={{ color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'external' ? '正在拉取平板程序已采数据…' : '正在从数据库整批取值…'}</div></div>
-                : <Button size="lg" onClick={() => captureSub(activeSub)}>{method === 'external' ? '查看已采数据' : `一键采集（${activeCells.length} 个单元）`}</Button>}
+                : <Button size="lg" onClick={() => captureSub(activeSub)}>{method === 'external' ? '查看已采数据' : '一键采集'}</Button>}
             </div>
           </Card>
         )}
 
-        <Card padding="0">
-          <div style={{ display: 'flex', minHeight: 292 }}>
-            <div style={{ width: 144, flex: 'none', borderRight: '1px solid var(--divider)', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', overflow: 'auto', borderRadius: 'var(--radius-md) 0 0 var(--radius-md)' }}>
-              {activeCells.map((cell) => {
+        <div style={{ flex: '1 1 720px', minHeight: 720, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--white)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
+            <div style={{ width: 168, flex: 'none', borderRight: '1px solid var(--divider)', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+              {activeCells.map((cell, index) => {
                 const on = activeCell?.key === cell.key;
                 return (
                   <button key={cell.key} onClick={() => setActiveCellKey(cell.key)} style={{
-                    display: 'flex', alignItems: 'center', gap: 9, padding: '13px 11px', cursor: 'pointer', textAlign: 'left',
+                    display: 'flex', alignItems: 'center', gap: 9, padding: '12px 11px', cursor: 'pointer', textAlign: 'left',
                     border: 'none', borderBottom: '1px solid var(--divider)',
                     borderLeft: `3px solid ${on ? 'var(--brand-action)' : 'transparent'}`,
                     background: on ? 'var(--white)' : 'transparent',
@@ -354,8 +381,11 @@ function CollectStructured({ ctx, onBack, onDone }) {
                         {cell.phase && <span style={{ width: 9, height: 9, borderRadius: '50%', background: phaseColor(cell.phase), flex: 'none' }} />}
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cellLabel(activeSub, cell)}</span>
                       </div>
-                      <div style={{ fontSize: 'var(--fs-xs)', color: cell.status === 'uploaded' ? 'var(--status-done-fg,#1b8a5a)' : cell.status === 'failed' ? 'var(--danger,#e23b3b)' : 'var(--text-tertiary,#9aa3b2)', whiteSpace: 'nowrap' }}>
+                      <div style={{ marginTop: 2, fontSize: 'var(--fs-xs)', color: cell.status === 'uploaded' ? 'var(--status-done-fg,#1b8a5a)' : cell.status === 'failed' ? 'var(--danger,#e23b3b)' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         {statusText(cell.status)}
+                      </div>
+                      <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-tertiary,#9aa3b2)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        {sampleCodeForCell(ctx.sample.code, index)}
                       </div>
                     </div>
                   </button>
@@ -363,7 +393,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
               })}
             </div>
 
-            <div style={{ flex: 1, minWidth: 0, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 16, display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto' }}>
               {activeCell && (
                 <CellEditor
                   sub={activeSub}
@@ -373,21 +403,24 @@ function CollectStructured({ ctx, onBack, onDone }) {
                   busy={busy}
                   flowLocked={flowLocked}
                   flowReturned={flowReturned}
+                  currentDevice={currentDevice}
+                  deviceCatalog={deviceCatalog}
+                  hint={methodHint}
                   onCollect={() => collectOne(activeSub, activeCell)}
-                  onManualFill={() => setCells((prev) => markCellFilled(prev, activeCell.key, fillValues(activeSub, activeCell), { deviceId: activeDevice.id, source: method }))}
                   onChange={setField}
                   onUpload={uploadCell}
+                  onReset={resetCell}
                   onAddAttach={addAttach}
                   onRemoveAttach={removeAttach}
                 />
               )}
             </div>
           </div>
-        </Card>
 
-        <ConclusionCard sub={activeSub} cells={activeCells} />
+          <ConclusionCard sub={activeSub} cells={activeCells} />
+        </div>
 
-        <div style={{ height: 8 }} />
+        <div style={{ height: 8, flex: 'none' }} />
       </div>
 
       <div style={{ position: 'absolute', left: 12, bottom: 88, zIndex: 60, display: 'flex', alignItems: 'center', gap: 4, padding: '5px 7px', borderRadius: 'var(--radius-pill)', background: 'rgba(20,30,55,0.86)', boxShadow: 'var(--shadow-lg)' }}>
@@ -409,40 +442,239 @@ function CollectStructured({ ctx, onBack, onDone }) {
             : `上传全部（${summary.pendingUpload}/${summary.total}）`}
         </Button>
       </div>
+
+      {deviceDrawerOpen && (
+        <DeviceDrawer
+          devices={deviceCatalog}
+          pooledDeviceIds={pooledDeviceIds}
+          currentDevice={currentDevice}
+          onClose={() => setDeviceDrawerOpen(false)}
+          onSelect={switchCurrentDevice}
+        />
+      )}
     </div>
   );
 }
 
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, onCollect, onManualFill, onChange, onUpload, onAddAttach, onRemoveAttach }) {
+function DevicePool({ devices, currentDevice, onSwitch, onRemove, onOpenDrawer }) {
+  return (
+    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ flex: '1 1 300px', minWidth: 0 }}>
+        {devices.length ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {devices.map((device) => {
+              const on = device.id === currentDevice.id;
+              return (
+                <div key={device.id} style={{
+                  display: 'inline-flex', alignItems: 'center', minHeight: 28, borderRadius: 'var(--radius-pill)',
+                  border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
+                  background: on ? 'var(--surface-selected)' : 'var(--white)',
+                  overflow: 'hidden',
+                }}>
+                  <button onClick={() => onSwitch(device)} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 26, padding: '3px 8px 3px 10px',
+                    border: 'none', background: 'transparent', color: on ? 'var(--brand-action)' : 'var(--text-body)',
+                    fontSize: 'var(--fs-sm)', fontWeight: on ? 600 : 400, cursor: 'pointer', minWidth: 0,
+                  }}>
+                    <CollectDot method={device.method} on={on} />
+                    <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
+                  </button>
+                  <button aria-label={`移除${device.name}`} onClick={() => onRemove(device)} style={{
+                    width: 25, height: 26, border: 'none', borderLeft: '1px solid var(--border-default)',
+                    background: 'transparent', color: 'var(--text-tertiary,#9aa3b2)', cursor: 'pointer',
+                    fontSize: 15, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>×</button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ minHeight: 28, display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>暂无可用设备，请选择设备</div>
+        )}
+      </div>
+      <div style={{ flex: 'none' }}>
+        <Button size="sm" variant="secondary" onClick={onOpenDrawer} style={{ height: 30, padding: '0 12px' }}>切换设备</Button>
+      </div>
+    </div>
+  );
+}
+
+function DeviceMeta({ device }) {
+  const itemStyle = { display: 'flex', gap: 8, fontSize: 'var(--fs-sm)', minWidth: 0 };
+  const labelStyle = { color: 'var(--text-secondary)', flex: 'none' };
+  const valueStyle = { color: 'var(--text-title)', fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 14px' }}>
+        <div style={itemStyle}>
+          <span style={labelStyle}>当前设备</span>
+          <span title={device.name} style={valueStyle}>{device.name}</span>
+        </div>
+        <div style={itemStyle}>
+          <span style={labelStyle}>设备编号</span>
+          <span title={device.code} style={valueStyle}>{device.code}</span>
+        </div>
+      </div>
+      <div style={itemStyle}>
+        <span style={labelStyle}>设备型号</span>
+        <span title={device.model} style={valueStyle}>{device.model}</span>
+      </div>
+    </div>
+  );
+}
+
+function SubItemSwitches({ subs, activeSub, summary, onSelect }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, padding: 4, borderRadius: 'var(--radius-pill)', background: 'var(--surface-sunken,#f5f6f8)', maxWidth: '100%', flexWrap: 'wrap' }}>
+        {subs.map((sub) => {
+          const on = sub.id === activeSub.id;
+          const subSummary = summary.bySub[sub.id] || { label: '待采集', uploaded: 0, total: 0, state: 'pending' };
+          const color = statusColor(subSummary.state);
+          return (
+            <button key={sub.id} onClick={() => onSelect(sub.id)} style={{
+              minHeight: 34, maxWidth: 220, padding: '6px 12px', borderRadius: 'var(--radius-pill)', border: '1px solid ' + (on ? 'var(--brand-action)' : 'transparent'),
+              background: on ? 'var(--white)' : 'transparent', color: on ? 'var(--brand-action)' : 'var(--text-body)',
+              boxShadow: on ? '0 1px 4px rgba(37,99,235,0.16)' : 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7,
+              fontSize: 'var(--fs-sm)', fontWeight: on ? 700 : 600,
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flex: 'none' }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.name}</span>
+              <span style={{ color: 'var(--text-title)', fontSize: 'var(--fs-xs)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flex: 'none' }}>{subSummary.uploaded}/{subSummary.total}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DeviceDrawer({ devices, pooledDeviceIds, currentDevice, onClose, onSelect }) {
+  const [station, setStation] = React.useState(null);
+  const visibleDevices = station ? devices.filter((device) => (device.station || 'none') === station) : devices;
+  const stationCounts = React.useMemo(() => STATION_OPTIONS.reduce((acc, item) => {
+    acc[item.value] = devices.filter((device) => (device.station || 'none') === item.value).length;
+    return acc;
+  }, {}), [devices]);
+  return (
+    <React.Fragment>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, zIndex: 80, background: 'rgba(15,23,42,0.28)' }} />
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 90, background: 'var(--white)',
+        borderRadius: '18px 18px 0 0', boxShadow: '0 -14px 34px rgba(15,23,42,0.20)', overflow: 'hidden',
+      }}>
+        <div style={{ width: 44, height: 4, borderRadius: 'var(--radius-pill)', background: 'var(--border-strong,#cfd6e2)', margin: '10px auto 6px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 16px 12px', borderBottom: '1px solid var(--divider)' }}>
+          <div>
+            <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>切换设备</div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 3 }}>从已配置设备中选择当前采集设备</div>
+          </div>
+          <Button size="sm" variant="ghost" onClick={onClose}>关闭</Button>
+        </div>
+        <div style={{ padding: '12px 16px 4px', borderBottom: '1px solid var(--divider)' }}>
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)', marginBottom: 8 }}>选择工位</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {STATION_OPTIONS.map((item) => {
+              const on = station === item.value;
+              return (
+                <button key={item.value} onClick={() => setStation(on ? null : item.value)} style={{
+                  minHeight: 32, padding: '5px 10px', borderRadius: 'var(--radius-pill)',
+                  border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
+                  background: on ? 'var(--surface-selected)' : 'var(--white)', color: on ? 'var(--brand-action)' : 'var(--text-title)',
+                  fontSize: 'var(--fs-sm)', fontWeight: on ? 700 : 600, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                }}>
+                  <PinIcon on={on} />
+                  <span>{item.label}</span>
+                  <span style={{ fontSize: 10, color: on ? 'var(--brand-action)' : 'var(--text-tertiary,#9aa3b2)', fontVariantNumeric: 'tabular-nums' }}>{stationCounts[item.value] || 0}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ maxHeight: 260, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {visibleDevices.length ? visibleDevices.map((device) => {
+            const current = device.id === currentDevice.id;
+            const inPool = pooledDeviceIds.includes(device.id);
+            return (
+              <button key={device.id} onClick={() => onSelect(device)} style={{
+                width: '100%', minHeight: 58, padding: '10px 12px', borderRadius: 'var(--radius-md)',
+                border: '1px solid ' + (current ? 'var(--brand-action)' : 'var(--border-default)'),
+                background: current ? 'var(--surface-selected)' : 'var(--white)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, textAlign: 'left',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <CollectDot method={device.method} on={current} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 'var(--fs-base)', fontWeight: 650, color: current ? 'var(--brand-action)' : 'var(--text-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</div>
+                    <div style={{ marginTop: 3, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.code} · {device.model}</div>
+                  </div>
+                </div>
+                <span style={{
+                  flex: 'none', minWidth: 62, textAlign: 'center', padding: '4px 8px', borderRadius: 'var(--radius-pill)',
+                  fontSize: 'var(--fs-xs)', fontWeight: 700,
+                  background: current ? 'var(--brand-action)' : inPool ? 'var(--surface-sunken,#f5f6f8)' : 'var(--blue-50,#eef4ff)',
+                  color: current ? '#fff' : inPool ? 'var(--text-secondary)' : 'var(--brand-action)',
+                }}>{current ? '当前' : inPool ? '切换' : '选用'}</span>
+              </button>
+            );
+          }) : (
+            <div style={{ minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+              当前工位暂无可切换设备
+            </div>
+          )}
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, hint, onCollect, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
   const readOnly = flowLocked || caps.isReadOnlySource || (cell.status === 'uploaded' && !flowReturned);
   const canEdit = !readOnly && caps.canEdit;
-  const canUpload = !flowLocked && (cell.status === 'filled' || cell.status === 'failed');
+  const recordDevice = deviceCatalog.find((device) => device.id === cell.deviceId);
+  const traceDevice = recordDevice || (filled && cell.deviceId ? { name: cell.deviceId, code: '—', method: cell.source || method } : currentDevice);
+  const traceMethod = filled ? (traceDevice.method || cell.source || method) : method;
+  const showCollectActions = !flowLocked && cell.status !== 'uploaded' && (method === 'ble' || method === 'ocr');
 
   return (
     <React.Fragment>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>测量值{cell.phase ? ` · ${cell.phase}相` : ''}</span>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {method === 'ble' && !flowLocked && cell.status !== 'uploaded' && <Button onClick={onCollect} disabled={busyCell}>{busyCell ? '连接中…' : '连接采集'}</Button>}
-          {method === 'ocr' && !flowLocked && cell.status !== 'uploaded' && <Button onClick={onCollect} disabled={busyCell}>{busyCell ? '识别中…' : '拍照识别'}</Button>}
-          {method === 'manual' && !filled && !flowLocked && <Button variant="secondary" onClick={onManualFill}>录入本相读数</Button>}
+      {showCollectActions && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+          {method === 'ble' && <Button onClick={onCollect} disabled={busyCell}>{busyCell ? '连接中…' : '连接采集'}</Button>}
+          {method === 'ocr' && <Button onClick={onCollect} disabled={busyCell}>{busyCell ? '识别中…' : '拍照识别'}</Button>}
         </div>
-      </div>
+      )}
 
       {busyCell
         ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'ocr' ? '正在识别读数…' : '正在连接设备…'}</div></div>
         : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {sub.fields.map((field) => field.multi
-              ? <MultiField key={field.key} field={field} values={cell.vals[field.key]} readOnly={!canEdit}
-                  onChange={(idx, val) => onChange(cell.key, field, val, idx)} />
-              : <FieldRow key={field.key} label={field.label} unit={field.unit} required={field.required !== false}
-                  value={cell.vals[field.key] || ''} placeholder={filled ? '' : '待采集'} readOnly={!canEdit}
-                  onChange={(event) => onChange(cell.key, field, event.target.value)} />)}
+            {hint && !filled && <InlineHint text={hint} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 34, padding: '7px 10px', borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken,#f5f6f8)', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', minWidth: 0 }}>
+              <CollectDot method={traceMethod} on />
+              <span style={{ flex: 'none' }}>{filled ? '采集于' : '待采设备'}</span>
+              {filled && <span style={{ flex: 'none', color: methodColor(traceMethod), fontWeight: 600 }}>{methodLabel(traceMethod)}</span>}
+              <span style={{ color: 'var(--text-title)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traceDevice.name}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{traceDevice.code}</span>
+            </div>
+            {sub.fields.map((field) => {
+              if (field.multi) {
+                return <MultiField key={field.key} field={field} values={cell.vals[field.key]} readOnly={!canEdit}
+                  onChange={(idx, val) => onChange(cell.key, field, val, idx)} />;
+              }
+              if (field.key === 'jg') {
+                return <SelectField key={field.key} field={field} value={cell.vals[field.key] || ''} readOnly={!canEdit}
+                  onChange={(value) => onChange(cell.key, field, value)} />;
+              }
+              return <FieldRow key={field.key} label={field.label} unit={field.unit} required={field.required !== false}
+                value={cell.vals[field.key] || ''} placeholder={filled ? '' : '待采集'} readOnly={!canEdit}
+                onChange={(event) => onChange(cell.key, field, event.target.value)} />;
+            })}
 
-            <MethodNote method={method} readOnly={readOnly} />
+            {!filled && <MethodNote method={method} readOnly={readOnly} />}
 
             {caps.canAttach && filled && (
               <AttachmentList
@@ -457,10 +689,15 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, o
             {filled && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 2, paddingTop: 12, borderTop: '1px dashed var(--divider)' }}>
                 {cell.status === 'uploaded'
-                  ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--status-done-fg,#1b8a5a)', display: 'flex', alignItems: 'center', gap: 5 }}><CheckIcon />本单元已上传</span>
+                  ? <React.Fragment>
+                      {!flowLocked && method !== 'auto' && <Button variant="secondary" onClick={() => onReset(cell.key)}>重置</Button>}
+                      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--status-done-fg,#1b8a5a)', display: 'flex', alignItems: 'center', gap: 5 }}><CheckIcon />本单元已上传</span>
+                    </React.Fragment>
                   : flowLocked
                   ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}><LockIcon />数据已锁定</span>
-                  : <Button variant="secondary" onClick={() => onUpload(cell.key)} disabled={uploading}>{uploading ? '上传中…' : cell.status === 'failed' ? '重试上传' : '确认并上传本单元'}</Button>}
+                  : method === 'auto'
+                  ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--status-done-fg,#1b8a5a)', display: 'flex', alignItems: 'center', gap: 5 }}><CheckIcon />本单元已上传</span>
+                  : <Button variant="secondary" onClick={() => onUpload(cell.key)} disabled={uploading}>{uploading ? '上传中…' : cell.status === 'failed' ? '重试上传' : '确认并上传'}</Button>}
               </div>
             )}
           </div>}
@@ -474,7 +711,7 @@ function ConclusionCard({ sub, cells }) {
     : [{ key: 'single', label: '结论', cells, color: null }];
 
   return (
-    <Card padding="0">
+    <div style={{ borderTop: '1px solid var(--divider)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
         <TrendIcon />
         <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>结论</span>
@@ -500,7 +737,27 @@ function ConclusionCard({ sub, cells }) {
           <span>{sub.phased ? '相同相别的测量数据合并判定为一个结论；' : ''}结论不在本端录入，由 LIMS 按计算与结果判定配置自动回显</span>
         </div>
       </div>
-    </Card>
+    </div>
+  );
+}
+
+function SelectField({ field, value, readOnly, onChange }) {
+  const options = field.options || CONDUCTOR_STRUCTURE_OPTIONS;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)', display: 'flex', gap: 2 }}>
+        {field.required !== false && <span style={{ color: 'var(--danger)' }}>*</span>}<span>{field.label}{field.unit ? `（${field.unit}）` : ''}</span>
+      </label>
+      <select value={value} disabled={readOnly} onChange={(event) => onChange(event.target.value)}
+        style={{
+          flex: 1, height: 44, padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
+          background: readOnly ? 'var(--surface-sunken,#f5f6f8)' : 'var(--white)', fontSize: 'var(--fs-base)', color: value ? 'var(--text-title)' : 'var(--text-placeholder)',
+          outline: 'none', boxSizing: 'border-box', appearance: 'auto',
+        }}>
+        <option value="">待采集</option>
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </div>
   );
 }
 
@@ -548,10 +805,22 @@ function AttachmentList({ cell, method, flowLocked, onAdd, onRemove }) {
   );
 }
 
+function InlineHint({ text }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 6, padding: '0 2px',
+      fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.55,
+    }}>
+      <InfoIcon />
+      <span>{text}</span>
+    </div>
+  );
+}
+
 function MethodNote({ method, readOnly }) {
   const text = {
     auto: '设备直采数据，不可修改',
-    ble: '蓝牙同步后可人工校正；已上传数据需退回后修改',
+    ble: '',
     manual: '单机设备无通讯接口，读数手工录入',
     ocr: '识别结果可校正，参照图随数据归档',
     external: '外部程序已采数据可在本端补录或矫正',
@@ -609,30 +878,30 @@ function FlowBanner({ flow, locked, returned }) {
   );
 }
 
-function Section({ title, icon, extra, children }) {
+function Section({ title, icon, extra, compact = false, children }) {
   const paths = {
     info: 'M12 16v-4 M12 8h.01 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
     cpu: 'M4 4h16v16H4z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3',
   };
   return (
     <Card padding="0">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '7px 16px' : '12px 16px', borderBottom: '1px solid var(--divider)', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d={paths[icon]} /></svg>
           <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
         </div>
         {extra}
       </div>
-      <div style={{ padding: 16 }}>{children}</div>
+      <div style={{ padding: compact ? '8px 16px 10px' : 16 }}>{children}</div>
     </Card>
   );
 }
 
-function Grid({ items }) {
+function Grid({ items, compact = false }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: compact ? 'repeat(3, minmax(0, 1fr))' : '1fr 1fr', gap: compact ? '4px 14px' : '12px 16px' }}>
       {items.map(([k, v], i) => (
-        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'var(--fs-base)', minWidth: 0 }}>
+        <div key={i} style={{ display: 'flex', gap: 8, fontSize: compact ? 'var(--fs-sm)' : 'var(--fs-base)', minWidth: 0 }}>
           <span style={{ color: 'var(--text-secondary)', flex: 'none' }}>{k}</span>
           <span title={v} style={{ color: 'var(--text-title)', fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{v}</span>
         </div>
@@ -679,6 +948,11 @@ function cellLabel(sub, cell) {
   return `第 ${cell.repeatIndex + 1} 次`;
 }
 
+function sampleCodeForCell(sampleCode, index) {
+  const base = String(sampleCode || 'SC2026/01001-01').replace(/-\d+$/, '');
+  return `${base}-${String(index + 1).padStart(2, '0')}`;
+}
+
 function uniqueDevices(devices) {
   const seen = new Set();
   return devices.filter(Boolean).map((d, i) => normalizeDevice(d, d.method, i)).filter((device) => {
@@ -688,12 +962,43 @@ function uniqueDevices(devices) {
   });
 }
 
+function sortDevicePool(devices) {
+  return devices.slice().sort((a, b) => {
+    const ai = DEVICE_ORDER.includes(a.id) ? DEVICE_ORDER.indexOf(a.id) : 99;
+    const bi = DEVICE_ORDER.includes(b.id) ? DEVICE_ORDER.indexOf(b.id) : 99;
+    return ai - bi || a.name.localeCompare(b.name, 'zh-CN');
+  });
+}
+
+function uniqueStations(devices) {
+  const seen = new Set();
+  return devices.reduce((acc, device) => {
+    const value = device.station || 'none';
+    if (seen.has(value)) return acc;
+    seen.add(value);
+    acc.push({ value, label: stationLabel(value) });
+    return acc;
+  }, []);
+}
+
+function stationLabel(station) {
+  return {
+    zy: '电缆制样工位',
+    sz: '水煮试验工位',
+    ny: '耐压工位',
+    ld: '雷电冲击工位',
+    rs: '电缆燃烧工位',
+    by: '变压器工位',
+    none: '未绑定工位',
+  }[station] || station;
+}
+
 function statusText(status) {
   return { idle: '待采集', filled: '待上传', uploaded: '已上传', failed: '上传失败' }[status] || '待采集';
 }
 
 function statusColor(state) {
-  return { uploaded: 'var(--status-done-fg,#1b8a5a)', doing: 'var(--brand-action)', pending: 'var(--text-secondary)' }[state] || 'var(--text-secondary)';
+  return { uploaded: 'var(--status-done-fg,#1b8a5a)', doing: 'var(--brand-action)', pending: 'var(--status-pending,#e8a93a)', failed: 'var(--danger,#e23b3b)' }[state] || 'var(--text-secondary)';
 }
 
 function phaseColor(phase) {
@@ -702,6 +1007,10 @@ function phaseColor(phase) {
 
 function methodColor(method) {
   return { auto: 'var(--collect-auto,#1d54c4)', ble: 'var(--collect-ble,#0a8a96)', manual: 'var(--collect-manual,#828c9c)', ocr: 'var(--collect-ocr,#b06a00)', external: 'var(--collect-ble,#0a8a96)' }[method] || 'var(--text-secondary)';
+}
+
+function methodLabel(method) {
+  return { auto: '设备直采', ble: '蓝牙采集', manual: '手工录入', ocr: '拍照识别', external: '外部程序' }[method] || '采集';
 }
 
 function CollectDot({ method, on }) {
@@ -720,6 +1029,9 @@ function Spinner() {
 
 function InfoIcon() {
   return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>;
+}
+function PinIcon({ on }) {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={on ? 'var(--brand-action)' : 'var(--text-tertiary,#9aa3b2)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
 }
 function GridIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z"/></svg>;

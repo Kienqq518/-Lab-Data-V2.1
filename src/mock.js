@@ -96,22 +96,21 @@
         { id: 'struct-core-ins-shield', name: '结构尺寸检查—导体&绝缘厚度&金属屏蔽', device: 'thk', method: 'auto', status: 'testing', count: 3, phased: true,
           subs: [
             { id: 'struct-conductor', name: '导体', method: 'auto', phased: true,
-              device: { id: 'mech', name: '绝缘层机械性能智能测试系统-无人化版', code: 'YM-WRH-03', model: 'YWL-5D', method: 'auto' },
+              device: { id: 'mech', name: '绝缘层机械性能智能测试系统-无人化版', code: 'YM-WRH-03', model: 'YWL-5D', station: 'zy', method: 'auto' },
               fields: [
-                { key: 'jg', label: '导体结构', required: true, readOnly: true },
+                { key: 'jg', label: '导体结构', required: true, options: ['实心导体', '非紧压绞合圆形', '紧压绞合圆形', '绞合成型'] },
                 { key: 'gs', label: '导体单丝根数', unit: '根', required: true },
                 { key: 'zj', label: '导体直径', unit: 'mm', required: true },
               ] },
             { id: 'struct-insulation-thickness', name: '绝缘厚度测量', method: 'manual', phased: true,
-              device: { id: 'tmk', name: '台式测厚仪', code: 'DF291968', model: '(0~12.7)mm/0.001mm', method: 'manual' },
+              device: { id: 'tmk', name: '台式测厚仪', code: 'DF291968', model: '(0~12.7)mm/0.001mm', station: 'zy', method: 'manual' },
               fields: [
                 { key: 'hd', label: '绝缘各测量点厚度', unit: 'mm', required: true, multi: 6 },
               ] },
             { id: 'struct-metal-shield', name: '金属屏蔽', method: 'ble', phased: true,
-              device: { id: 'cal', name: '数显卡尺', code: 'YBKC-02', model: '(0~300)mm/0.01mm', method: 'ble' },
+              device: { id: 'cal', name: '数显卡尺', code: 'YBKC-02', model: '(0~300)mm/0.01mm', station: 'zy', method: 'ble' },
               candidateDevices: [
-                { id: 'cal', name: '数显卡尺', code: 'YBKC-02', model: '(0~300)mm/0.01mm', method: 'ble' },
-                { id: 'cal2', name: '蓝牙数显卡尺（便携）', code: 'BT-CAL-09', model: 'IP54-150', method: 'ble' },
+                { id: 'cal', name: '数显卡尺', code: 'YBKC-02', model: '(0~300)mm/0.01mm', station: 'zy', method: 'ble' },
               ],
               fields: [
                 { key: 'tdhd', label: '铜带厚度', unit: 'mm', required: true },

@@ -241,6 +241,27 @@ import { isCompositeItem } from './collect-model.js';
       }, 800);
     }
     function reset() { setTimes(initTimes()); setSummary({ status: 'idle', vals: {} }); setPhase('idle'); }
+    function resetTime(i) {
+      if (flowLocked) return;
+      setTimes((prev) => {
+        const next = prev.slice();
+        next[i] = { status: 'idle', vals: {}, uploaded: false };
+        if (next.every((t) => t.status === 'filled')) setSummary({ status: 'done', vals: computeSummary(next) });
+        else setSummary({ status: 'idle', vals: {} });
+        return next;
+      });
+      setAttachments((p) => {
+        const next = { ...p };
+        delete next[i];
+        return next;
+      });
+      setEditTimes((p) => {
+        const next = { ...p };
+        delete next[i];
+        return next;
+      });
+      setPhase('idle');
+    }
 
     const methodHint = {
       auto: '设备直连 · 上位机算毕整批写库，点击下方一键从库取值，不可手输',
@@ -462,10 +483,11 @@ import { isCompositeItem } from './collect-model.js';
                               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>可在此手输补录或矫正</div>
                             )}
 
-                            {/* 附件图片：拍照/上传的图片随数据一起上传归档 */}
+                            {/* 识别参照图：仅拍照识别需要随本次数据归档 */}
+                            {ocrField && (
                             <div style={{ paddingTop: 10, marginTop: 2, borderTop: '1px dashed var(--divider)' }}>
                               <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>
-                                {method === 'ocr' && ocrReady ? '识别参照图' : '附件图片'} <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>· {method === 'ocr' && ocrReady ? '仅一张 · 对应本次识别数据来源' : '随数据一起上传归档'}</span>
+                                识别参照图 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>· 仅一张 · 对应本次识别数据来源</span>
                               </div>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                                 {(attachments[i] || []).map((a) => (
@@ -475,18 +497,22 @@ import { isCompositeItem } from './collect-model.js';
                                     {!flowLocked && <button onClick={() => removeAttach(i, a.id)} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
                                   </div>
                                 ))}
-                                {!flowLocked && !(method === 'ocr' && ocrReady && (attachments[i] || []).length >= 1) && (
+                                {!flowLocked && (attachments[i] || []).length < 1 && (
                                 <button onClick={() => { if (method === 'ocr' && ocrReady) { setShootIdx(i); setShotPhase('idle'); } else { addAttach(i, 'upload'); } }} style={{ width: 76, height: 76, borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--bg-app)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                                  <span style={{ fontSize: 10 }}>{method === 'ocr' && ocrReady ? '拍照识别' : '拍照/上传'}</span>
+                                  <span style={{ fontSize: 10 }}>拍照识别</span>
                                 </button>
                                 )}
                               </div>
                             </div>
+                            )}
 
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 2, paddingTop: 12, borderTop: '1px dashed var(--divider)' }}>
                               {t.uploaded
-                                ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--status-done-fg,#1b8a5a)', display: 'flex', alignItems: 'center', gap: 5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>本次已上传</span>
+                                ? <React.Fragment>
+                                    {!flowLocked && <Button variant="secondary" onClick={() => resetTime(i)}>重置</Button>}
+                                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--status-done-fg,#1b8a5a)', display: 'flex', alignItems: 'center', gap: 5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>本次已上传</span>
+                                  </React.Fragment>
                                 : flowLocked
                                 ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>数据已锁定</span>
                                 : <Button variant="secondary" onClick={() => uploadTime(i)} disabled={busy === 'up' + i}>{busy === 'up' + i ? '上传中…' : '确认并上传本次'}</Button>}

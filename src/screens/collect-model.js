@@ -53,6 +53,7 @@ export function normalizeDevice(device, method = 'manual', index = 0) {
     code: d.code || '—',
     model: d.model || '—',
     method: d.method || method || 'manual',
+    station: d.station ?? null,
   };
 }
 
@@ -69,10 +70,11 @@ export function getCellKey(cell) {
   return [cell.subItemId, cell.phase || 'none', cell.repeatIndex].join('__');
 }
 
-export function createCollectCells(ctx, selectedDevices = {}) {
+export function createCollectCells(ctx) {
   const item = ctx?.item || {};
   return getSubItems(ctx).flatMap((sub) => {
-    const device = selectedDevices[sub.id] || sub.device;
+    const device = sub.device;
+    const hasExistingData = ctx?.status === 'done';
     const phases = getPhases(sub);
     const repeats = getRepeatCount(sub);
     const rows = phases.length
@@ -84,15 +86,15 @@ export function createCollectCells(ctx, selectedDevices = {}) {
         testItemId: item.id || item.name || 'test-item',
         subItemId: sub.id,
         subName: sub.name,
-        deviceId: device.id,
+        deviceId: hasExistingData ? device.id : null,
         phase: row.phase,
         repeatIndex: row.repeatIndex,
-        status: ctx?.status === 'done' ? 'uploaded' : 'idle',
+        status: hasExistingData ? 'uploaded' : 'idle',
         vals: {},
         attachments: [],
-        source: device.method || sub.method,
+        source: hasExistingData ? device.method || sub.method : null,
         collectedAt: null,
-        uploadedAt: ctx?.status === 'done' ? '2026-06-24 16:02:10' : null,
+        uploadedAt: hasExistingData ? '2026-06-24 16:02:10' : null,
         operatorId: 'demo-operator',
       };
       return { ...cell, key: getCellKey(cell) };
@@ -131,7 +133,7 @@ export function getMethodCapabilities(method, ocrVerified = true) {
     canBatch: method === 'auto' || method === 'external',
     canCollectOne: method === 'ble' || ocrReady,
     canEdit: method === 'ble' || method === 'manual' || method === 'external' || (method === 'ocr' && !ocrReady),
-    canAttach: method === 'ble' || method === 'manual' || method === 'external' || ocrReady,
+    canAttach: method === 'external' || ocrReady,
     isReadOnlySource: method === 'auto',
     ocrReady,
   };
@@ -181,4 +183,3 @@ export function markCellFailed(cells, key) {
     status: 'failed',
   }));
 }
-
