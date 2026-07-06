@@ -91,6 +91,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const [busy, setBusy] = React.useState(null);
   const [demoFlow, setDemoFlow] = React.useState(null);
   const [deviceError, setDeviceError] = React.useState('');
+  const [editCells, setEditCells] = React.useState({}); // 拍照识别：{ [cellKey]: true } 表示已解锁可编辑
 
   const flow = demoFlow ? DEMO_FLOWS[demoFlow] : (ctx.flow || ctx.item?.flow || DEMO_FLOWS.normal);
   const flowLocked = isFlowLocked(flow);
@@ -172,6 +173,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         }
         return next;
       });
+      if (source === 'ocr') setEditCells((prev) => ({ ...prev, [cell.key]: false }));
       setBusy(null);
     }, source === 'ble' ? 1100 : 900);
   }
@@ -234,6 +236,19 @@ function CollectStructured({ ctx, onBack, onDone }) {
     ])));
   }
 
+  function reRecognizeCell(sub, cell) {
+    if (!sub || !cell || flowLocked || !cell.attachments.length) return;
+    const device = deviceForSub(sub);
+    if (!device) return;
+    const source = device.method || 'manual';
+    setBusy('c-' + cell.key);
+    setTimeout(() => {
+      setCells((prev) => markCellFilled(prev, cell.key, fillValues(sub, cell), { deviceId: device.id, source }));
+      setEditCells((prev) => ({ ...prev, [cell.key]: false }));
+      setBusy(null);
+    }, 950);
+  }
+
   function resetCell(cellKey) {
     if (flowLocked) return;
     setCells((prev) => updateCell(prev, cellKey, (cell) => ({
@@ -246,6 +261,11 @@ function CollectStructured({ ctx, onBack, onDone }) {
       deviceId: null,
       source: null,
     })));
+    setEditCells((prev) => {
+      const next = { ...prev };
+      delete next[cellKey];
+      return next;
+    });
   }
 
   function addAttach(cellKey, kind = 'upload') {
@@ -441,6 +461,9 @@ function CollectStructured({ ctx, onBack, onDone }) {
                   deviceCatalog={deviceCatalog}
                   hint={methodHint}
                   onCollect={() => collectOne(activeSub, activeCell)}
+                  onReRecognize={() => reRecognizeCell(activeSub, activeCell)}
+                  ocrUnlocked={!!editCells[activeCell.key]}
+                  onSetOcrUnlocked={(unlocked) => setEditCells((prev) => ({ ...prev, [activeCell.key]: unlocked }))}
                   onChange={setField}
                   onUpload={uploadCell}
                   onReset={resetCell}
@@ -717,12 +740,14 @@ function CheckBox({ on }) {
   );
 }
 
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, hint, onCollect, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, hint, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
+  const ocrField = method === 'ocr' && caps.ocrReady;
+  const ocrLocked = ocrField && filled && !ocrUnlocked && !flowLocked && (cell.status !== 'uploaded' || flowReturned);
   const readOnly = flowLocked || caps.isReadOnlySource || (cell.status === 'uploaded' && !flowReturned);
-  const canEdit = !readOnly && caps.canEdit;
+  const canEdit = !readOnly && caps.canEdit && !ocrLocked;
   const recordDevice = deviceCatalog.find((device) => device.id === cell.deviceId);
   const traceDevice = recordDevice || (filled && cell.deviceId ? { name: cell.deviceId, code: '—', method: cell.source || method } : currentDevice);
   const traceMethod = filled ? (traceDevice.method || cell.source || method) : method;
@@ -761,6 +786,17 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
                 value={cell.vals[field.key] || ''} placeholder={filled ? '' : '待采集'} readOnly={!canEdit}
                 onChange={(event) => onChange(cell.key, field, event.target.value)} />;
             })}
+
+            {ocrField && filled && !flowLocked && (
+              <OcrEditBar
+                locked={ocrLocked}
+                hasPhoto={cell.attachments.length > 0}
+                busy={busyCell}
+                onReRecognize={onReRecognize}
+                onEdit={() => onSetOcrUnlocked(true)}
+                onDone={() => onSetOcrUnlocked(false)}
+              />
+            )}
 
             {!filled && <MethodNote method={method} readOnly={readOnly} />}
 
@@ -869,11 +905,42 @@ function MultiField({ field, values, readOnly, onChange }) {
   );
 }
 
+function OcrEditBar({ locked, hasPhoto, busy, onReRecognize, onEdit, onDone }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 'var(--radius-md)', background: locked ? 'var(--surface-sunken)' : 'rgba(176,106,0,0.08)', border: '1px solid ' + (locked ? 'var(--border-default)' : 'var(--collect-ocr,#b06a00)') }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', lineHeight: 1.5, color: locked ? 'var(--text-secondary)' : 'var(--collect-ocr,#b06a00)', minWidth: 0 }}>
+        {locked
+          ? <React.Fragment><LockIcon />识别结果已锁定，防止误触改动 · 如需矫正请点「编辑」</React.Fragment>
+          : <React.Fragment><EditIcon />编辑中 · 若改乱了可「重新识别」用原照片还原</React.Fragment>}
+      </span>
+      <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
+        <button onClick={onReRecognize} disabled={!hasPhoto || busy}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-strong)', background: 'var(--white)', color: hasPhoto && !busy ? 'var(--text-body)' : 'var(--text-placeholder)', cursor: hasPhoto && !busy ? 'pointer' : 'not-allowed', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
+          <RefreshIcon />
+          重新识别
+        </button>
+        {locked
+          ? <button onClick={onEdit}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--collect-ocr,#b06a00)', background: 'var(--collect-ocr-bg,#fff4e6)', color: 'var(--collect-ocr,#b06a00)', cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
+              <EditIcon />
+              编辑
+            </button>
+          : <button onClick={onDone}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--brand-action)', background: 'var(--brand-action)', color: '#fff', cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
+              <CheckIcon />
+              完成
+            </button>}
+      </div>
+    </div>
+  );
+}
+
 function AttachmentList({ cell, method, flowLocked, onAdd, onRemove }) {
   const title = method === 'ocr' ? '识别参照图' : '参照图';
+  const hint = method === 'ocr' ? '· 仅一张 · 对应本次识别数据来源' : '· 随数据一起上传归档';
   return (
     <div style={{ paddingTop: 10, borderTop: '1px dashed var(--divider)' }}>
-      <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>{title} <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>· 随数据一起上传归档</span></div>
+      <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>{title} <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>{hint}</span></div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         {cell.attachments.map((item) => (
           <div key={item.id} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
@@ -941,7 +1008,7 @@ function FlowBanner({ flow, locked, returned }) {
   if (locked) {
     return (
       <div style={{ display: 'flex', gap: 10, padding: '12px 14px', marginBottom: 14, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)', border: '1px solid var(--border-strong)' }}>
-        <LockIcon />
+        <LockIconLarge />
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-title)' }}>
             数据已锁定
@@ -1149,6 +1216,15 @@ function AlertIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4 M12 16h.01"/></svg>;
 }
 function LockIcon() {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+}
+function EditIcon() {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
+}
+function RefreshIcon() {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>;
+}
+function LockIconLarge() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
 }
 function ReturnIcon() {
