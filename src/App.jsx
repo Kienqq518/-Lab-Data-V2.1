@@ -139,12 +139,19 @@ function App() {
             <div className="app-layer fade" key={(authed ? 'a' : 'l') + tab}>{body}</div>
             {authed && overlay === 'collect' && (
               <div className="overlay-screen">
-                <Collect ctx={ctx} onBack={() => setOverlay(null)} onDone={() => setOverlay(null)} />
+                <Collect
+                  ctx={ctx}
+                  onBack={() => setOverlay(ctx?.reviewMode ? 'done' : null)}
+                  onDone={() => setOverlay(ctx?.reviewMode ? 'done' : null)}
+                />
               </div>
             )}
             {authed && overlay === 'done' && (
               <div className="overlay-screen">
-                <DoneTasks onBack={() => setOverlay(null)} />
+                <DoneTasks
+                  onBack={() => setOverlay(null)}
+                  onCollect={(collectCtx) => { setCtx(collectCtx); setOverlay('collect'); }}
+                />
               </div>
             )}
             {sheet && (

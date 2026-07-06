@@ -2,6 +2,7 @@ import React from 'react';
 import { AppBar, Button, Card, CollectBadge, FieldRow, UploadStatus } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import { CollectStructured } from './CollectStructured.jsx';
+import { CollectLite } from './CollectLite.jsx';
 import { isCompositeItem } from './collect-model.js';
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 
@@ -57,6 +58,9 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
   }
 
   function Collect({ ctx, onBack, onDone }) {
+    if (ctx.item?.limsLite) {
+      return <CollectLite ctx={ctx} onBack={onBack} onDone={onDone} />;
+    }
     // 含「试验子项」的试验项（如 结构尺寸检查—导体&绝缘厚度&金属屏蔽）走专用的子项/设备切换体验
     if (isCompositeItem(ctx.item)) {
       return <CollectStructured ctx={ctx} onBack={onBack} onDone={onDone} />;

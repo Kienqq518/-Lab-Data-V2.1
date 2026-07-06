@@ -98,11 +98,11 @@
       items: [ { name: '绝缘厚度测量（手输补录）', tpl: 'size' } ] },
     // ===== 非工位设备（来自 Web「设备管理」维护，未绑定工位 / 便携）=====
     { id: 'ir',   name: '手持式红外热像仪', code: 'IR-808', model: 'FLIR-E8', station: null, method: 'ble',
-      items: [ { name: '温升检测', tpl: 'mech' } ] },
+      items: [] },
     { id: 'pd',   name: '便携式局部放电检测仪', code: 'PD-200', model: 'PDS-9', station: null, method: 'ble',
-      items: [ { name: '局部放电检测', tpl: 'mech' } ] },
+      items: [] },
     { id: 'cal2', name: '蓝牙数显卡尺（便携）', code: 'BT-CAL-09', model: 'IP54-150', station: null, method: 'ble',
-      items: [ { name: '尺寸测量', tpl: 'caliper' } ] },
+      items: [] },
     // ===== 串口采集设备（电子天平，工业平板串口采集程序代采写库，App 端仅展示 + 异常兜底手输）=====
     { id: 'bal',  name: '电子天平', code: 'YH-04', model: 'HZK-FA110', station: null, method: 'serial',
       items: [ { name: '密度测量', tpl: 'density', count: 3 } ] },
@@ -131,6 +131,43 @@
         { key: 'tsmin', label: '外护套各测点厚度t_s', unit: 'mm', required: true, multi: 6 },
       ] },
   ];
+
+  // 轻量 LIMS · 安全工器具（绝缘操作杆）试验参数 — 平铺字段，结论手工录入
+  const rodEnvFields = [
+    { key: 'wd', label: '室温', unit: '℃' },
+    { key: 'qy', label: '气压', unit: 'hPa' },
+    { key: 'sd', label: '湿度', unit: '%RH' },
+    { key: 'beizhu', label: '备注' },
+  ];
+  const rodAcFields = [
+    { key: 'bzz', label: '标称值', unit: 'kV' },
+    { key: 'syz', label: '试验值', unit: 'kV' },
+    { key: 'sj', label: '时间', unit: 'min' },
+    { key: 'ztms', label: '状态描述' },
+    ...rodEnvFields,
+  ];
+  const rodAppearanceFields = [
+    { key: 'wg', label: '外观' },
+    { key: 'yxjccd', label: '有效绝缘长度', unit: 'm' },
+    { key: 'beizhu', label: '备注' },
+  ];
+  const rodBendDynamicFields = [
+    { key: 'syc', label: '试样长度', unit: 'm' },
+    { key: 'bzz', label: '标称值', unit: 'N' },
+    { key: 'syz', label: '试验值', unit: 'N' },
+    { key: 'ztms', label: '状态描述' },
+    ...rodEnvFields,
+  ];
+  const rodBendStaticFields = [
+    { key: 'syc', label: '试样长度', unit: 'm' },
+    { key: 'bzz', label: '标称值', unit: 'N' },
+    { key: 'syz', label: '试验值', unit: 'N' },
+    { key: 'sj', label: '时间', unit: 'min' },
+    { key: 'ztms', label: '状态描述' },
+    ...rodEnvFields,
+  ];
+
+  const doneItem = (name, device, method, extra = {}) => ({ name, device, method, status: 'done', upload: 'done', ...extra });
 
   // 样品 —— 8.7/10kV-3芯 电力电缆（Web 试验填报同款），含 7 个试验项
   const samples = [
@@ -223,6 +260,75 @@
       tests: [
         { name: '密度测量', device: 'bal', method: 'serial', status: 'pending', count: 3 },
       ] },
+    // 安全工器具 · 绝缘操作杆（轻量 LIMS，参数平铺 + 手工结论）
+    { id: 's6', code: 'SC2026/00490101', name: '绝缘操作杆', status: 'testing', cable: false, client: '国网浙江省电力有限公司',
+      tests: [
+        { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', method: 'manual', limsLite: true, status: 'pending', fields: rodAcFields },
+        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', method: 'manual', limsLite: true, status: 'pending', fields: rodAppearanceFields },
+        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', method: 'manual', limsLite: true, status: 'pending', fields: rodBendDynamicFields },
+        { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', method: 'manual', limsLite: true, status: 'pending', fields: rodBendStaticFields },
+      ] },
+    // —— 已检任务样品（status=done，供已检任务 L2-L4 钻取）——
+    { id: 's98a', code: 'SC2026/00998-01', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
+      tests: [
+        doneItem('导体直流电阻', 'dcr', 'ocr', { phased: true }),
+        doneItem('结构尺寸检查—非金属护套&钢带铠装', 'cal', 'ble', { phased: false, subs: sheathArmorSubs }),
+      ] },
+    { id: 's98b', code: 'SC2026/00998-02', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
+      tests: [
+        doneItem('老化前绝缘的机械性能试验', 'mech', 'auto', { phased: true }),
+        doneItem('XLPE绝缘的热延伸试验', 'hext', 'auto', { phased: true }),
+      ] },
+    { id: 's82a', code: 'SC2026/00982-01', name: '低烟无卤阻燃聚烯烃护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
+      tests: [
+        doneItem('导体直流电阻', 'dcr', 'ocr', { phased: true }),
+        doneItem('XLPE绝缘的收缩试验', 'shr', 'auto', { phased: true }),
+      ] },
+    { id: 's82b', code: 'SC2026/00982-02', name: '低烟无卤阻燃聚烯烃护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
+      tests: [
+        doneItem('老化前绝缘的机械性能试验', 'mech', 'auto', { phased: true }),
+        doneItem('非金属护套老化前的机械性能试验', 'mech', 'auto'),
+      ] },
+    { id: 's75a', code: 'SC2026/00975-01', name: '交联聚乙烯绝缘电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
+      tests: [
+        doneItem('导体直流电阻', 'dcr', 'ocr', { phased: true }),
+        doneItem('老化前绝缘的机械性能试验', 'mech', 'auto', { phased: true }),
+      ] },
+    { id: 's61a', code: 'SC2026/00961-01', name: '钢带铠装聚氯乙烯护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
+      tests: [
+        doneItem('导体直流电阻', 'dcr', 'ocr', { phased: true }),
+        doneItem('XLPE绝缘的收缩试验', 'shr', 'auto', { phased: true }),
+        doneItem('结构尺寸检查—非金属护套&钢带铠装', 'cal', 'ble', { subs: sheathArmorSubs }),
+      ] },
+    { id: 's40a', code: 'SC2026/00940-01', name: '架空绝缘电缆', status: 'done', cable: true, client: '国网杭州供电公司',
+      tests: [
+        doneItem('导体直流电阻', 'dcr', 'ocr', { phased: true }),
+        doneItem('老化前绝缘的机械性能试验', 'mech', 'auto', { phased: true }),
+      ] },
+    { id: 's40b', code: 'SC2026/00940-02', name: '架空绝缘电缆', status: 'done', cable: true, client: '国网杭州供电公司',
+      tests: [
+        doneItem('XLPE绝缘的热延伸试验', 'hext', 'auto', { phased: true }),
+        doneItem('非金属护套老化前的机械性能试验', 'mech', 'auto'),
+      ] },
+    { id: 's02a', code: 'SC2026/00902-01', name: '控制电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
+      tests: [
+        doneItem('导体直流电阻', 'dcr', 'ocr', { phased: true }),
+      ] },
+    { id: 's91a', code: 'SC2026/00991-01', name: '8.7/10kV-1芯 电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
+      tests: [
+        doneItem('XLPE绝缘的热延伸试验', 'hext', 'auto', { overdueTag: 'overdue_done' }),
+      ] },
+    { id: 'srod-done', code: 'SC2026/00490-01', name: '绝缘操作杆', status: 'done', cable: false, client: '国网浙江省电力有限公司',
+      tests: [
+        { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodAcFields,
+          doneVals: { bzz: '45', syz: '45', sj: '1', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' } },
+        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodAppearanceFields,
+          doneVals: { wg: '无缺陷', yxjccd: '1.0', beizhu: '', jl: '合格' } },
+        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodBendDynamicFields,
+          doneVals: { syc: '1', bzz: '1', syz: '93', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' } },
+        { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodBendStaticFields,
+          doneVals: { syc: '1', bzz: '100', syz: '108', sj: '1', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' } },
+      ] },
   ];
 
   // 任务列表（首页快捷入口 / 统计）
@@ -233,12 +339,15 @@
     { code: 'SC2026/00998', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-12 10:18:41', status: 'done', doneAt: '2026-06-24 16:02:10', sampleCount: 3, testCount: 8, detectDeadline: '2026-07-12' },
     { code: 'SC2026/00990', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-05-29 16:31:51', status: 'overdue', detectDeadline: '2026-05-31' },
     { code: 'SC2026/01630', sampleName: '实壁类塑料电缆导管 带承口 PVC-C', client: '国网杭州供电公司', time: '2026-06-20 10:15:00', status: 'testing', detectDeadline: '2026-07-20' },
+    { code: 'SC2026/00490101', sampleName: '绝缘操作杆', client: '国网浙江省电力有限公司', time: '2026-06-22 09:00:00', status: 'testing', detectDeadline: '2026-07-22' },
     // —— 历史已检任务（用于「已检任务」时间范围筛选演示）——
-    { code: 'SC2026/00982', sampleName: '低烟无卤阻燃聚烯烃护套电力电缆', client: '国网杭州供电公司', time: '2026-06-19 08:40:00', status: 'done', doneAt: '2026-06-23 11:20:00', sampleCount: 2, testCount: 5 },
-    { code: 'SC2026/00975', sampleName: '交联聚乙烯绝缘电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-06-10 09:12:00', status: 'done', doneAt: '2026-06-16 17:45:00', sampleCount: 4, testCount: 11 },
-    { code: 'SC2026/00961', sampleName: '钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-05-28 14:00:00', status: 'done', doneAt: '2026-06-04 10:05:00', sampleCount: 1, testCount: 3 },
-    { code: 'SC2026/00940', sampleName: '架空绝缘电缆', client: '国网杭州供电公司', time: '2026-05-08 10:30:00', status: 'done', doneAt: '2026-05-15 15:30:00', sampleCount: 2, testCount: 6 },
-    { code: 'SC2026/00902', sampleName: '控制电缆', client: '杭州数蚕智能科技有限公司', time: '2026-03-12 09:00:00', status: 'done', doneAt: '2026-03-20 16:40:00', sampleCount: 3, testCount: 7 },
+    { code: 'SC2026/00982', sampleName: '低烟无卤阻燃聚烯烃护套电力电缆', client: '国网杭州供电公司', time: '2026-06-19 08:40:00', status: 'done', doneAt: '2026-06-23 11:20:00', sampleCount: 2, testCount: 4, detectDeadline: '2026-06-21', overdueDone: true },
+    { code: 'SC2026/00975', sampleName: '交联聚乙烯绝缘电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-06-10 09:12:00', status: 'done', doneAt: '2026-06-16 17:45:00', sampleCount: 1, testCount: 2, detectDeadline: '2026-07-10' },
+    { code: 'SC2026/00961', sampleName: '钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-05-28 14:00:00', status: 'done', doneAt: '2026-06-04 10:05:00', sampleCount: 1, testCount: 3, detectDeadline: '2026-06-28' },
+    { code: 'SC2026/00940', sampleName: '架空绝缘电缆', client: '国网杭州供电公司', time: '2026-05-08 10:30:00', status: 'done', doneAt: '2026-05-15 15:30:00', sampleCount: 2, testCount: 4, detectDeadline: '2026-06-08' },
+    { code: 'SC2026/00902', sampleName: '控制电缆', client: '杭州数蚕智能科技有限公司', time: '2026-03-12 09:00:00', status: 'done', doneAt: '2026-03-20 16:40:00', sampleCount: 1, testCount: 1, detectDeadline: '2026-04-12' },
+    { code: 'SC2026/00991', sampleName: '8.7/10kV-1芯 电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-05-29 16:31:51', status: 'done', doneAt: '2026-06-05 14:20:00', sampleCount: 1, testCount: 1, detectDeadline: '2026-05-31', overdueDone: true },
+    { code: 'SC2026/00490', sampleName: '绝缘操作杆', client: '国网浙江省电力有限公司', time: '2026-06-15 08:30:00', status: 'done', doneAt: '2026-06-18 16:40:00', sampleCount: 1, testCount: 4, detectDeadline: '2026-07-15' },
   ];
 
   // 试验项相别/次数规则（含相别 → 红/黄/绿三相，perPhase=每相次数；无相别 → count=总次数）
