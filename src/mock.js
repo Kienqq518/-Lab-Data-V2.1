@@ -274,6 +274,12 @@
       tests: [
         { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'pending' },
       ] },
+    // 未检测已逾期：任务已超时效，但尚未开始任何试验
+    { id: 's2c', code: 'SC2026/01003-01', name: '8.7/10kV-3芯 电力电缆', status: 'overdue', cable: true, client: '国网杭州供电公司',
+      tests: [
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'pending', overdueTag: 'overdue_pending' },
+        { name: 'XLPE绝缘的收缩试验', device: 'shr', method: 'auto', status: 'pending', overdueTag: 'overdue_pending' },
+      ] },
     { id: 's3', code: 'SC2026/00998-03', name: '0.6/1kV-4芯 电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
       tests: [
         { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'done', upload: 'done', flow: { node: '试验检测', returned: true, returnReason: '第 2 次正向电阻读数与历史数据偏差较大，疑似拍照识别误差，请复测后重新上传', returnedFrom: '数据审核', by: '张伟', role: '数据审核', at: '06-25 14:30' } },
@@ -377,6 +383,7 @@
   const tasks = [
     { code: 'SC2026/01001', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-06-18 09:20:11', status: 'testing', detectDeadline: '2026-07-18' },
     { code: 'SC2026/01002', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-17 14:05:42', status: 'pending', detectDeadline: '2026-07-17' },
+    { code: 'SC2026/01003', sampleName: '8.7/10kV-3芯 电力电缆', client: '国网杭州供电公司', time: '2026-06-10 08:30:00', status: 'overdue', detectDeadline: '2026-06-15' },
     { code: 'SC2026/00998', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-12 10:18:41', status: 'done', doneAt: '2026-06-24 16:02:10', sampleCount: 3, testCount: 8, detectDeadline: '2026-07-12' },
     { code: 'SC2026/00990', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-05-29 16:31:51', status: 'overdue', detectDeadline: '2026-05-31' },
     { code: 'SC2026/01630', sampleName: '实壁类塑料电缆导管 带承口 PVC-C', client: '国网杭州供电公司', time: '2026-06-20 10:15:00', status: 'testing', detectDeadline: '2026-07-20' },
@@ -432,10 +439,16 @@
     return taskSamples(task).flatMap((s) => s.tests || []);
   }
   function isPendingTask(task) {
-    return task.status === 'pending';
+    if (task.status === 'done') return false;
+    const tests = taskTests(task);
+    const started = tests.some((t) => t.status === 'testing' || t.status === 'done');
+    if (started) return false;
+    return task.status === 'pending' || task.status === 'overdue';
   }
   function isTestingTask(task) {
-    return task.status === 'testing' || task.status === 'overdue';
+    if (task.status === 'done') return false;
+    if (task.status === 'testing') return true;
+    return taskTests(task).some((t) => t.status === 'testing');
   }
   function resolveLiteDevice(item) {
     const candidates = item?.candidateDevices || [];

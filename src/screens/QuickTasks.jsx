@@ -5,8 +5,8 @@ import { MOCK as M } from '../mock.js';
 /* 快捷入口 L2 任务列表 → L3 样品+试验项 → L4 采集（与检测模块 L3/L4 共用） */
 
 const FILTER_CFG = {
-  pending: { title: '待检任务', hint: '任务状态为「未检测」的委托任务' },
-  testing: { title: '检测中任务', hint: '任务状态为「检测中」或「已逾期」的委托任务' },
+  pending: { title: '待检任务', hint: '尚未开始检测的委托任务（含未检测已逾期）' },
+  testing: { title: '检测中任务', hint: '已开始检测、存在检测中试验项的委托任务' },
 };
 
 function parseDeadline(s) {
