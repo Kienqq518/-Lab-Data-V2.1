@@ -16,6 +16,7 @@ import {
   toCellMap,
   updateCell,
 } from './collect-model.js';
+import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 
 /* 采集详情（L4·复合试验项）
    试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
@@ -92,6 +93,11 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const [demoFlow, setDemoFlow] = React.useState(null);
   const [deviceError, setDeviceError] = React.useState('');
   const [editCells, setEditCells] = React.useState({}); // 拍照识别：{ [cellKey]: true } 表示已解锁可编辑
+  const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
+  const envMock = React.useMemo(
+    () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`),
+    [ctx.sample?.code, ctx.item?.name],
+  );
 
   const flow = demoFlow ? DEMO_FLOWS[demoFlow] : (ctx.flow || ctx.item?.flow || DEMO_FLOWS.normal);
   const flowLocked = isFlowLocked(flow);
@@ -388,6 +394,14 @@ function CollectStructured({ ctx, onBack, onDone }) {
           )}
           <DeviceMeta subName={activeSub.name} device={hasAssignment ? activeDevice : null} />
         </Section>
+
+        <EnvInfoSection
+          envMock={envMock}
+          env={env}
+          onRefresh={() => setEnv({ wd: (20 + Math.random() * 3).toFixed(1), sd: (28 + Math.random() * 8).toFixed(1) })}
+          Section={Section}
+          Grid={Grid}
+        />
 
         {(deviceMissing || methodMissing || fieldMissing) && (
           <ConfigError
@@ -938,15 +952,19 @@ function OcrEditBar({ locked, hasPhoto, busy, onReRecognize, onEdit, onDone }) {
 function AttachmentList({ cell, method, flowLocked, onAdd, onRemove }) {
   const title = method === 'ocr' ? '识别参照图' : '参照图';
   const hint = method === 'ocr' ? '· 仅一张 · 对应本次识别数据来源' : '· 随数据一起上传归档';
+  const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
+  const displayAttachments = method === 'ocr'
+    ? getOcrReferenceAttachments(cell.attachments, { filled, flowLocked, isOcr: true })
+    : cell.attachments;
   return (
     <div style={{ paddingTop: 10, borderTop: '1px dashed var(--divider)' }}>
       <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>{title} <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>{hint}</span></div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-        {cell.attachments.map((item) => (
+        {displayAttachments.map((item) => (
           <div key={item.id} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
             <CameraIcon />
             <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono,monospace)' }}>{item.kind === 'photo' ? '拍照' : '上传'}</span>
-            {!flowLocked && <button onClick={() => onRemove(item.id)} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
+            {!flowLocked && !item.mock && <button onClick={() => onRemove(item.id)} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
           </div>
         ))}
         {!flowLocked && !(method === 'ocr' && cell.attachments.length >= 1) && (
@@ -1037,13 +1055,14 @@ function Section({ title, icon, extra, compact = false, children }) {
   const paths = {
     info: 'M12 16v-4 M12 8h.01 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
     cpu: 'M4 4h16v16H4z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3',
+    thermometer: 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z',
   };
   return (
     <Card padding="0">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '7px 16px' : '12px 16px', borderBottom: '1px solid var(--divider)', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d={paths[icon]} /></svg>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d={paths[icon] || paths.info} /></svg>
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, minWidth: 0, overflow: 'hidden' }}>{title}</div>
         </div>
         {extra}
       </div>
