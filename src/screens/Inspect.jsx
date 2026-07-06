@@ -20,11 +20,15 @@ import { MOCK as M } from '../mock.js';
     const [fromSampleId, setFromSampleId] = React.useState(null);
     const [nameTip, setNameTip] = React.useState(null);
     const taskRootRef = React.useRef(null);
+    const offPanelRef = React.useRef(null);
     const [q, setQ] = React.useState('');
     const [offOpen, setOffOpen] = React.useState(false);
     const [scanOpen, setScanOpen] = React.useState(false);
 
+    React.useEffect(() => { setOffOpen(false); }, [stationId]);
+
     const stationName = (id) => (M.stations.find((s) => s.id === id) || {}).name || '非工位设备';
+    const taskCodeOf = (s) => s.code.replace(/-\d+$/, '');
 
     // 清除工位后加载全部设备；选择工位仅作筛选。无工位设备与有工位设备平铺混排
     const devices = station ? M.devices.filter((d) => d.station === station.id) : M.devices;
@@ -37,10 +41,23 @@ import { MOCK as M } from '../mock.js';
     const matchSample = (s) => !ql
       || (s.name && s.name.toLowerCase().includes(ql))
       || (s.code && s.code.toLowerCase().includes(ql))
+      || (taskCodeOf(s).toLowerCase().includes(ql))
       || (s.tests || []).some((t) => t.name && t.name.toLowerCase().includes(ql));
     const fDevices = devices.filter(matchDevice);
     const fSamples = samples.filter(matchSample);
     const fOff = M.offDevices.filter(matchDevice);
+
+    function toggleOffOpen() {
+      setOffOpen((open) => {
+        const next = !open;
+        if (next) {
+          requestAnimationFrame(() => {
+            offPanelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          });
+        }
+        return next;
+      });
+    }
 
     function openDevice(d) { setDevice(d); setQ(''); setView('device'); }
     function openTask(t) {
@@ -108,10 +125,10 @@ import { MOCK as M } from '../mock.js';
       return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
           <AppBar title="检测" onBack={onBack} />
-          <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16, flex: 1, overflow: 'auto' }}>
+          <div style={{ flex: 1, minHeight: 0, padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <StationBar station={station ? station.name : '未选择工位'} onSwitch={onSwitchStation} onClear={station ? onClearStation : undefined} />
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <SegmentedSwitch value={mode} onChange={(v) => { setMode(v); setQ(''); }}
                 options={[{ value: 'device', label: '按设备' }, { value: 'sample', label: '按样品' }]} />
               <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
@@ -119,15 +136,15 @@ import { MOCK as M } from '../mock.js';
               </span>
             </div>
 
-            {/* 搜索：按设备可搜名称/编号/型号；按样品可搜编号/名称/试验项，并支持扫码 */}
+            {/* 搜索：按设备可搜名称/编号/型号；按样品可搜样品编号/试样编号/名称/试验项，并支持扫码 */}
             <SearchBar value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder={mode === 'device' ? '请输入设备名称、编号、型号搜索' : '请输入样品编号、样品名称、试验项搜索'}
+              placeholder={mode === 'device' ? '请输入设备名称、编号、型号搜索' : '支持按样品编号、样品名称、试样编号、试验项搜索'}
               onScan={mode === 'sample' ? () => setScanOpen(true) : undefined} />
 
             {/* 非工位设备/便携设备：已选工位时点击展开加载非工位设备列表 */}
             {mode === 'device' && station && (
-              <div style={{ borderRadius: 'var(--radius-md)', border: '1px dashed var(--collect-ble)', background: offOpen ? 'var(--white)' : 'var(--collect-ble-bg)', overflow: 'hidden' }}>
-                <button onClick={() => setOffOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--collect-ble)', textAlign: 'left' }}>
+              <div ref={offPanelRef} style={{ flexShrink: 0, borderRadius: 'var(--radius-md)', border: '1px dashed var(--collect-ble)', background: offOpen ? 'var(--white)' : 'var(--collect-ble-bg)' }}>
+                <button type="button" onClick={toggleOffOpen} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--collect-ble)', textAlign: 'left' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>非工位设备/便携设备</div>
@@ -149,7 +166,7 @@ import { MOCK as M } from '../mock.js';
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
               {mode === 'device'
                 ? (fDevices.length
                     ? fDevices.map((d) => (
@@ -239,7 +256,7 @@ import { MOCK as M } from '../mock.js';
                 <StatusTag status={task.status} size="sm" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-                {cameFrom === 'sample' && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>委托单位：{task.client || '—'}</span>}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>委托单位：{task.client || '—'}</span>
                 <span>样品数：{tSamples.length}</span>
                 {task.time && <span style={{ fontVariantNumeric: 'tabular-nums' }}>下发时间：{task.time}</span>}
                 {task.detectDeadline && (

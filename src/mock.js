@@ -72,8 +72,9 @@
       { key: 'jzylx', label: '浸渍液类型', options: ['水', '乙醇'] },
       { key: 'jysd', label: '浸渍液温度', unit: '℃', options: ['23', '27'] },
       { key: 'msa',  label: '试样空气中质量', unit: 'g' },
-      { key: 'msil', label: '试样浸渍液中表观质量', unit: 'g' },
-      { key: 'myd',  label: '试样密度 ρ(S)', unit: 'g/cm³' },
+      { key: 'msil', label: '试样浸渍液中表观质量', unit: 'g', densityMode: 'greater' },
+      { key: 'mchui', label: '重锤在浸渍液中的表现质量', unit: 'g', densityMode: 'less' },
+      { key: 'msich', label: '试样加重锤在浸渍液中的表现质量', unit: 'g', densityMode: 'less' },
       { key: 'jl',   label: '结论', unit: '' },
     ],
   };
@@ -172,7 +173,7 @@
       ] },
     { id: 's1b', code: 'SC2026/01001-02', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'testing', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
-        { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'testing', phased: true },
+        { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'testing', phased: true, uploadedPhases: ['红'] },
         { name: '结构尺寸检查—非金属护套&钢带铠装', device: 'cal', method: 'ble', status: 'pending', phased: false, subs: sheathArmorSubs },
         { name: 'XLPE绝缘的收缩试验', device: 'shr', method: 'auto', status: 'pending' },
       ] },
@@ -208,15 +209,15 @@
     { id: 's4', code: 'SC2026/00990-01', name: '8.7/10kV-1芯 电力电缆', status: 'overdue', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
         { name: 'XLPE绝缘的热延伸试验', device: 'hext', method: 'auto', status: 'pending', overdueTag: 'overdue_pending' },
-        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'testing', phased: true, overdueTag: 'overdue_testing' },
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'testing', phased: true, overdueTag: 'overdue_testing', uploadedPhases: ['红'] },
       ] },
     { id: 's4b', code: 'SC2026/00990-02', name: '8.7/10kV-1芯 电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
-        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'done', upload: 'done', overdueTag: 'done_before_deadline' },
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'done', upload: 'done' },
       ] },
     { id: 's4c', code: 'SC2026/00990-03', name: '8.7/10kV-1芯 电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
-        { name: 'XLPE绝缘的热延伸试验', device: 'hext', method: 'auto', status: 'done', upload: 'done', overdueTag: 'done_after_deadline' },
+        { name: 'XLPE绝缘的热延伸试验', device: 'hext', method: 'auto', status: 'done', upload: 'done', overdueTag: 'overdue_done' },
       ] },
     { id: 's5', code: 'SC2026/01630101', name: '实壁类塑料电缆导管 带承口 PVC-C', status: 'testing', cable: false, client: '国网杭州供电公司',
       tests: [
@@ -254,8 +255,7 @@
   const overdueTagLabel = {
     overdue_pending: '已逾期 · 未检测',
     overdue_testing: '已逾期 · 检测中',
-    done_before_deadline: '逾期前已完成',
-    done_after_deadline: '逾期后已完成',
+    overdue_done: '逾期完成',
   };
 
   const methodLabel = { auto: '设备直连', ocr: '拍照识别', ble: '蓝牙卡尺', serial: '串口', manual: '手工录入', external: '外部程序' };

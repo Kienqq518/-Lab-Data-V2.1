@@ -16,8 +16,7 @@ export function TestItemCard({
   const overdueLabels = {
     overdue_pending: { text: '已逾期 · 未检测', color: 'var(--status-overdue-fg,#c53030)', bg: 'var(--status-overdue-bg)' },
     overdue_testing: { text: '已逾期 · 检测中', color: 'var(--status-overdue-fg,#c53030)', bg: 'var(--status-overdue-bg)' },
-    done_before_deadline: { text: '逾期前已完成', color: 'var(--status-done-fg,#1b8a5a)', bg: 'var(--status-done-bg)' },
-    done_after_deadline: { text: '逾期后已完成', color: 'var(--status-pending-fg,#97640f)', bg: 'var(--status-pending-bg)' },
+    overdue_done: { text: '逾期完成', color: 'var(--status-overdue-fg,#c53030)', bg: 'var(--status-overdue-bg)' },
   };
   const od = overdueTag ? overdueLabels[overdueTag] : null;
   return (

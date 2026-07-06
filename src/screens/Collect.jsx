@@ -21,11 +21,11 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     jggd: 12.5, sywd: 20.0, scdz: 0.0186, dz20: 0.124,
     bcz: 4.50, csz: 4.52, jsz: 4.50, hctk: 2.48, gdkd: 40.0, dckd: 20.0,
     kzqd: 18.6, dlcl: 480, fhcl: 85, lqbx: 12, sssl: 3.2,
-    jysd: 23, msa: 12.42, msil: 5.18, myd: 1.42,
+    jysd: 23, msa: 12.42, msil: 5.18, mchui: 6.24, msich: 11.38,
     syzjz: '试样密度大于浸渍液密度', jzylx: '水',
     sykd: 10.0, syhd: 1.00, fmax: 250, lu: 75, l0: 25, spkd: 10.0, sphd: 1.00, l1: 100, l2: 26,
   };
-  const DEC = { zx: 2, fx: 2, pj: 2, wb: 2, jg: 4, cd: 3, scdz: 4, dz20: 3, bcz: 2, csz: 2, jsz: 2, hctk: 2, gdkd: 1, dckd: 1, kzqd: 1, sssl: 1, jggd: 1, sywd: 1, dlcl: 0, fhcl: 0, lqbx: 0, jysd: 0, msa: 2, msil: 2, myd: 3,
+  const DEC = { zx: 2, fx: 2, pj: 2, wb: 2, jg: 4, cd: 3, scdz: 4, dz20: 3, bcz: 2, csz: 2, jsz: 2, hctk: 2, gdkd: 1, dckd: 1, kzqd: 1, sssl: 1, jggd: 1, sywd: 1, dlcl: 0, fhcl: 0, lqbx: 0, jysd: 0, msa: 2, msil: 2, mchui: 2, msich: 2,
     sykd: 2, syhd: 3, fmax: 1, lu: 1, l0: 1, spkd: 2, sphd: 3, l1: 1, l2: 1 };
   function valAt(key, i) {
     if (key === 'syzjz') return BASE.syzjz;
@@ -71,6 +71,14 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     }, [ctx.item?.name]);
     const tpl = ctx.item?.tpl ? M.fieldTpl[ctx.item.tpl] : M.fieldTpl.size;
     const rule = (M.testRules && M.testRules[ctx.item?.name]) || {};
+    const isDensityTpl = ctx.item?.tpl === 'density';
+
+    function fieldsForSyzjz(syzjzVal) {
+      const all = tpl.filter((f) => !SUMMARY_KEYS.has(f.key));
+      if (!isDensityTpl) return all;
+      const mode = syzjzVal === '试样密度小于浸渍液密度' ? 'less' : 'greater';
+      return all.filter((f) => !f.densityMode || f.densityMode === mode);
+    }
 
     const measureFields = tpl.filter((f) => !SUMMARY_KEYS.has(f.key));
     const summaryFields = tpl.filter((f) => SUMMARY_KEYS.has(f.key));
@@ -134,7 +142,12 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
       setAttachments((p) => ({ ...p, [i]: (p[i] || []).filter((a) => a.id !== id) }));
     }
 
-    function fillTime(i) { const v = {}; measureFields.forEach((f) => { v[f.key] = valAt(f.key, i); }); return v; }
+    function fillTime(i, syzjzVal) {
+      const fields = fieldsForSyzjz(syzjzVal || BASE.syzjz);
+      const v = {};
+      fields.forEach((f) => { v[f.key] = valAt(f.key, i, syzjzVal || BASE.syzjz); });
+      return v;
+    }
     function computeSummary(allTimes) {
       const v = {};
       summaryFields.forEach((f) => {
@@ -151,6 +164,19 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
       if (ctx.status === 'done') {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
         setTimes(ts); setSummary({ status: 'done', vals: computeSummary(ts) });
+        return;
+      }
+      const uploadedPhases = ctx.item?.uploadedPhases;
+      if (ctx.status === 'testing' && uploadedPhases?.length) {
+        const uploadedSet = new Set(uploadedPhases);
+        const ts = Array.from({ length: N }, (_, i) => {
+          const ph = phaseOf(i);
+          if (ph && uploadedSet.has(ph)) {
+            return { status: 'filled', vals: fillTime(i), uploaded: true };
+          }
+          return { status: 'idle', vals: {}, uploaded: false };
+        });
+        setTimes(ts);
       }
     }, []);
 
@@ -209,7 +235,13 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     function setField(i, key, value) {
       if (flowLocked) return; // 流程已锁定，禁止修改
       setTimes((prev) => {
-        const next = prev.slice(); next[i] = { ...next[i], vals: { ...next[i].vals, [key]: value }, status: 'filled', uploaded: flowReturned ? false : next[i].uploaded };
+        const next = prev.slice();
+        const vals = { ...next[i].vals, [key]: value };
+        if (isDensityTpl && key === 'syzjz') {
+          if (value === '试样密度小于浸渍液密度') delete vals.msil;
+          else { delete vals.mchui; delete vals.msich; }
+        }
+        next[i] = { ...next[i], vals, status: 'filled', uploaded: flowReturned ? false : next[i].uploaded };
         if (next.every((t) => t.status === 'filled') && editable) setSummary({ status: 'done', vals: computeSummary(next) });
         return next;
       });
@@ -464,7 +496,7 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
                                 </span>
                               </div>
                             )}
-                            {measureFields.map((f) => (
+                            {fieldsForSyzjz(t.vals.syzjz).map((f) => (
                               f.options
                                 ? <SelectField key={f.key} field={f} value={t.vals[f.key] || ''}
                                     readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
@@ -554,7 +586,7 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
                                 </span>
                               </div>
                             )}
-                            {measureFields.map((f) => (
+                            {fieldsForSyzjz(t.vals.syzjz).map((f) => (
                               f.options
                                 ? <SelectField key={f.key} field={f} value={t.vals[f.key] || ''}
                                     readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
