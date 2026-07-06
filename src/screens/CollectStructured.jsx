@@ -22,9 +22,9 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
    试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
    每条采集记录保存采集时使用的设备，避免后续换设备影响历史读数。 */
 
-const FIXED = { jg: '紧压绞合圆形', bffs: '双层金属带间隙搭包', whcz: '2.7' };
-const BASE = { gs: 8, zj: 8.00, tdhd: 10.00, tk1: 13, dg1: 14, tk2: 15, dg2: 14, tk3: 13, dg3: 14, tk4: 15, dg4: 14, tk5: 13, dg5: 14, kzkd: 3.0, jdbs: 2 };
-const DEC = { gs: 0, zj: 2, tdhd: 2, tk1: 1, dg1: 1, tk2: 1, dg2: 1, tk3: 1, dg3: 1, tk4: 1, dg4: 1, tk5: 1, dg5: 1, kzkd: 1, jdbs: 0 };
+const FIXED = { jg: '紧压绞合圆形', jsdbffs: '两层金属带间隙绕包' };
+const BASE = { gs: 8, zj: 8.00, tdhd: 10.00, tk1: 13, dg1: 14, tk2: 15, dg2: 14, tk3: 13, dg3: 14, tk4: 15, dg4: 14, tk5: 13, dg5: 14, kzkd: 3.0, jdbs: 2, gdjx1: 1.2, gdjx2: 1.3, gdjx3: 1.1, gdjx4: 1.4, gdjx5: 1.2 };
+const DEC = { gs: 0, zj: 2, tdhd: 2, tk1: 1, dg1: 1, tk2: 1, dg2: 1, tk3: 1, dg3: 1, tk4: 1, dg4: 1, tk5: 1, dg5: 1, kzkd: 1, jdbs: 0, gdjx1: 1, gdjx2: 1, gdjx3: 1, gdjx4: 1, gdjx5: 1 };
 const DEMO_FLOWS = {
   normal: { node: '试验检测' },
   returned: { node: '试验检测', returned: true, returnReason: '绝缘厚度测量第 2 个点位与标准限值偏差较大，请复核后重新上传', returnedFrom: '数据审核', by: '张伟', role: '数据审核', at: '07-04 10:20' },
@@ -851,10 +851,23 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
   );
 }
 
+const PHASE_CONCL_META = {
+  '红': { ok: true },
+  '黄': { ok: false, reason: '绝缘厚度测量值超出标准限值' },
+  '绿': { ok: true },
+};
+
 function ConclusionCard({ sub, cells }) {
   const rows = sub.phased
     ? PHASES.map((phase) => ({ key: phase.value, label: `结论（${phase.value}相）`, cells: cells.filter((cell) => cell.phase === phase.value), color: phase.color }))
     : [{ key: 'single', label: '结论', cells, color: null }];
+
+  function phaseConclusion(row) {
+    if (sub.id === 'struct-insulation-thickness' && row.key !== 'single') {
+      return PHASE_CONCL_META[row.key] || { ok: true };
+    }
+    return { ok: true };
+  }
 
   return (
     <div style={{ borderTop: '1px solid var(--divider)' }}>
@@ -864,23 +877,35 @@ function ConclusionCard({ sub, cells }) {
       </div>
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {rows.map((row) => {
-          const show = row.cells.some((cell) => cell.status === 'uploaded');
-          const ok = sub.id !== 'struct-insulation-thickness';
+          const show = row.cells.length > 0 && row.cells.every((cell) => cell.status === 'uploaded');
+          const meta = phaseConclusion(row);
+          const ok = meta.ok;
+          const fail = show && !ok;
           return (
-            <div key={row.key} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                {row.color && <span style={{ width: 9, height: 9, borderRadius: '50%', background: row.color, flex: 'none' }} />}
-                <span>{row.label}</span>
-              </label>
-              <div style={{ flex: 1, height: 44, padding: '0 12px', display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', background: 'var(--surface-sunken,#f5f6f8)', fontSize: 'var(--fs-base)', color: show ? (ok ? 'var(--status-done-fg,#1b8a5a)' : 'var(--danger,#e23b3b)') : 'var(--text-placeholder)', fontWeight: show ? 600 : 400 }}>
-                {show ? (ok ? '合格' : '不合格') : (sub.phased ? '本相上传后回显' : '上传后回显')}
+            <React.Fragment key={row.key}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {row.color && <span style={{ width: 9, height: 9, borderRadius: '50%', background: row.color, flex: 'none' }} />}
+                  <span>{row.label}</span>
+                </label>
+                <div style={{ flex: 1, height: 44, padding: '0 12px', display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', background: 'var(--surface-sunken,#f5f6f8)', fontSize: 'var(--fs-base)', color: show ? (ok ? 'var(--status-done-fg,#1b8a5a)' : 'var(--danger,#e23b3b)') : 'var(--text-placeholder)', fontWeight: show ? 600 : 400 }}>
+                  {show ? (ok ? '合格' : '不合格') : (sub.phased ? `${row.key}相全部次数上传后回显` : '全部上传后回显')}
+                </div>
               </div>
-            </div>
+              {fail && meta.reason && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)' }}>不合格原因</label>
+                  <div style={{ flex: 1, minHeight: 44, padding: '10px 12px', display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', background: 'var(--surface-sunken,#f5f6f8)', fontSize: 'var(--fs-base)', color: 'var(--text-body)', lineHeight: 1.45 }}>
+                    {meta.reason}
+                  </div>
+                </div>
+              )}
+            </React.Fragment>
           );
         })}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
           <InfoIcon />
-          <span>{sub.phased ? '相同相别的测量数据合并判定为一个结论；' : ''}结论不在本端录入，由 LIMS 按计算与结果判定配置自动回显</span>
+          <span>{sub.phased ? '含相别试验：相同相别的数据合并判定，每个相别全部次数上传后即可回显结论；' : ''}结论不在本端录入，由 LIMS 按计算与结果判定配置自动回显</span>
         </div>
       </div>
     </div>

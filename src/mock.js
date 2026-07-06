@@ -67,12 +67,14 @@
       { key: 'l1', label: '处理后标志间长L1', unit: 'mm' },
       { key: 'jl', label: '结论',           unit: '' },
     ],
-    density: [ // 密度测量（电子天平 · 串口采集，逐试样）
-      { key: 'jysd', label: '浸渍液温度',       unit: '℃' },
-      { key: 'msa',  label: '空气中质量 m(S,A)', unit: 'g' },
-      { key: 'msil', label: '浸渍液中表观质量 m(S,IL)', unit: 'g' },
-      { key: 'myd',  label: '试样密度 ρ(S)',     unit: 'g/cm³' },
-      { key: 'jl',   label: '结论',              unit: '' },
+    density: [ // 密度测量（电子天平 · 串口采集）
+      { key: 'syzjz', label: '试样密度与浸渍液密度对比', options: ['试样密度大于浸渍液密度', '试样密度小于浸渍液密度'] },
+      { key: 'jzylx', label: '浸渍液类型', options: ['水', '乙醇'] },
+      { key: 'jysd', label: '浸渍液温度', unit: '℃', options: ['23', '27'] },
+      { key: 'msa',  label: '试样空气中质量', unit: 'g' },
+      { key: 'msil', label: '试样浸渍液中表观质量', unit: 'g' },
+      { key: 'myd',  label: '试样密度 ρ(S)', unit: 'g/cm³' },
+      { key: 'jl',   label: '结论', unit: '' },
     ],
   };
 
@@ -114,15 +116,18 @@
       candidateDevices: [caliperDevice],
       fields: [
         { key: 'kzkd', label: '铠装宽度', unit: 'mm', required: true },
-        { key: 'gdjx', label: '钢带间隙宽度', unit: 'mm', required: true, multi: 5 },
+        { key: 'gdjx1', label: '钢带间隙宽度1', unit: 'mm', required: true },
+        { key: 'gdjx2', label: '钢带间隙宽度2', unit: 'mm', required: true },
+        { key: 'gdjx3', label: '钢带间隙宽度3', unit: 'mm', required: true },
+        { key: 'gdjx4', label: '钢带间隙宽度4', unit: 'mm', required: true },
+        { key: 'gdjx5', label: '钢带间隙宽度5', unit: 'mm', required: true },
       ] },
     { id: 'sheath-thickness', name: '非金属护套厚度测量', method: 'ble', phased: false, device: caliperDevice,
       candidateDevices: [caliperDevice],
       fields: [
-        { key: 'whcz', label: '外护套标称厚度t_os', unit: 'mm', required: true },
-        { key: 'bffs', label: '金属屏蔽层包金属带方式', required: true, options: ['双层金属带间隙搭包', '单层金属带间隙搭包', '双层金属带重叠包'] },
-        { key: 'jdbs', label: '金属带包数', unit: '根', required: true },
-        { key: 'tsmin', label: '外护套各测点厚度t_(s,min)', unit: 'mm', required: true, multi: 6 },
+        { key: 'jsdbffs', label: '金属屏蔽层金属带包裹方式', required: true, options: ['单根金属带重叠绕包', '两层金属带间隙绕包', '金属带纵包'] },
+        { key: 'jdbs', label: '金属带根数', unit: '根', required: true },
+        { key: 'tsmin', label: '外护套各测点厚度t_s', unit: 'mm', required: true, multi: 6 },
       ] },
   ];
 
@@ -202,12 +207,16 @@
     // 已逾期任务 SC2026/00990：样品含 已逾期 + 已完成 混合
     { id: 's4', code: 'SC2026/00990-01', name: '8.7/10kV-1芯 电力电缆', status: 'overdue', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
-        { name: 'XLPE绝缘的热延伸试验', device: 'hext', method: 'auto', status: 'pending' },
-        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'testing', phased: true },
+        { name: 'XLPE绝缘的热延伸试验', device: 'hext', method: 'auto', status: 'pending', overdueTag: 'overdue_pending' },
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'testing', phased: true, overdueTag: 'overdue_testing' },
       ] },
     { id: 's4b', code: 'SC2026/00990-02', name: '8.7/10kV-1芯 电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
-        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'done', upload: 'done' },
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'done', upload: 'done', overdueTag: 'done_before_deadline' },
+      ] },
+    { id: 's4c', code: 'SC2026/00990-03', name: '8.7/10kV-1芯 电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
+      tests: [
+        { name: 'XLPE绝缘的热延伸试验', device: 'hext', method: 'auto', status: 'done', upload: 'done', overdueTag: 'done_after_deadline' },
       ] },
     { id: 's5', code: 'SC2026/01630101', name: '实壁类塑料电缆导管 带承口 PVC-C', status: 'testing', cable: false, client: '国网杭州供电公司',
       tests: [
@@ -218,10 +227,11 @@
   // 任务列表（首页快捷入口 / 统计）
   // doneAt = 该任务下分配给本检测员的试验项全部完成检测的时间（仅 done 任务有）
   const tasks = [
-    { code: 'SC2026/01001', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-06-18 09:20:11', status: 'testing' },
-    { code: 'SC2026/01002', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-17 14:05:42', status: 'pending' },
-    { code: 'SC2026/00998', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-12 10:18:41', status: 'done', doneAt: '2026-06-24 16:02:10', sampleCount: 3, testCount: 8 },
-    { code: 'SC2026/00990', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-05-29 16:31:51', status: 'overdue' },
+    { code: 'SC2026/01001', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-06-18 09:20:11', status: 'testing', detectDeadline: '2026-07-18' },
+    { code: 'SC2026/01002', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-17 14:05:42', status: 'pending', detectDeadline: '2026-07-17' },
+    { code: 'SC2026/00998', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-12 10:18:41', status: 'done', doneAt: '2026-06-24 16:02:10', sampleCount: 3, testCount: 8, detectDeadline: '2026-07-12' },
+    { code: 'SC2026/00990', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-05-29 16:31:51', status: 'overdue', detectDeadline: '2026-05-31' },
+    { code: 'SC2026/01630', sampleName: '实壁类塑料电缆导管 带承口 PVC-C', client: '国网杭州供电公司', time: '2026-06-20 10:15:00', status: 'testing', detectDeadline: '2026-07-20' },
     // —— 历史已检任务（用于「已检任务」时间范围筛选演示）——
     { code: 'SC2026/00982', sampleName: '低烟无卤阻燃聚烯烃护套电力电缆', client: '国网杭州供电公司', time: '2026-06-19 08:40:00', status: 'done', doneAt: '2026-06-23 11:20:00', sampleCount: 2, testCount: 5 },
     { code: 'SC2026/00975', sampleName: '交联聚乙烯绝缘电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-06-10 09:12:00', status: 'done', doneAt: '2026-06-16 17:45:00', sampleCount: 4, testCount: 11 },
@@ -238,6 +248,14 @@
     '非金属护套老化前的机械性能试验': { phased: false, count: 5 },
     'XLPE绝缘的热延伸试验': { phased: true, perPhase: 2 },
     'XLPE绝缘的收缩试验': { phased: true, perPhase: 1 },
+    '密度测量': { phased: false, count: 3 },
+  };
+
+  const overdueTagLabel = {
+    overdue_pending: '已逾期 · 未检测',
+    overdue_testing: '已逾期 · 检测中',
+    done_before_deadline: '逾期前已完成',
+    done_after_deadline: '逾期后已完成',
   };
 
   const methodLabel = { auto: '设备直连', ocr: '拍照识别', ble: '蓝牙卡尺', serial: '串口', manual: '手工录入', external: '外部程序' };
@@ -257,4 +275,4 @@
     '密度测量': [],
   };
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, offDevices: devices.filter((d) => !d.station) };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station) };

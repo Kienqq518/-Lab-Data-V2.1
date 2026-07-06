@@ -7,7 +7,7 @@ import { StatusTag } from '../feedback/StatusTag.jsx';
  * 沿用旧 app：任务编号 / 样品名称 / 委托单位 / 下发时间 + 右上状态标签。
  */
 export function TaskCard({
-  code, sampleName, client, time, status = 'pending', onClick, style,
+  code, sampleName, client, time, status = 'pending', detectDeadline, onClick, style,
 }) {
   const Row = ({ label, value }) => (
     <div style={{ display: 'flex', gap: 8, fontSize: 'var(--fs-sm)', lineHeight: 1.7 }}>
@@ -26,6 +26,7 @@ export function TaskCard({
       <Row label="样品名称" value={sampleName} />
       <Row label="委托单位" value={client} />
       <Row label="下发时间" value={time} />
+      {detectDeadline && <Row label="检测时效" value={detectDeadline} />}
     </Card>
   );
 }

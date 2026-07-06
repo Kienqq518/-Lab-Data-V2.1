@@ -10,9 +10,16 @@ import { CollectBadge } from '../feedback/CollectBadge.jsx';
  * 复合试验项（含子项）：methods 传入多个采集方式，device 拼接多台设备。
  */
 export function TestItemCard({
-  name, device, status = 'pending', method = 'auto', methods, highlighted, onClick, style,
+  name, device, status = 'pending', method = 'auto', methods, highlighted, overdueTag, onClick, style,
 }) {
   const methodList = Array.isArray(methods) && methods.length ? methods : [method];
+  const overdueLabels = {
+    overdue_pending: { text: '已逾期 · 未检测', color: 'var(--status-overdue-fg,#c53030)', bg: 'var(--status-overdue-bg)' },
+    overdue_testing: { text: '已逾期 · 检测中', color: 'var(--status-overdue-fg,#c53030)', bg: 'var(--status-overdue-bg)' },
+    done_before_deadline: { text: '逾期前已完成', color: 'var(--status-done-fg,#1b8a5a)', bg: 'var(--status-done-bg)' },
+    done_after_deadline: { text: '逾期后已完成', color: 'var(--status-pending-fg,#97640f)', bg: 'var(--status-pending-bg)' },
+  };
+  const od = overdueTag ? overdueLabels[overdueTag] : null;
   return (
     <Card onClick={onClick} padding="14px var(--gap-card)" style={style}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -31,6 +38,11 @@ export function TestItemCard({
       {device && (
         <div style={{ marginTop: 8, paddingLeft: 18, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
           检测设备：{device}
+        </div>
+      )}
+      {od && (
+        <div style={{ marginTop: 6, paddingLeft: 18 }}>
+          <span style={{ fontSize: 10, fontWeight: 600, color: od.color, background: od.bg, padding: '2px 8px', borderRadius: 'var(--radius-pill)' }}>{od.text}</span>
         </div>
       )}
     </Card>

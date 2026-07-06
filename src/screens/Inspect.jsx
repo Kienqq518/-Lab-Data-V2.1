@@ -121,32 +121,29 @@ import { MOCK as M } from '../mock.js';
 
             {/* 搜索：按设备可搜名称/编号/型号；按样品可搜编号/名称/试验项，并支持扫码 */}
             <SearchBar value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder={mode === 'device' ? '请输入设备名称、编号、型号搜索' : '请输入试样编号、试验项进行搜索'}
+              placeholder={mode === 'device' ? '请输入设备名称、编号、型号搜索' : '请输入样品编号、样品名称、试验项搜索'}
               onScan={mode === 'sample' ? () => setScanOpen(true) : undefined} />
 
-            {/* 非工位设备/便携设备：仅在已选工位时作为补充入口（未选工位时已平铺在下方列表中） */}
+            {/* 非工位设备/便携设备：已选工位时点击展开加载非工位设备列表 */}
             {mode === 'device' && station && (
               <div style={{ borderRadius: 'var(--radius-md)', border: '1px dashed var(--collect-ble)', background: offOpen ? 'var(--white)' : 'var(--collect-ble-bg)', overflow: 'hidden' }}>
                 <button onClick={() => setOffOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--collect-ble)', textAlign: 'left' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>非工位设备/便携设备</div>
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>未绑定工位的设备，点击展开</div>
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>未绑定工位的设备，点击展开（{M.offDevices.length} 台）</div>
                   </div>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: offOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform var(--dur-base) var(--ease-out)' }}><path d="m18 15-6-6-6 6"/></svg>
                 </button>
-                {(offOpen || (ql && fOff.length > 0)) && (
+                {offOpen && (
                   <div style={{ padding: '4px 12px 12px', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
-                    {fOff.map((d) => (
+                    {fOff.length ? fOff.map((d) => (
                       <DeviceCard key={d.id} name={d.name} code={d.code} model={d.model}
                         area="非工位设备" method={d.method} itemCount={d.items.length}
                         onClick={() => openDevice(d)} />
-                    ))}
-                    <button onClick={() => {}} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', border: '1px dashed var(--collect-ble)', borderRadius: 'var(--radius-md)', background: 'var(--collect-ble-bg)', color: 'var(--collect-ble)', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--fs-base)' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-                      扫码连接新设备
-                    </button>
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.5 }}>设备来自 Web「设备管理」维护的非工位设备；扫码连接未维护的设备后，将自动同步新增至数采</div>
+                    )) : (
+                      <div style={{ padding: '16px 8px', textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>无匹配非工位设备</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -208,7 +205,7 @@ import { MOCK as M } from '../mock.js';
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
                   {dtasks.map((t) => (
                     <TaskCard key={t.code} code={t.code} sampleName={t.sampleName} client={t.client}
-                      time={t.time} status={t.status} onClick={() => openTask(t)} />
+                      time={t.time} status={t.status} detectDeadline={t.detectDeadline} onClick={() => openTask(t)} />
                   ))}
                 </div>
               ) : (
@@ -234,17 +231,22 @@ import { MOCK as M } from '../mock.js';
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="试验检测" onBack={() => setView(cameFrom === 'sample' ? 'list' : 'device')} />
         <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* 按样品进入：展示任务基础信息 */}
-          {cameFrom === 'sample' && task && (
+          {/* 任务基础信息（按样品进入时展示；含检测时效） */}
+          {task && (
             <Card padding="12px 16px">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
                 <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>{task.code}</span>
                 <StatusTag status={task.status} size="sm" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>委托单位：{task.client || '—'}</span>
+                {cameFrom === 'sample' && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>委托单位：{task.client || '—'}</span>}
                 <span>样品数：{tSamples.length}</span>
-                {task.time && <span style={{ fontVariantNumeric: 'tabular-nums' }}>登记时间：{task.time}</span>}
+                {task.time && <span style={{ fontVariantNumeric: 'tabular-nums' }}>下发时间：{task.time}</span>}
+                {task.detectDeadline && (
+                  <span style={{ fontVariantNumeric: 'tabular-nums', color: task.status === 'overdue' ? 'var(--status-overdue-fg,#c53030)' : 'var(--text-secondary)' }}>
+                    检测时效：{task.detectDeadline}
+                  </span>
+                )}
               </div>
             </Card>
           )}
@@ -294,7 +296,6 @@ import { MOCK as M } from '../mock.js';
                       display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                       overflow: 'hidden', wordBreak: 'break-word', cursor: 'pointer',
                     }}>{s.name}</span>
-                  {isFrom && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--brand-action)', background: 'var(--surface-selected)', padding: '1px 6px', borderRadius: 'var(--radius-pill)' }}>进入样品</span>}
                 </button>
               );
             })}
@@ -310,9 +311,10 @@ import { MOCK as M } from '../mock.js';
               const usable = cameFrom === 'device' && deviceUsable(t);
               return (
                 <TestItemCard key={i} name={t.name} device={info.deviceText} method={info.method} methods={info.methods}
-                  status={t.status} highlighted={usable}
+                  status={t.status} highlighted={usable} overdueTag={t.overdueTag}
                   style={usable ? { border: '1.5px solid var(--brand-action)', boxShadow: '0 0 0 2px rgba(37,99,235,0.14)' } : undefined}
-                  onClick={() => onCollect({ sample: cur, device: dev, item: itemCtx, method: t.method || (dev && dev.method), status: t.status, flow: t.flow, stationId })} />
+                  onClick={() => onCollect({ sample: cur, device: dev, item: itemCtx, method: t.method || (dev && dev.method), status: t.status, flow: t.flow, stationId, task })}
+                />
               );
             }) : (
               <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>无匹配试验项</div>

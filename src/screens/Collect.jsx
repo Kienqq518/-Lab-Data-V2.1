@@ -22,12 +22,15 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     bcz: 4.50, csz: 4.52, jsz: 4.50, hctk: 2.48, gdkd: 40.0, dckd: 20.0,
     kzqd: 18.6, dlcl: 480, fhcl: 85, lqbx: 12, sssl: 3.2,
     jysd: 23, msa: 12.42, msil: 5.18, myd: 1.42,
+    syzjz: '试样密度大于浸渍液密度', jzylx: '水',
     sykd: 10.0, syhd: 1.00, fmax: 250, lu: 75, l0: 25, spkd: 10.0, sphd: 1.00, l1: 100, l2: 26,
   };
   const DEC = { zx: 2, fx: 2, pj: 2, wb: 2, jg: 4, cd: 3, scdz: 4, dz20: 3, bcz: 2, csz: 2, jsz: 2, hctk: 2, gdkd: 1, dckd: 1, kzqd: 1, sssl: 1, jggd: 1, sywd: 1, dlcl: 0, fhcl: 0, lqbx: 0, jysd: 0, msa: 2, msil: 2, myd: 3,
     sykd: 2, syhd: 3, fmax: 1, lu: 1, l0: 1, spkd: 2, sphd: 3, l1: 1, l2: 1 };
   function valAt(key, i) {
-    if (key === 'sywd') return BASE.sywd.toFixed(1);            // 试验温度恒定
+    if (key === 'syzjz') return BASE.syzjz;
+    if (key === 'jzylx') return BASE.jzylx;
+    if (key === 'sywd') return BASE.sywd.toFixed(1);
     if (key === 'jysd') return BASE.jysd.toFixed(0);            // 浸渍液温度恒定
     if (key === 'cd') return BASE.cd.toFixed(3);                // 长度恒定
     if (key === 'pj' || key === 'wb' || key === 'jg') {        // 平均/温补/结果由正反向推算
@@ -60,9 +63,12 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     }
     const [dev, setDev] = React.useState(ctx.device || {});
     const [devSwitchOpen, setDevSwitchOpen] = React.useState(false);
-    const method = ctx.method || (ctx.device && ctx.device.method) || 'auto';
-    // 串口设备（电子天平）可切换的候选设备
-    const serialDevices = React.useMemo(() => M.devices.filter((d) => d.method === 'serial'), []);
+    const method = dev.method || ctx.method || (ctx.device && ctx.device.method) || 'auto';
+    const itemDevices = React.useMemo(() => {
+      const testName = ctx.item?.name;
+      if (!testName) return [];
+      return M.devices.filter((d) => (d.items || []).some((it) => it.name === testName));
+    }, [ctx.item?.name]);
     const tpl = ctx.item?.tpl ? M.fieldTpl[ctx.item.tpl] : M.fieldTpl.size;
     const rule = (M.testRules && M.testRules[ctx.item?.name]) || {};
 
@@ -85,6 +91,12 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     const phaseOf = (i) => (isCable ? phaseList[Math.floor(i / perPhase)] : null);
     const phaseWithin = (i) => (isCable ? (i % perPhase) : i);
     const PHASE_C = { '红': 'var(--danger,#e23b3b)', '黄': 'var(--status-pending,#e8a93a)', '绿': 'var(--status-done,#1faa54)' };
+    const PHASE_CONCL = { '红': '合格', '黄': '不合格', '绿': '合格' };
+    const PHASE_FAIL_REASON = { '黄': '反向电阻读数偏差超标，超出标准限值' };
+    function phaseUploaded(ph) {
+      const idx = times.map((_, i) => i).filter((i) => phaseOf(i) === ph);
+      return idx.length > 0 && idx.every((i) => times[i].uploaded);
+    }
     // LIMS 流程门控：进入「组内审核」及以后 → 数据锁定不可改；退回到「试验检测」→ 可改并需重新上传
     const FLOW_LOCK_AFTER = ['组内审核', '数据审核', '报告编制', '报告审核', '报告签发', '报告处理', '收费审批', '报告发放', '任务归档', '任务完成'];
     const DEMO_FLOWS = {
@@ -313,7 +325,13 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
             <Grid items={[
               ['样品编号', ctx.sample.code], ['样品名称', ctx.sample.name],
               ['试验名称', ctx.item.name], ['试验次数', `${N} 次`],
+              ...(ctx.task?.detectDeadline ? [['检测时效', ctx.task.detectDeadline]] : []),
             ]} />
+            {ctx.item?.overdueTag && M.overdueTagLabel?.[ctx.item.overdueTag] && (
+              <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--status-overdue-fg,#c53030)' }}>
+                {M.overdueTagLabel[ctx.item.overdueTag]}
+              </div>
+            )}
             <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>试验次数随任务下发 · 不可修改</div>
           </Section>
         </div>
@@ -324,7 +342,7 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
           <Section title="设备信息" icon="cpu" extra={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CollectBadge method={method} size="sm" />
-              {isSerial && !flowLocked && (
+              {!flowLocked && itemDevices.length > 0 && (
                 <Button size="sm" variant="secondary" onClick={() => setDevSwitchOpen(true)} style={{ height: 28, padding: '0 12px' }}>切换设备</Button>
               )}
             </div>
@@ -447,9 +465,13 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
                               </div>
                             )}
                             {measureFields.map((f) => (
-                              <FieldRow key={f.key} label={f.label} unit={f.unit} required
-                value={t.vals[f.key] || ''} readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
-                onChange={(e) => setField(i, f.key, e.target.value)} />
+                              f.options
+                                ? <SelectField key={f.key} field={f} value={t.vals[f.key] || ''}
+                                    readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
+                                    onChange={(v) => setField(i, f.key, v)} />
+                                : <FieldRow key={f.key} label={f.label} unit={f.unit} required
+                                    value={t.vals[f.key] || ''} readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
+                                    onChange={(e) => setField(i, f.key, e.target.value)} />
                             ))}
                             {method === 'auto' && (
                               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--collect-auto,#1d54c4)', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -533,10 +555,14 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
                               </div>
                             )}
                             {measureFields.map((f) => (
-                              <FieldRow key={f.key} label={f.label} unit={f.unit} required
-                                value={t.vals[f.key] || ''} placeholder="待采集"
-                                readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
-                                onChange={(e) => setField(i, f.key, e.target.value)} />
+                              f.options
+                                ? <SelectField key={f.key} field={f} value={t.vals[f.key] || ''}
+                                    readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
+                                    onChange={(v) => setField(i, f.key, v)} />
+                                : <FieldRow key={f.key} label={f.label} unit={f.unit} required
+                                    value={t.vals[f.key] || ''} placeholder="待采集"
+                                    readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
+                                    onChange={(e) => setField(i, f.key, e.target.value)} />
                             ))}
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
@@ -561,13 +587,22 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
                 {summaryFields.map((f) => {
                   const isConcl = f.key === 'jl';
                   if (isConcl && isCable) {
-                    // 按相别分组：相同相别的数据（一次或多次）合并判定为一个结论
                     const conclPhases = [...new Set(times.map((_, i) => phaseOf(i)))];
-                    return conclPhases.map((ph) => (
-                      <FieldRow key={f.key + ph} label={`结论（${ph}相）`} readOnly
-                        value={allUploaded ? '合格' : ''}
-                        placeholder={`全部 ${N} 次结果上传后回显`} onChange={() => {}} />
-                    ));
+                    return conclPhases.map((ph) => {
+                      const show = phaseUploaded(ph);
+                      const jl = show ? (PHASE_CONCL[ph] || '合格') : '';
+                      const fail = jl === '不合格';
+                      return (
+                        <React.Fragment key={f.key + ph}>
+                          <FieldRow label={`结论（${ph}相）`} readOnly
+                            value={jl} placeholder={`${ph}相全部次数上传后回显`} onChange={() => {}} />
+                          {fail && (
+                            <FieldRow label="不合格原因" readOnly
+                              value={PHASE_FAIL_REASON[ph] || ''} onChange={() => {}} />
+                          )}
+                        </React.Fragment>
+                      );
+                    });
                   }
                   return (
                     <FieldRow key={f.key} label={f.label} unit={f.unit} readOnly
@@ -578,7 +613,7 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
                 })}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
-                  <span>{isCable ? '含相别试验：相同相别的数据合并判定，每个相别回显一个结论；' : ''}结论不在本端录入，{N} 次结果全部上传后由 LIMS 按计算与结果判定配置自动回显</span>
+                  <span>{isCable ? '含相别试验：相同相别的数据合并判定，每个相别全部次数上传后即可回显结论；' : ''}结论不在本端录入，由 LIMS 按计算与结果判定配置自动回显</span>
                 </div>
               </div>
             </Card>
@@ -621,9 +656,9 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
                 <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>切换设备</span>
                 <button onClick={() => setDevSwitchOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 20, lineHeight: 1 }}>×</button>
               </div>
-              <div style={{ padding: '0 16px 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>电子天平经串口连接采集，选择本次采集使用的设备</div>
+              <div style={{ padding: '0 16px 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>选择本次采集使用的设备</div>
               <div style={{ padding: '4px 16px 16px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
-                {serialDevices.map((d) => {
+                {itemDevices.map((d) => {
                   const on = d.id === dev.id;
                   return (
                     <button key={d.id} onClick={() => { setDev(d); setDevSwitchOpen(false); }} style={{
@@ -816,6 +851,26 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'lk-spin 0.9s linear infinite' }}>
         <path d="M21 12a9 9 0 1 1-6.219-8.56" />
       </svg>
+    );
+  }
+
+  function SelectField({ field, value, readOnly, onChange }) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)', display: 'flex', gap: 2 }}>
+          {field.required !== false && <span style={{ color: 'var(--danger)' }}>*</span>}
+          <span>{field.label}{field.unit ? `（${field.unit}）` : ''}</span>
+        </label>
+        <select value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)}
+          style={{
+            flex: 1, height: 44, padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
+            background: readOnly ? 'var(--surface-sunken,#f5f6f8)' : 'var(--white)', fontSize: 'var(--fs-base)',
+            color: value ? 'var(--text-title)' : 'var(--text-placeholder)', outline: 'none', boxSizing: 'border-box',
+          }}>
+          <option value="">待采集</option>
+          {(field.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+        </select>
+      </div>
     );
   }
 
