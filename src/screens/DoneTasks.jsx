@@ -23,6 +23,12 @@ function isOverdueDone(task) {
   return parse(task.doneAt) > parse(task.detectDeadline + ' 23:59:59');
 }
 
+function isOverdueDoneSample(sample, task) {
+  if (sample.overdueDone) return true;
+  if (task && isOverdueDone(task)) return true;
+  return false;
+}
+
 function taskSamples(task) {
   return M.samples.filter((s) => s.code.startsWith(task.code) && s.status === 'done');
 }
@@ -124,7 +130,12 @@ function DoneTasks({ onBack, onCollect }) {
                   background: on ? 'var(--surface-selected)' : 'var(--white)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%' }}>
-                    <StatusTag status={s.status} size="sm" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <StatusTag status={s.status} size="sm" />
+                      {isOverdueDoneSample(s, task) && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--status-overdue-fg,#c53030)', background: 'var(--status-overdue-bg)', padding: '2px 6px', borderRadius: 'var(--radius-pill)' }}>逾期完成</span>
+                      )}
+                    </div>
                     <span style={{ fontSize: 'var(--fs-xs)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
                   </div>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{s.code}</span>

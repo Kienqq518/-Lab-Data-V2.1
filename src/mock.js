@@ -108,6 +108,11 @@
       items: [ { name: '密度测量', tpl: 'density', count: 3 } ] },
     { id: 'bal2', name: '精密电子天平', code: 'YH-07', model: 'FA2004B', station: null, method: 'serial',
       items: [ { name: '密度测量', tpl: 'density', count: 3 } ] },
+    // ===== 安全工器具 · 绝缘操作杆 =====
+    { id: 'rodhv', name: '工频耐压试验装置', code: 'NY-150', model: '150kV', station: 'ny', method: 'manual',
+      items: [ { name: '绝缘操作杆 - 交流耐压试验' } ] },
+    { id: 'rodbend', name: '安全工器具力学试验机', code: 'AQ-MECH-01', model: 'YWL-10', station: null, method: 'manual',
+      items: [ { name: '绝缘操作杆 - 抗弯动负荷试验' }, { name: '绝缘操作杆 - 抗弯静负荷试验' } ] },
   ];
 
   // 「结构尺寸检查—非金属护套&钢带铠装」拆分为两个试验子项（均为蓝牙数显卡尺）
@@ -168,6 +173,7 @@
   ];
 
   const doneItem = (name, device, method, extra = {}) => ({ name, device, method, status: 'done', upload: 'done', ...extra });
+  const overdueDoneItem = (name, device, method, extra = {}) => doneItem(name, device, method, { overdueTag: 'overdue_done', ...extra });
 
   // 样品 —— 8.7/10kV-3芯 电力电缆（Web 试验填报同款），含 7 个试验项
   const samples = [
@@ -263,10 +269,10 @@
     // 安全工器具 · 绝缘操作杆（轻量 LIMS，参数平铺 + 手工结论）
     { id: 's6', code: 'SC2026/00490101', name: '绝缘操作杆', status: 'testing', cable: false, client: '国网浙江省电力有限公司',
       tests: [
-        { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', method: 'manual', limsLite: true, status: 'pending', fields: rodAcFields },
-        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', method: 'manual', limsLite: true, status: 'pending', fields: rodAppearanceFields },
-        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', method: 'manual', limsLite: true, status: 'pending', fields: rodBendDynamicFields },
-        { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', method: 'manual', limsLite: true, status: 'pending', fields: rodBendStaticFields },
+        { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', device: 'rodhv', method: 'manual', limsLite: true, status: 'pending', fields: rodAcFields },
+        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', device: 'tmk', method: 'manual', limsLite: true, status: 'pending', fields: rodAppearanceFields },
+        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', fields: rodBendDynamicFields },
+        { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', fields: rodBendStaticFields },
       ] },
     // —— 已检任务样品（status=done，供已检任务 L2-L4 钻取）——
     { id: 's98a', code: 'SC2026/00998-01', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
@@ -279,15 +285,15 @@
         doneItem('老化前绝缘的机械性能试验', 'mech', 'auto', { phased: true }),
         doneItem('XLPE绝缘的热延伸试验', 'hext', 'auto', { phased: true }),
       ] },
-    { id: 's82a', code: 'SC2026/00982-01', name: '低烟无卤阻燃聚烯烃护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
+    { id: 's82a', code: 'SC2026/00982-01', name: '低烟无卤阻燃聚烯烃护套电力电缆', status: 'done', overdueDone: true, cable: true, client: '国网杭州供电公司',
       tests: [
-        doneItem('导体直流电阻', 'dcr', 'ocr', { phased: true }),
-        doneItem('XLPE绝缘的收缩试验', 'shr', 'auto', { phased: true }),
+        overdueDoneItem('导体直流电阻', 'dcr', 'ocr', { phased: true }),
+        overdueDoneItem('XLPE绝缘的收缩试验', 'shr', 'auto', { phased: true }),
       ] },
-    { id: 's82b', code: 'SC2026/00982-02', name: '低烟无卤阻燃聚烯烃护套电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
+    { id: 's82b', code: 'SC2026/00982-02', name: '低烟无卤阻燃聚烯烃护套电力电缆', status: 'done', overdueDone: true, cable: true, client: '国网杭州供电公司',
       tests: [
-        doneItem('老化前绝缘的机械性能试验', 'mech', 'auto', { phased: true }),
-        doneItem('非金属护套老化前的机械性能试验', 'mech', 'auto'),
+        overdueDoneItem('老化前绝缘的机械性能试验', 'mech', 'auto', { phased: true }),
+        overdueDoneItem('非金属护套老化前的机械性能试验', 'mech', 'auto'),
       ] },
     { id: 's75a', code: 'SC2026/00975-01', name: '交联聚乙烯绝缘电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
@@ -314,19 +320,19 @@
       tests: [
         doneItem('导体直流电阻', 'dcr', 'ocr', { phased: true }),
       ] },
-    { id: 's91a', code: 'SC2026/00991-01', name: '8.7/10kV-1芯 电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
+    { id: 's91a', code: 'SC2026/00991-01', name: '8.7/10kV-1芯 电力电缆', status: 'done', overdueDone: true, cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
-        doneItem('XLPE绝缘的热延伸试验', 'hext', 'auto', { overdueTag: 'overdue_done' }),
+        overdueDoneItem('XLPE绝缘的热延伸试验', 'hext', 'auto'),
       ] },
     { id: 'srod-done', code: 'SC2026/00490-01', name: '绝缘操作杆', status: 'done', cable: false, client: '国网浙江省电力有限公司',
       tests: [
-        { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodAcFields,
+        { id: 'rod-ac', name: '绝缘操作杆 - 交流耐压试验', device: 'rodhv', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodAcFields,
           doneVals: { bzz: '45', syz: '45', sj: '1', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' } },
-        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodAppearanceFields,
+        { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', device: 'tmk', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodAppearanceFields,
           doneVals: { wg: '无缺陷', yxjccd: '1.0', beizhu: '', jl: '合格' } },
-        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodBendDynamicFields,
+        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodBendDynamicFields,
           doneVals: { syc: '1', bzz: '1', syz: '93', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' } },
-        { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodBendStaticFields,
+        { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodBendStaticFields,
           doneVals: { syc: '1', bzz: '100', syz: '108', sj: '1', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' } },
       ] },
   ];
