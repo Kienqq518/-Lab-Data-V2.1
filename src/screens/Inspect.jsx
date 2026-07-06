@@ -309,13 +309,10 @@ import { MOCK as M } from '../mock.js';
               const info = testCardInfo(t);
               const usable = cameFrom === 'device' && deviceUsable(t);
               return (
-                <div key={i} style={{ position: 'relative' }}>
-                  <TestItemCard name={t.name} device={info.deviceText} method={info.method} methods={info.methods}
-                    status={t.status}
-                    style={usable ? { border: '1.5px solid var(--brand-action)', boxShadow: '0 0 0 2px rgba(37,99,235,0.14)' } : undefined}
-                    onClick={() => onCollect({ sample: cur, device: dev, item: itemCtx, method: t.method || (dev && dev.method), status: t.status, flow: t.flow, stationId })} />
-                  {usable && <span style={{ position: 'absolute', top: -8, right: 12, fontSize: 10, fontWeight: 600, color: 'var(--white)', background: 'var(--brand-action)', padding: '1px 7px', borderRadius: 'var(--radius-pill)' }}>可用该设备</span>}
-                </div>
+                <TestItemCard key={i} name={t.name} device={info.deviceText} method={info.method} methods={info.methods}
+                  status={t.status} highlighted={usable}
+                  style={usable ? { border: '1.5px solid var(--brand-action)', boxShadow: '0 0 0 2px rgba(37,99,235,0.14)' } : undefined}
+                  onClick={() => onCollect({ sample: cur, device: dev, item: itemCtx, method: t.method || (dev && dev.method), status: t.status, flow: t.flow, stationId })} />
               );
             }) : (
               <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>无匹配试验项</div>
