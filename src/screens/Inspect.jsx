@@ -229,7 +229,7 @@ import { MOCK as M } from '../mock.js';
                 return (
                   <TestItemCard key={i} name={t.name} device={dev ? dev.name : ''} method={t.method || (dev && dev.method)}
                     status={t.status} upload={t.upload}
-                    onClick={() => onCollect({ sample: cur, device: dev, item: itemCtx, method: t.method || (dev && dev.method), status: t.status, flow: t.flow })} />
+                    onClick={() => onCollect({ sample: cur, device: dev, item: itemCtx, method: t.method || (dev && dev.method), status: t.status, flow: t.flow, stationId })} />
                 );
               }) : (
                 <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>无匹配试验项</div>
@@ -270,7 +270,7 @@ import { MOCK as M } from '../mock.js';
               return (
                 <TestItemCard key={i} name={t.name} device={dev ? dev.name : ''} method={t.method}
                   status={t.status} upload={t.upload}
-                  onClick={() => onCollect({ sample, device: dev, item: itemCtx, method: t.method, status: t.status, flow: t.flow })} />
+                  onClick={() => onCollect({ sample, device: dev, item: itemCtx, method: t.method, status: t.status, flow: t.flow, stationId })} />
               );
             })}
           </div>
