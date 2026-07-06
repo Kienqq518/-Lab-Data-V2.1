@@ -18,9 +18,10 @@ function stableHash(seed) {
   return Math.abs(hash);
 }
 
-export function resolveEnvMock(seed) {
+export function resolveEnvMock(seed, options = {}) {
   const hash = stableHash(seed);
-  const isGuardEnv = hash % 2 === 0;
+  // 设备直连（auto）统一走安全管家；其余按试验项稳定随机选用两种模式
+  const isGuardEnv = options.forceGuard ? true : hash % 2 === 0;
   const node = GUARD_NODE_POOL[hash % GUARD_NODE_POOL.length];
   return {
     isGuardEnv,

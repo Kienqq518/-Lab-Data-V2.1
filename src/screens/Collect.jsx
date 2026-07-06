@@ -98,8 +98,8 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     const [phase, setPhase] = React.useState(ctx.status === 'done' ? 'done' : 'idle'); // idle|filled|uploading|done
     const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
     const envMock = React.useMemo(
-      () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`),
-      [ctx.sample?.code, ctx.item?.name],
+      () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`, { forceGuard: method === 'auto' }),
+      [ctx.sample?.code, ctx.item?.name, method],
     );
     const [activeTime, setActiveTime] = React.useState(0);
     const [scenes, setScenes] = React.useState({});

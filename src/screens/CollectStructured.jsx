@@ -94,9 +94,10 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const [deviceError, setDeviceError] = React.useState('');
   const [editCells, setEditCells] = React.useState({}); // 拍照识别：{ [cellKey]: true } 表示已解锁可编辑
   const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
+  const itemMethod = ctx.method || ctx.item?.method;
   const envMock = React.useMemo(
-    () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`),
-    [ctx.sample?.code, ctx.item?.name],
+    () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`, { forceGuard: itemMethod === 'auto' }),
+    [ctx.sample?.code, ctx.item?.name, itemMethod],
   );
 
   const flow = demoFlow ? DEMO_FLOWS[demoFlow] : (ctx.flow || ctx.item?.flow || DEMO_FLOWS.normal);

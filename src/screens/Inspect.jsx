@@ -36,6 +36,24 @@ import { MOCK as M } from '../mock.js';
     }
     function openSample(s) { setSample(s); setView('sample'); }
 
+    // 试验项卡展示信息：复合试验项（含子项）汇总多台设备与多种采集方式
+    function testCardInfo(t) {
+      if (Array.isArray(t.subs) && t.subs.length) {
+        const methods = [];
+        const names = [];
+        t.subs.forEach((sub) => {
+          const m = sub.method || sub.device?.method;
+          if (m && !methods.includes(m)) methods.push(m);
+          const nm = sub.device?.name;
+          if (nm && !names.includes(nm)) names.push(nm);
+        });
+        return { methods, method: methods[0] || 'auto', deviceText: names.join('、') };
+      }
+      const dev = M.devices.find((d) => d.id === t.device);
+      const method = t.method || (dev && dev.method) || 'auto';
+      return { methods: [method], method, deviceText: dev ? dev.name : '' };
+    }
+
     // 某设备涉及的委托任务（任务下属样品含该设备的试验项）
     function tasksForDevice(dev) {
       if (!dev) return [];
@@ -226,9 +244,10 @@ import { MOCK as M } from '../mock.js';
                 const dev = M.devices.find((d) => d.id === t.device);
                 const tpl = dev ? (dev.items.find((x) => x.name === t.name) || {}).tpl : undefined;
                 const itemCtx = { ...t, tpl };
+                const info = testCardInfo(t);
                 return (
-                  <TestItemCard key={i} name={t.name} device={dev ? dev.name : ''} method={t.method || (dev && dev.method)}
-                    status={t.status} upload={t.upload}
+                  <TestItemCard key={i} name={t.name} device={info.deviceText} method={info.method} methods={info.methods}
+                    status={t.status}
                     onClick={() => onCollect({ sample: cur, device: dev, item: itemCtx, method: t.method || (dev && dev.method), status: t.status, flow: t.flow, stationId })} />
                 );
               }) : (
@@ -267,9 +286,10 @@ import { MOCK as M } from '../mock.js';
               const dev = M.devices.find((d) => d.id === t.device);
               const tpl = dev ? (dev.items.find((x) => x.name === t.name) || {}).tpl : undefined;
               const itemCtx = { ...t, tpl };
+              const info = testCardInfo(t);
               return (
-                <TestItemCard key={i} name={t.name} device={dev ? dev.name : ''} method={t.method}
-                  status={t.status} upload={t.upload}
+                <TestItemCard key={i} name={t.name} device={info.deviceText} method={info.method} methods={info.methods}
+                  status={t.status}
                   onClick={() => onCollect({ sample, device: dev, item: itemCtx, method: t.method, status: t.status, flow: t.flow, stationId })} />
               );
             })}
