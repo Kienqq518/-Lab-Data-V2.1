@@ -1,7 +1,8 @@
 import React from 'react';
-import { AppBar, Button, Card, CollectBadge, FieldRow, SearchBar } from '../design-system.js';
+import { AppBar, Button, Card, CollectBadge, FieldRow } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import { EnvInfoSection, resolveEnvMock } from './collect-env.jsx';
+import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 
 /* 轻量 LIMS 试验项 L4：参数平铺展示，结论由检测员手工录入 */
 
@@ -12,15 +13,6 @@ const DEMO_FLOWS = {
   returned: { node: '试验检测', returned: true, returnReason: '交流耐压试验值与标称值偏差较大，请复测后重新上传', returnedFrom: '数据审核', by: '张伟', role: '数据审核', at: '06-25 14:30' },
   locked: { node: '组内审核' },
 };
-const STATION_OPTIONS = [
-  { value: 'zy', label: '电缆制样工位' },
-  { value: 'sz', label: '水煮试验工位' },
-  { value: 'ny', label: '耐压工位' },
-  { value: 'ld', label: '雷电冲击工位' },
-  { value: 'rs', label: '电缆燃烧工位' },
-  { value: 'by', label: '变压器工位' },
-  { value: 'none', label: '未绑定工位' },
-];
 
 function CollectLite({ ctx, onBack, onDone }) {
   const fields = ctx.item?.fields || [];
@@ -204,124 +196,6 @@ function CollectLite({ ctx, onBack, onDone }) {
         />
       )}
     </div>
-  );
-}
-
-function DeviceSwitchDrawer({ devices, currentId, onSelect, onClose }) {
-  const [q, setQ] = React.useState('');
-  const [station, setStation] = React.useState(null);
-  const ql = q.trim().toLowerCase();
-  const stationKey = (d) => (d.station ? d.station : 'none');
-  const stationCounts = React.useMemo(() => devices.reduce((acc, d) => {
-    const key = stationKey(d);
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {}), [devices]);
-  const visibleDevices = React.useMemo(() => {
-    const list = devices.filter((d) => {
-      if (station && stationKey(d) !== station) return false;
-      if (ql && !(d.name || '').toLowerCase().includes(ql) && !(d.code || '').toLowerCase().includes(ql) && !(d.model || '').toLowerCase().includes(ql)) return false;
-      return true;
-    });
-    return list.slice().sort((a, b) => {
-      if (a.visual && !b.visual) return -1;
-      if (!a.visual && b.visual) return 1;
-      return (a.name || '').localeCompare(b.name || '');
-    });
-  }, [devices, station, ql]);
-
-  return (
-    <React.Fragment>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, zIndex: 150, background: 'rgba(15,23,42,0.28)' }} />
-      <div style={{
-        position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 151, background: 'var(--white)',
-        borderRadius: '18px 18px 0 0', boxShadow: '0 -14px 34px rgba(15,23,42,0.20)', overflow: 'hidden',
-        maxHeight: '84%', display: 'flex', flexDirection: 'column',
-      }}>
-        <div style={{ width: 44, height: 4, borderRadius: 'var(--radius-pill)', background: 'var(--border-strong,#cfd6e2)', margin: '10px auto 6px' }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 16px 12px', borderBottom: '1px solid var(--divider)' }}>
-          <div>
-            <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>切换设备</div>
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 3 }}>按工位筛选实验室设备，含目测（不连接设备）</div>
-          </div>
-        </div>
-        <div style={{ padding: '0 16px 10px' }}>
-          <SearchBar value={q} onChange={(e) => setQ(e.target.value)} placeholder="请输入设备名称、编号搜索" />
-        </div>
-        <div style={{ padding: '0 16px 10px', borderBottom: '1px solid var(--divider)' }}>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)', marginBottom: 8 }}>选择工位</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => setStation(null)} style={{
-              minHeight: 32, padding: '5px 10px', borderRadius: 'var(--radius-pill)',
-              border: '1px solid ' + (!station ? 'var(--brand-action)' : 'var(--border-default)'),
-              background: !station ? 'var(--surface-selected)' : 'var(--white)', color: !station ? 'var(--brand-action)' : 'var(--text-title)',
-              fontSize: 'var(--fs-sm)', fontWeight: !station ? 700 : 600, cursor: 'pointer',
-            }}>全部</button>
-            {STATION_OPTIONS.map((item) => {
-              const on = station === item.value;
-              const count = stationCounts[item.value] || 0;
-              if (!count && item.value !== 'none') return null;
-              return (
-                <button key={item.value} onClick={() => setStation(on ? null : item.value)} style={{
-                  minHeight: 32, padding: '5px 10px', borderRadius: 'var(--radius-pill)',
-                  border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                  background: on ? 'var(--surface-selected)' : 'var(--white)', color: on ? 'var(--brand-action)' : 'var(--text-title)',
-                  fontSize: 'var(--fs-sm)', fontWeight: on ? 700 : 600, cursor: 'pointer',
-                }}>
-                  {item.label}
-                  <span style={{ marginLeft: 4, fontSize: 10, color: on ? 'var(--brand-action)' : 'var(--text-tertiary,#9aa3b2)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {visibleDevices.length ? visibleDevices.map((device) => {
-            const on = device.id === currentId;
-            return (
-              <button key={device.id} onClick={() => onSelect(device)} style={{
-                width: '100%', minHeight: 58, padding: '10px 12px', borderRadius: 'var(--radius-md)',
-                border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                background: on ? 'var(--surface-selected)' : 'var(--white)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, textAlign: 'left',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <RadioMark on={on} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 650, color: on ? 'var(--brand-action)' : 'var(--text-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
-                      <CollectBadge method={device.method} size="sm" />
-                    </div>
-                    <div style={{ marginTop: 3, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {device.visual ? '不连接设备 · 检测员现场目测判定' : `${device.code} · ${device.model}`}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          }) : (
-            <div style={{ minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
-              当前筛选下暂无可选设备
-            </div>
-          )}
-        </div>
-        <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--divider)' }}>
-          <Button variant="secondary" block onClick={onClose}>取消</Button>
-        </div>
-      </div>
-    </React.Fragment>
-  );
-}
-
-function RadioMark({ on }) {
-  return (
-    <span style={{
-      width: 20, height: 20, flex: 'none', borderRadius: '50%',
-      border: '2px solid ' + (on ? 'var(--brand-action)' : 'var(--border-strong)'),
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      {on && <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--brand-action)' }} />}
-    </span>
   );
 }
 

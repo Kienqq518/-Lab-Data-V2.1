@@ -5,6 +5,7 @@ import { CollectStructured } from './CollectStructured.jsx';
 import { CollectLite } from './CollectLite.jsx';
 import { isCompositeItem } from './collect-model.js';
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
+import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 
 /* 采集详情（L4）— 基础/设备/环境 + 按「采集方式」自适应的 N 次字段录入 + 汇总 + 上传
    试验次数 N = 样段数量 × 试样数量 × 测试芯数（随 LIMS 任务下发，检测员不可改）。
@@ -683,38 +684,14 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
           </Button>
         </div>
 
-        {/* 串口设备：切换设备底部抽屉 */}
+        {/* 切换设备底部抽屉（统一单选样式） */}
         {devSwitchOpen && (
-          <React.Fragment>
-            <div onClick={() => setDevSwitchOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 150, background: 'rgba(15,23,42,0.45)' }} />
-            <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 151, background: 'var(--white)', borderRadius: '16px 16px 0 0', boxShadow: 'var(--shadow-lg)', maxHeight: '70%', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: '16px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>切换设备</span>
-                <button onClick={() => setDevSwitchOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 20, lineHeight: 1 }}>×</button>
-              </div>
-              <div style={{ padding: '0 16px 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>选择本次采集使用的设备</div>
-              <div style={{ padding: '4px 16px 16px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
-                {itemDevices.map((d) => {
-                  const on = d.id === dev.id;
-                  return (
-                    <button key={d.id} onClick={() => { setDev(d); setDevSwitchOpen(false); }} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
-                      borderRadius: 'var(--radius-md)', border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'), background: on ? 'var(--surface-selected)' : 'var(--white)',
-                    }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-title)' }}>{d.name}</div>
-                        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>编号 {d.code} · 型号 {d.model}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
-                        <CollectBadge method={d.method} size="sm" />
-                        {on && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </React.Fragment>
+          <DeviceSwitchDrawer
+            devices={itemDevices}
+            currentId={dev.id}
+            onSelect={(d) => { setDev(d); setDevSwitchOpen(false); }}
+            onClose={() => setDevSwitchOpen(false)}
+          />
         )}
 
         {/* 拍照识别取景页（可拍照 / 选择图片） */}
