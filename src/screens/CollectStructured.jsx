@@ -521,6 +521,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
           pooledDeviceIds={pooledDeviceIds}
           defaultStation={ctx.stationId}
           deviceHasData={deviceHasData}
+          configuredAutoIds={MOCK.deviceCollectConfig[ctx.item?.name] || []}
           onClose={() => setDeviceDrawerOpen(false)}
           onConfirm={confirmDeviceDrawer}
         />
@@ -631,12 +632,14 @@ function SubItemSwitches({ subs, activeSub, summary, onSelect }) {
   );
 }
 
-function DeviceDrawer({ devices, pooledDeviceIds, defaultStation, deviceHasData, onClose, onConfirm }) {
+function DeviceDrawer({ devices, pooledDeviceIds, defaultStation, deviceHasData, configuredAutoIds = [], onClose, onConfirm }) {
   const hasStation = STATION_OPTIONS.some((item) => item.value === defaultStation);
   const [station, setStation] = React.useState(hasStation ? defaultStation : null);
   const [checked, setChecked] = React.useState(() => new Set(pooledDeviceIds));
   const [q, setQ] = React.useState('');
   const ql = q.trim().toLowerCase();
+  // 采集关系过滤：仅对「设备直连(auto)」生效，未在数采「设备采集配置」为本试验项配置采集关系的 auto 设备不可选
+  const notConfigured = (device) => device.method === 'auto' && !configuredAutoIds.includes(device.id);
   const visibleDevices = devices.filter((device) => {
     if (station && (device.station || 'none') !== station) return false;
     if (ql && !((device.name || '').toLowerCase().includes(ql) || (device.code || '').toLowerCase().includes(ql))) return false;
@@ -648,7 +651,7 @@ function DeviceDrawer({ devices, pooledDeviceIds, defaultStation, deviceHasData,
   }, {}), [devices]);
 
   function toggle(device) {
-    if (deviceHasData(device.id)) return;
+    if (deviceHasData(device.id) || notConfigured(device)) return;
     setChecked((prev) => {
       const next = new Set(prev);
       if (next.has(device.id)) next.delete(device.id); else next.add(device.id);
@@ -706,22 +709,26 @@ function DeviceDrawer({ devices, pooledDeviceIds, defaultStation, deviceHasData,
           {visibleDevices.length ? visibleDevices.map((device) => {
             const on = checked.has(device.id);
             const locked = deviceHasData(device.id);
+            const blocked = notConfigured(device);
+            const disabled = locked || blocked;
             return (
-              <button key={device.id} onClick={() => toggle(device)} disabled={locked} style={{
+              <button key={device.id} onClick={() => toggle(device)} disabled={disabled} style={{
                 width: '100%', minHeight: 58, padding: '10px 12px', borderRadius: 'var(--radius-md)',
                 border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                background: on ? 'var(--surface-selected)' : 'var(--white)', cursor: locked ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, textAlign: 'left', opacity: locked ? 0.75 : 1,
+                background: on ? 'var(--surface-selected)' : blocked ? 'var(--surface-sunken,#f5f6f8)' : 'var(--white)', cursor: disabled ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, textAlign: 'left', opacity: disabled ? 0.6 : 1,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <CheckBox on={on} />
+                  {blocked
+                    ? <span style={{ width: 20, height: 20, flex: 'none', borderRadius: 6, border: '1.5px dashed var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-placeholder)' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18 M6 6l12 12"/></svg></span>
+                    : <CheckBox on={on} />}
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                       <span style={{ fontSize: 'var(--fs-base)', fontWeight: 650, color: on ? 'var(--brand-action)' : 'var(--text-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
                       <CollectBadge method={device.method} size="sm" />
                     </div>
-                    <div style={{ marginTop: 3, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {device.code} · {device.model}{locked ? ' · 已采数据' : ''}
+                    <div style={{ marginTop: 3, fontSize: 'var(--fs-xs)', color: blocked ? 'var(--status-pending-fg,#97640f)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {blocked ? '未配置采集关系 · 请先在数采「设备采集配置」维护' : `${device.code} · ${device.model}${locked ? ' · 已采数据' : ''}`}
                     </div>
                   </div>
                 </div>
