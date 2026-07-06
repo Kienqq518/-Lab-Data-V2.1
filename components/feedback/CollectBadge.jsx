@@ -8,6 +8,7 @@ const MAP = {
   auto:   { c: 'var(--collect-auto)',   bg: 'var(--collect-auto-bg)',   label: '设备直连' },
   ocr:    { c: 'var(--collect-ocr)',    bg: 'var(--collect-ocr-bg)',    label: '拍照识别' },
   ble:    { c: 'var(--collect-ble)',    bg: 'var(--collect-ble-bg)',    label: '蓝牙同步' },
+  serial: { c: 'var(--collect-serial,#6d4bd1)', bg: 'var(--collect-serial-bg,rgba(109,75,209,0.12))', label: '串口' },
   manual: { c: 'var(--collect-manual)', bg: 'var(--collect-manual-bg)', label: '手工录入' },
 };
 
@@ -17,6 +18,7 @@ function MethodIcon({ method, color, size }) {
     case 'auto':   return <svg {...c}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>;
     case 'ocr':    return <svg {...c}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" /><circle cx="12" cy="13" r="3" /></svg>;
     case 'ble':    return <svg {...c}><path d="m7 7 10 10-5 5V2l5 5L7 17" /></svg>;
+    case 'serial': return <svg {...c}><path d="M9 2v6" /><path d="M15 2v6" /><path d="M6 8h12v4a6 6 0 0 1-12 0Z" /><path d="M12 18v4" /></svg>;
     default:       return <svg {...c}><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>;
   }
 }

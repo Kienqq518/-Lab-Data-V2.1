@@ -35,26 +35,43 @@
       { key: 'dckd', label: '搭盖宽度', unit: 'mm' },
       { key: 'jl',   label: '结论',     unit: '' },
     ],
-    mech: [  // 机械性能（设备直连）
+    mech: [  // 机械性能（设备直连，红外/局放等沿用）
       { key: 'kzqd', label: '抗张强度', unit: 'MPa' },
       { key: 'dlcl', label: '断裂伸长率', unit: '%' },
       { key: 'jl',   label: '结论',     unit: '' },
     ],
-    heatext: [ // 热延伸（设备直连）
-      { key: 'fhcl', label: '负荷伸长率', unit: '%' },
-      { key: 'lqbx', label: '冷却永久变形', unit: '%' },
-      { key: 'jl',   label: '结论',     unit: '' },
+    mechIns: [ // 老化前绝缘的机械性能试验（原始测量）
+      { key: 'sykd', label: '试样宽度',        unit: 'mm' },
+      { key: 'syhd', label: '试样厚度',        unit: 'mm' },
+      { key: 'fmax', label: '断裂时最大力Fm',  unit: 'N' },
+      { key: 'lu',   label: '断裂时标距长度Lu', unit: 'mm' },
+      { key: 'jl',   label: '结论',            unit: '' },
     ],
-    shrink: [ // 收缩（设备直连）
-      { key: 'sssl', label: '收缩率', unit: '%' },
-      { key: 'jl',   label: '结论',   unit: '' },
+    mechSheath: [ // 非金属护套老化前的机械性能试验（原始测量）
+      { key: 'l0',   label: '试片原始标距L0',   unit: 'mm' },
+      { key: 'spkd', label: '试片宽度',        unit: 'mm' },
+      { key: 'syhd', label: '试样厚度测量值',   unit: 'mm' },
+      { key: 'fmax', label: '断裂时最大力',     unit: 'N' },
+      { key: 'lu',   label: '断裂时标距长度Lu', unit: 'mm' },
+      { key: 'jl',   label: '结论',            unit: '' },
     ],
-    density: [ // 密度测量（电子天平 · 外部程序代采，逐试样）
+    heatext: [ // XLPE绝缘的热延伸试验（原始测量）
+      { key: 'l0',   label: '施加负荷前标距L0',       unit: 'mm' },
+      { key: 'spkd', label: '试片宽度',              unit: 'mm' },
+      { key: 'sphd', label: '试片厚度测量值',         unit: 'mm' },
+      { key: 'l1',   label: '施加负荷15min后标距L1',  unit: 'mm' },
+      { key: 'l2',   label: '冷却后标距L2',          unit: 'mm' },
+      { key: 'jl',   label: '结论',                 unit: '' },
+    ],
+    shrink: [ // XLPE绝缘的收缩试验（原始测量）
+      { key: 'l1', label: '处理后标志间长L1', unit: 'mm' },
+      { key: 'jl', label: '结论',           unit: '' },
+    ],
+    density: [ // 密度测量（电子天平 · 串口采集，逐试样）
       { key: 'jysd', label: '浸渍液温度',       unit: '℃' },
       { key: 'msa',  label: '空气中质量 m(S,A)', unit: 'g' },
       { key: 'msil', label: '浸渍液中表观质量 m(S,IL)', unit: 'g' },
       { key: 'myd',  label: '试样密度 ρ(S)',     unit: 'g/cm³' },
-      { key: 'pjz',  label: '平均密度',          unit: 'g/cm³' },
       { key: 'jl',   label: '结论',              unit: '' },
     ],
   };
@@ -68,7 +85,7 @@
     { id: 'cal',  name: '蓝牙数显卡尺', code: 'BT-CAL-01', model: 'IP54-150', station: 'zy', method: 'ble',
       items: [ { name: '结构尺寸检查—非金属护套&钢带铠装', tpl: 'caliper' } ] },
     { id: 'mech', name: '电缆绝缘层机械性能试验机', code: 'YM-WRH-03', model: 'YWL-5D', station: 'zy', method: 'auto',
-      items: [ { name: '老化前绝缘的机械性能试验', tpl: 'mech' }, { name: '非金属护套老化前的机械性能试验', tpl: 'mech' } ] },
+      items: [ { name: '老化前绝缘的机械性能试验', tpl: 'mechIns' }, { name: '非金属护套老化前的机械性能试验', tpl: 'mechSheath' } ] },
     { id: 'hext', name: '电缆热延伸全自动智能检测平台', code: 'YM-WRH-04', model: 'YWH-6D', station: 'zy', method: 'auto',
       items: [ { name: 'XLPE绝缘的热延伸试验', tpl: 'heatext' } ] },
     { id: 'shr',  name: '电缆热收缩试验智能检测平台', code: 'YM-WRH-05', model: 'YRSC-200I', station: 'zy', method: 'auto',
@@ -83,9 +100,30 @@
       items: [ { name: '局部放电检测', tpl: 'mech' } ] },
     { id: 'cal2', name: '蓝牙数显卡尺（便携）', code: 'BT-CAL-09', model: 'IP54-150', station: null, method: 'ble',
       items: [ { name: '尺寸测量', tpl: 'caliper' } ] },
-    // ===== 外部程序采集设备（电子天平，平板代采写库，App 不在此采集）=====
-    { id: 'bal',  name: '电子天平', code: 'YH-04', model: 'HZK-FA110', station: null, method: 'external',
+    // ===== 串口采集设备（电子天平，工业平板串口采集程序代采写库，App 端仅展示 + 异常兜底手输）=====
+    { id: 'bal',  name: '电子天平', code: 'YH-04', model: 'HZK-FA110', station: null, method: 'serial',
       items: [ { name: '密度测量', tpl: 'density', count: 3 } ] },
+    { id: 'bal2', name: '精密电子天平', code: 'YH-07', model: 'FA2004B', station: null, method: 'serial',
+      items: [ { name: '密度测量', tpl: 'density', count: 3 } ] },
+  ];
+
+  // 「结构尺寸检查—非金属护套&钢带铠装」拆分为两个试验子项（均为蓝牙数显卡尺）
+  const caliperDevice = { id: 'cal', name: '数显卡尺', code: 'YBKC-02', model: '(0~300)mm/0.01mm', station: 'zy', method: 'ble' };
+  const sheathArmorSubs = [
+    { id: 'sheath-metal-armor', name: '金属铠装', method: 'ble', phased: false, device: caliperDevice,
+      candidateDevices: [caliperDevice],
+      fields: [
+        { key: 'kzkd', label: '铠装宽度', unit: 'mm', required: true },
+        { key: 'gdjx', label: '钢带间隙宽度', unit: 'mm', required: true, multi: 5 },
+      ] },
+    { id: 'sheath-thickness', name: '非金属护套厚度测量', method: 'ble', phased: false, device: caliperDevice,
+      candidateDevices: [caliperDevice],
+      fields: [
+        { key: 'whcz', label: '外护套标称厚度t_os', unit: 'mm', required: true },
+        { key: 'bffs', label: '金属屏蔽层包金属带方式', required: true, options: ['双层金属带间隙搭包', '单层金属带间隙搭包', '双层金属带重叠包'] },
+        { key: 'jdbs', label: '金属带包数', unit: '根', required: true },
+        { key: 'tsmin', label: '外护套各测点厚度t_(s,min)', unit: 'mm', required: true, multi: 6 },
+      ] },
   ];
 
   // 样品 —— 8.7/10kV-3芯 电力电缆（Web 试验填报同款），含 7 个试验项
@@ -121,7 +159,7 @@
                 { key: 'tk5', label: '铜带宽度5', unit: 'mm', required: true }, { key: 'dg5', label: '搭盖宽度5', unit: 'mm', required: true },
               ] },
           ] },
-        { id: 'struct-sheath-armor', name: '结构尺寸检查—非金属护套&钢带铠装', device: 'cal', method: 'ble',  status: 'testing', upload: 'pending', phased: false },
+        { id: 'struct-sheath-armor', name: '结构尺寸检查—非金属护套&钢带铠装', device: 'cal', method: 'ble',  status: 'testing', upload: 'pending', phased: false, subs: sheathArmorSubs },
         { id: 'mech-insulation-before-aging', name: '老化前绝缘的机械性能试验', device: 'mech', method: 'auto', status: 'pending' },
         { id: 'mech-sheath-before-aging', name: '非金属护套老化前的机械性能试验', device: 'mech', method: 'auto', status: 'pending' },
         { id: 'xlpe-heat-extension', name: 'XLPE绝缘的热延伸试验', device: 'hext', method: 'auto', status: 'pending' },
@@ -130,7 +168,7 @@
     { id: 's1b', code: 'SC2026/01001-02', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'testing', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
         { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'testing', phased: true },
-        { name: '结构尺寸检查—非金属护套&钢带铠装', device: 'cal', method: 'ble', status: 'pending', phased: false },
+        { name: '结构尺寸检查—非金属护套&钢带铠装', device: 'cal', method: 'ble', status: 'pending', phased: false, subs: sheathArmorSubs },
         { name: 'XLPE绝缘的收缩试验', device: 'shr', method: 'auto', status: 'pending' },
       ] },
     { id: 's1c', code: 'SC2026/01001-03', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'pending', cable: true, client: '杭州数蚕智能科技有限公司',
@@ -138,24 +176,42 @@
         { name: '老化前绝缘的机械性能试验', device: 'mech', method: 'auto', status: 'pending' },
         { name: '非金属护套老化前的机械性能试验', device: 'mech', method: 'auto', status: 'pending' },
       ] },
+    // 检测中任务补一个「已完成」样品，使 SC2026/01001 同时含 未检测/检测中/已完成 三种样品状态
+    { id: 's1d', code: 'SC2026/01001-04', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
+      tests: [
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'done', upload: 'done' },
+        { name: 'XLPE绝缘的收缩试验', device: 'shr', method: 'auto', status: 'done', upload: 'done' },
+      ] },
+    // 未检测任务 SC2026/01002：样品与试验项全部未检测（含多样品用于「按样品」主从演示）
     { id: 's2', code: 'SC2026/01002-01', name: '8.7/10kV-3芯 电力电缆', status: 'pending', cable: true, client: '国网杭州供电公司',
       tests: [
         { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'pending' },
-        { name: '结构尺寸检查—非金属护套&钢带铠装', device: 'cal', method: 'ble', status: 'pending' },
+        { name: '结构尺寸检查—非金属护套&钢带铠装', device: 'cal', method: 'ble', status: 'pending', phased: false, subs: sheathArmorSubs },
         { name: 'XLPE绝缘的收缩试验', device: 'shr', method: 'auto', status: 'pending' },
+      ] },
+    // 同任务另一样品仅分到部分试验项（其余分给其他检测员，本端不展示）
+    { id: 's2b', code: 'SC2026/01002-02', name: '8.7/10kV-3芯 电力电缆', status: 'pending', cable: true, client: '国网杭州供电公司',
+      tests: [
+        { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'pending' },
       ] },
     { id: 's3', code: 'SC2026/00998-03', name: '0.6/1kV-4芯 电力电缆', status: 'done', cable: true, client: '国网杭州供电公司',
       tests: [
         { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'done', upload: 'done', flow: { node: '试验检测', returned: true, returnReason: '第 2 次正向电阻读数与历史数据偏差较大，疑似拍照识别误差，请复测后重新上传', returnedFrom: '数据审核', by: '张伟', role: '数据审核', at: '06-25 14:30' } },
         { name: '老化前绝缘的机械性能试验', device: 'mech', method: 'auto', status: 'done', upload: 'done' },
       ] },
+    // 已逾期任务 SC2026/00990：样品含 已逾期 + 已完成 混合
     { id: 's4', code: 'SC2026/00990-01', name: '8.7/10kV-1芯 电力电缆', status: 'overdue', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
         { name: 'XLPE绝缘的热延伸试验', device: 'hext', method: 'auto', status: 'pending' },
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'testing', phased: true },
+      ] },
+    { id: 's4b', code: 'SC2026/00990-02', name: '8.7/10kV-1芯 电力电缆', status: 'done', cable: true, client: '杭州数蚕智能科技有限公司',
+      tests: [
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'done', upload: 'done' },
       ] },
     { id: 's5', code: 'SC2026/01630101', name: '实壁类塑料电缆导管 带承口 PVC-C', status: 'testing', cable: false, client: '国网杭州供电公司',
       tests: [
-        { name: '密度测量', device: 'bal', method: 'external', status: 'pending', count: 3 },
+        { name: '密度测量', device: 'bal', method: 'serial', status: 'pending', count: 3 },
       ] },
   ];
 
@@ -184,7 +240,21 @@
     'XLPE绝缘的收缩试验': { phased: true, perPhase: 1 },
   };
 
-  const methodLabel = { auto: '设备直连', ocr: '拍照识别', ble: '蓝牙卡尺', manual: '手工录入', external: '外部程序' };
-  // 仅蓝牙允许手输
-  const allowManualInput = (method) => method === 'ble';
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, offDevices: devices.filter((d) => !d.station) };
+  const methodLabel = { auto: '设备直连', ocr: '拍照识别', ble: '蓝牙卡尺', serial: '串口', manual: '手工录入', external: '外部程序' };
+  // 蓝牙/串口允许手输（串口异常兜底）
+  const allowManualInput = (method) => method === 'ble' || method === 'serial';
+
+  // 数采 Web「设备采集配置」：试验项（采集表名）→ 已配置采集关系的「设备直连(auto)」设备 id 列表。
+  // 仅对 auto 设备生效；未配置的 auto 设备在切换设备抽屉中置灰不可选（无采集关系无法回传数据）。
+  const deviceCollectConfig = {
+    '结构尺寸检查—导体&绝缘厚度&金属屏蔽': ['thk', 'mech'],
+    '结构尺寸检查—非金属护套&钢带铠装': [],
+    '老化前绝缘的机械性能试验': ['mech'],
+    '非金属护套老化前的机械性能试验': ['mech'],
+    'XLPE绝缘的热延伸试验': ['hext'],
+    'XLPE绝缘的收缩试验': ['shr'],
+    '导体直流电阻': [],
+    '密度测量': [],
+  };
+
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, offDevices: devices.filter((d) => !d.station) };

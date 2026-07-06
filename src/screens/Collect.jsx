@@ -22,8 +22,10 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     bcz: 4.50, csz: 4.52, jsz: 4.50, hctk: 2.48, gdkd: 40.0, dckd: 20.0,
     kzqd: 18.6, dlcl: 480, fhcl: 85, lqbx: 12, sssl: 3.2,
     jysd: 23, msa: 12.42, msil: 5.18, myd: 1.42,
+    sykd: 10.0, syhd: 1.00, fmax: 250, lu: 75, l0: 25, spkd: 10.0, sphd: 1.00, l1: 100, l2: 26,
   };
-  const DEC = { zx: 2, fx: 2, pj: 2, wb: 2, jg: 4, cd: 3, scdz: 4, dz20: 3, bcz: 2, csz: 2, jsz: 2, hctk: 2, gdkd: 1, dckd: 1, kzqd: 1, sssl: 1, jggd: 1, sywd: 1, dlcl: 0, fhcl: 0, lqbx: 0, jysd: 0, msa: 2, msil: 2, myd: 3 };
+  const DEC = { zx: 2, fx: 2, pj: 2, wb: 2, jg: 4, cd: 3, scdz: 4, dz20: 3, bcz: 2, csz: 2, jsz: 2, hctk: 2, gdkd: 1, dckd: 1, kzqd: 1, sssl: 1, jggd: 1, sywd: 1, dlcl: 0, fhcl: 0, lqbx: 0, jysd: 0, msa: 2, msil: 2, myd: 3,
+    sykd: 2, syhd: 3, fmax: 1, lu: 1, l0: 1, spkd: 2, sphd: 3, l1: 1, l2: 1 };
   function valAt(key, i) {
     if (key === 'sywd') return BASE.sywd.toFixed(1);            // 试验温度恒定
     if (key === 'jysd') return BASE.jysd.toFixed(0);            // 浸渍液温度恒定
@@ -56,8 +58,11 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     if (isCompositeItem(ctx.item)) {
       return <CollectStructured ctx={ctx} onBack={onBack} onDone={onDone} />;
     }
-    const dev = ctx.device || {};
-    const method = ctx.method || dev.method || 'auto';
+    const [dev, setDev] = React.useState(ctx.device || {});
+    const [devSwitchOpen, setDevSwitchOpen] = React.useState(false);
+    const method = ctx.method || (ctx.device && ctx.device.method) || 'auto';
+    // 串口设备（电子天平）可切换的候选设备
+    const serialDevices = React.useMemo(() => M.devices.filter((d) => d.method === 'serial'), []);
     const tpl = ctx.item?.tpl ? M.fieldTpl[ctx.item.tpl] : M.fieldTpl.size;
     const rule = (M.testRules && M.testRules[ctx.item?.name]) || {};
 
@@ -67,7 +72,8 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
     // 图采是否就绪：采集方式=图采 且 识别规则验证状态=已通过
     const ocrReady = method === 'ocr' && ctx.ocrVerified !== false;
     const isExternal = method === 'external';
-    const editable = method === 'ble' || method === 'manual' || method === 'ocr' || isExternal;
+    const isSerial = method === 'serial';
+    const editable = method === 'ble' || method === 'manual' || method === 'ocr' || isExternal || isSerial;
     const phasedCfg = (ctx.item && ctx.item.phased != null) ? ctx.item.phased : (rule.phased != null ? rule.phased : null);
     const isCable = phasedCfg != null ? !!phasedCfg : !!ctx.sample?.cable; // 是否含相别
     // 试验次数模型：含相别 → 红/黄/绿 三相，每相 perPhase 次；无相别 → 共 count 次
@@ -176,6 +182,15 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
         setTimes(ts); setSummary({ status: 'done', vals: computeSummary(ts) }); setBusy(null);
       }, 900);
     }
+    // 串口（电子天平）：工业平板串口程序已采写库，本端一键读取整批展示，直接为已上传状态（不在本端采集/上传）
+    function collectSerial() {
+      setBusy('all');
+      setTimeout(() => {
+        const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
+        setTimes(ts); setSummary({ status: 'done', vals: computeSummary(ts) });
+        setBusy(null); setPhase('filled');
+      }, 1000);
+    }
     function manualTime(i) {
       setTimes((prev) => { const next = prev.slice(); const v = {}; measureFields.forEach((f) => { v[f.key] = ''; }); next[i] = { status: 'filled', vals: v, uploaded: false }; return next; });
     }
@@ -261,6 +276,7 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
       ble: '蓝牙数显卡尺 · 逐条连接同步读数，也可手动输入',
       manual: '手工逐条录入数据',
       external: '电子天平由工业平板采集程序代采写库 · App 不在此采集，可手输补录或查看已采数据',
+      serial: '电子天平经工业平板串口采集程序采集写库 · 本端点「一键采集」读取已采数据；串口异常时可在下方手动录入兜底',
     }[method];
 
     const verifiedField = measureFields[measureFields.length - 1];
@@ -305,12 +321,25 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* 设备信息 */}
-          <Section title="设备信息" icon="cpu" extra={<CollectBadge method={method} size="sm" />}>
+          <Section title="设备信息" icon="cpu" extra={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CollectBadge method={method} size="sm" />
+              {isSerial && !flowLocked && (
+                <Button size="sm" variant="secondary" onClick={() => setDevSwitchOpen(true)} style={{ height: 28, padding: '0 12px' }}>切换设备</Button>
+              )}
+            </div>
+          }>
             <Grid items={[['检测设备', dev.name || '—'], ['设备编号', dev.code || '—'], ['设备型号', dev.model || '—']]} />
             {isExternal && (
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--collect-ble,#0a8a96)', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4 M12 18v4 M2 12h4 M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>
                 外部程序采集（电子天平）· 数据由工业平板代采写库
+              </div>
+            )}
+            {isSerial && (
+              <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--collect-serial,#6d4bd1)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M6 8h12v4a6 6 0 0 1-12 0Z"/><path d="M12 18v4"/></svg>
+                串口采集（电子天平）· 工业平板串口程序代采写库，本端仅展示，异常时可手输兜底
               </div>
             )}
           </Section>
@@ -335,14 +364,15 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
 
           <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '0 2px', lineHeight: 1.5 }}>{methodHint}</div>
 
-          {/* 设备直采 / 外部程序：整批操作入口（不在每张卡上） */}
-          {(method === 'auto' || isExternal) && !allFilled && !flowLocked && (
+          {/* 设备直采 / 串口 / 外部程序：整批操作入口（不在每张卡上） */}
+          {(method === 'auto' || isSerial || isExternal) && !allFilled && !flowLocked && (
             <Card padding="18px">
               <div style={{ textAlign: 'center' }}>
                 {busy === 'all'
-                  ? <div style={{ color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{isExternal ? '正在拉取平板程序已采数据…' : '正在从数据库整批取值…'}</div></div>
+                  ? <div style={{ color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{isExternal ? '正在拉取平板程序已采数据…' : isSerial ? '正在从数采数据库读取已采数据…' : '正在从数据库整批取值…'}</div></div>
                   : <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                       {method === 'auto' && <Button size="lg" onClick={captureAll}>⚡ 一键采集（{N} 次）</Button>}
+                      {isSerial && <Button size="lg" onClick={collectSerial}>⚡ 一键采集（{N} 次）</Button>}
                       {isExternal && <><Button size="lg" variant="secondary" onClick={pullExternal}>查看已采数据</Button></>}
                     </div>}
               </div>
@@ -418,8 +448,8 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
                             )}
                             {measureFields.map((f) => (
                               <FieldRow key={f.key} label={f.label} unit={f.unit} required
-                                value={t.vals[f.key] || ''} readOnly={flowLocked || (ocrField ? locked : !editable)}
-                                onChange={(e) => setField(i, f.key, e.target.value)} />
+                value={t.vals[f.key] || ''} readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
+                onChange={(e) => setField(i, f.key, e.target.value)} />
                             ))}
                             {method === 'auto' && (
                               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--collect-auto,#1d54c4)', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -505,12 +535,12 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
                             {measureFields.map((f) => (
                               <FieldRow key={f.key} label={f.label} unit={f.unit} required
                                 value={t.vals[f.key] || ''} placeholder="待采集"
-                                readOnly={flowLocked || (ocrField ? locked : !editable)}
+                                readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
                                 onChange={(e) => setField(i, f.key, e.target.value)} />
                             ))}
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
-                              <span>{method === 'ocr' ? (ocrReady ? '字段待采集 · 点击右上「拍照识别」拍摄读数屏自动填入' : '该试验项识别规则未通过验证 · 请在上方字段手动输入') : method === 'ble' ? '字段待采集 · 点击右上「连接采集」同步，或直接在上方手动输入' : method === 'auto' ? '字段待采集 · 等待上方「一键采集」整批回填' : isExternal ? '字段待采集 · 等待平板程序数据，或在上方手输补录' : '字段待采集 · 请在上方手动输入'}</span>
+                              <span>{method === 'ocr' ? (ocrReady ? '字段待采集 · 点击右上「拍照识别」拍摄读数屏自动填入' : '该试验项识别规则未通过验证 · 请在上方字段手动输入') : method === 'ble' ? '字段待采集 · 点击右上「连接采集」同步，或直接在上方手动输入' : method === 'auto' ? '字段待采集 · 等待上方「一键采集」整批回填' : isExternal ? '字段待采集 · 等待平板程序数据，或在上方手输补录' : isSerial ? '字段待采集 · 点上方「一键采集」读取已采数据，或在下方手动录入兜底' : '字段待采集 · 请在上方手动输入'}</span>
                             </div>
                           </div>}
                     </React.Fragment>
@@ -581,6 +611,40 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
               : N > 1 ? `上传已完成（${pendingUpload}/${N}）` : '上传'}
           </Button>
         </div>
+
+        {/* 串口设备：切换设备底部抽屉 */}
+        {devSwitchOpen && (
+          <React.Fragment>
+            <div onClick={() => setDevSwitchOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 150, background: 'rgba(15,23,42,0.45)' }} />
+            <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 151, background: 'var(--white)', borderRadius: '16px 16px 0 0', boxShadow: 'var(--shadow-lg)', maxHeight: '70%', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '16px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>切换设备</span>
+                <button onClick={() => setDevSwitchOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 20, lineHeight: 1 }}>×</button>
+              </div>
+              <div style={{ padding: '0 16px 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>电子天平经串口连接采集，选择本次采集使用的设备</div>
+              <div style={{ padding: '4px 16px 16px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
+                {serialDevices.map((d) => {
+                  const on = d.id === dev.id;
+                  return (
+                    <button key={d.id} onClick={() => { setDev(d); setDevSwitchOpen(false); }} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
+                      borderRadius: 'var(--radius-md)', border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'), background: on ? 'var(--surface-selected)' : 'var(--white)',
+                    }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-title)' }}>{d.name}</div>
+                        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>编号 {d.code} · 型号 {d.model}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
+                        <CollectBadge method={d.method} size="sm" />
+                        {on && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </React.Fragment>
+        )}
 
         {/* 拍照识别取景页（可拍照 / 选择图片） */}
         {shootIdx !== null && (

@@ -22,9 +22,9 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
    试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
    每条采集记录保存采集时使用的设备，避免后续换设备影响历史读数。 */
 
-const FIXED = { jg: '紧压绞合圆形' };
-const BASE = { gs: 8, zj: 8.00, tdhd: 10.00, tk1: 13, dg1: 14, tk2: 15, dg2: 14, tk3: 13, dg3: 14, tk4: 15, dg4: 14, tk5: 13, dg5: 14 };
-const DEC = { gs: 0, zj: 2, tdhd: 2, tk1: 1, dg1: 1, tk2: 1, dg2: 1, tk3: 1, dg3: 1, tk4: 1, dg4: 1, tk5: 1, dg5: 1 };
+const FIXED = { jg: '紧压绞合圆形', bffs: '双层金属带间隙搭包', whcz: '2.7' };
+const BASE = { gs: 8, zj: 8.00, tdhd: 10.00, tk1: 13, dg1: 14, tk2: 15, dg2: 14, tk3: 13, dg3: 14, tk4: 15, dg4: 14, tk5: 13, dg5: 14, kzkd: 3.0, jdbs: 2 };
+const DEC = { gs: 0, zj: 2, tdhd: 2, tk1: 1, dg1: 1, tk2: 1, dg2: 1, tk3: 1, dg3: 1, tk4: 1, dg4: 1, tk5: 1, dg5: 1, kzkd: 1, jdbs: 0 };
 const DEMO_FLOWS = {
   normal: { node: '试验检测' },
   returned: { node: '试验检测', returned: true, returnReason: '绝缘厚度测量第 2 个点位与标准限值偏差较大，请复核后重新上传', returnedFrom: '数据审核', by: '张伟', role: '数据审核', at: '07-04 10:20' },
@@ -793,7 +793,7 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
                 return <MultiField key={field.key} field={field} values={cell.vals[field.key]} readOnly={!canEdit}
                   onChange={(idx, val) => onChange(cell.key, field, val, idx)} />;
               }
-              if (field.key === 'jg') {
+              if (field.options || field.key === 'jg') {
                 return <SelectField key={field.key} field={field} value={cell.vals[field.key] || ''} readOnly={!canEdit}
                   onChange={(value) => onChange(cell.key, field, value)} />;
               }
