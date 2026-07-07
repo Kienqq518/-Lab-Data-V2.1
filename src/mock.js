@@ -262,7 +262,7 @@
         { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'done', upload: 'done' },
         { name: 'XLPE绝缘的收缩试验', device: 'shr', method: 'auto', status: 'done', upload: 'done' },
       ] },
-    // 未检测任务 SC2026/01002：样品与试验项全部未检测（含多样品用于「按样品」主从演示）
+    // 未检测任务 SC2026/01002：样品与试验项全部未检测（含多样品用于主从演示）
     { id: 's2', code: 'SC2026/01002-01', name: '8.7/10kV-3芯 电力电缆', status: 'pending', cable: true, client: '国网杭州供电公司',
       tests: [
         { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'pending' },
@@ -530,4 +530,29 @@
     };
   }
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx };
+  /** 试验项是否由指定设备承担（含复合子项与设备能力表） */
+  function testUsesDevice(test, dev) {
+    if (!dev || !test) return false;
+    const deviceId = typeof dev === 'string' ? dev : dev.id;
+    if (test.device === deviceId) return true;
+    if (Array.isArray(test.subs) && test.subs.some((sub) => sub.device?.id === deviceId)) return true;
+    const deviceObj = typeof dev === 'string' ? devices.find((d) => d.id === deviceId) : dev;
+    return (deviceObj?.items || []).some((it) => it.name === test.name);
+  }
+
+  /** 样品是否含指定设备可做的试验项 */
+  function sampleUsesDevice(sample, dev) {
+    return (sample?.tests || []).some((t) => testUsesDevice(t, dev));
+  }
+
+  /** 任务下仅保留含该设备试验项的样品（按设备 L3 展示过滤） */
+  function taskSamplesForDevice(task, dev) {
+    return taskSamples(task).filter((s) => sampleUsesDevice(s, dev));
+  }
+
+  /** 样品下仅保留指定设备可做的试验项（按设备 L3 展示过滤） */
+  function sampleTestsForDevice(sample, dev) {
+    return (sample?.tests || []).filter((t) => testUsesDevice(t, dev));
+  }
+
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice };
