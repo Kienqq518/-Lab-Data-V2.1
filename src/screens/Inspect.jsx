@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppBar, Card, CollectBadge, DeviceCard, SearchBar, SegmentedSwitch, StationBar, StatusTag, TaskCard, TestItemCard } from '../design-system.js';
+import { AppBar, Card, CollectBadge, DeviceCard, SearchBar, SegmentedSwitch, StatusTag, TaskCard, TestItemCard } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 
 /* 检测模块 — 工位上下文 + 按设备/按任务双模式 + 钻取试验项
@@ -115,27 +115,60 @@ import { MOCK as M } from '../mock.js';
       return M.tasks.filter((t) => M.taskSamplesForDevice(t, dev).length > 0);
     }
 
+    /** 按设备模式：分段切换同行右上角的内联工位选择 */
+    function renderInlineStation() {
+      const label = station ? station.name : '未选择工位';
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0, justifyContent: 'flex-end' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}>
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span style={{
+            fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-title)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 108,
+          }} title={label}>{label}</span>
+          <button type="button" onClick={onSwitchStation} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 2, flex: 'none',
+            border: 'none', background: 'transparent', cursor: 'pointer',
+            color: 'var(--brand-action)', fontSize: 'var(--fs-sm)', fontWeight: 600, padding: 0,
+          }}>
+            切换
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          {station && onClearStation && (
+            <button type="button" onClick={onClearStation} aria-label="清除工位" style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none',
+              width: 20, height: 20, border: 'none', borderRadius: 'var(--radius-sm)',
+              background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6 M9 9l6 6"/></svg>
+            </button>
+          )}
+        </div>
+      );
+    }
+
     // ===== L1（按设备）/ L2（按任务）：列表入口 =====
     if (view === 'list') {
       return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
           <AppBar title="检测" onBack={onBack} />
           <div style={{ flex: 1, minHeight: 0, padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, gap: 12 }}>
               <SegmentedSwitch value={mode} onChange={switchMode}
                 options={[{ value: 'device', label: '按设备' }, { value: 'task', label: '按任务' }]} />
-              <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-                {mode === 'device' ? `${fDevices.length} 台设备` : `${fTasks.length} 个任务`}
-              </span>
+              {mode === 'device'
+                ? renderInlineStation()
+                : (
+                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', flexShrink: 0 }}>
+                    {fTasks.length} 个任务
+                  </span>
+                )}
             </div>
 
             <SearchBar value={q} onChange={(e) => setQ(e.target.value)}
               placeholder={mode === 'device' ? '请输入设备名称、编号、型号搜索' : '请输入任务编号、样品名称、委托单位搜索'}
               onScan={() => setScanOpen(true)} />
-
-            {mode === 'device' && (
-              <StationBar station={station ? station.name : '未选择工位'} onSwitch={onSwitchStation} onClear={station ? onClearStation : undefined} />
-            )}
 
             {mode === 'device' && station && (
               <div ref={offPanelRef} style={{ flexShrink: 0, borderRadius: 'var(--radius-md)', border: '1px dashed var(--collect-ble)', background: offOpen ? 'var(--white)' : 'var(--collect-ble-bg)' }}>
