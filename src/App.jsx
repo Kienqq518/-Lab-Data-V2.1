@@ -9,6 +9,21 @@ import { Login } from './screens/Login.jsx';
 import { Mine } from './screens/Mine.jsx';
 import { Notifications } from './screens/Notifications.jsx';
 import { TaskFocusScreen } from './screens/TaskFocusScreen.jsx';
+import { AnnotationProvider, AnnotationToggle } from './annotation/index.js';
+
+/** 解析当前批注页面 key（随 tab / overlay 变化） */
+function resolveAnnotationPageKey({ authed, tab, overlay, focusKind }) {
+  if (!authed) return 'login';
+  if (overlay === 'notify') return 'notify';
+  if (overlay === 'focus' && focusKind === 'returned') return 'focus-returned';
+  if (overlay === 'focus') return `focus-${focusKind || 'pending'}`;
+  if (overlay === 'collect') return 'collect';
+  if (overlay === 'done') return 'done';
+  if (tab === 'home') return 'home';
+  if (tab === 'inspect') return 'inspect-l1';
+  if (tab === 'me') return 'me';
+  return 'home';
+}
 
 function StatusBar({ onBrand }) {
   return (
@@ -172,10 +187,14 @@ function App() {
     );
   }
 
+  const annotationPageKey = resolveAnnotationPageKey({ authed, tab, overlay, focusKind });
+
   return (
+    <AnnotationProvider pageKey={annotationPageKey}>
     <main className="app-viewport">
       <div className="ds-stage" style={{ transform: `scale(${scale})` }}>
         <div className="ds-frame">
+          <AnnotationToggle />
           <StatusBar onBrand={!authed} />
           <div className="screen">
             <div className="app-layer fade" key={(authed ? 'a' : 'l') + tab}>{body}</div>
@@ -231,6 +250,7 @@ function App() {
         </div>
       </div>
     </main>
+    </AnnotationProvider>
   );
 }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppBar, Button } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
+import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 消息通知中心（首页铃铛 / 我的·消息通知 共用）
    L1 通知列表（退回复测 / 任务下发 / 逾期预警）→ L2 通知详情
@@ -78,7 +79,9 @@ function Notifications({ onBack, onGoReturned }) {
           </div>
 
           {active.type === 'returned' && (
-            <Button block size="lg" onClick={() => onGoReturned?.(active)}>去处理</Button>
+            <AnnotatedWrapper id="returnedGoProcess" layout="block" placement="top">
+              <Button block size="lg" onClick={() => onGoReturned?.(active)}>去处理</Button>
+            </AnnotatedWrapper>
           )}
         </div>
       </div>

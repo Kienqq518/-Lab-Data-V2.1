@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, SectionTitle, SegmentedSwitch, StatCard } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
+import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 首页（检测员）— 公司名 / 工作概览 / 快捷入口 / 个人检测统计 */
 
@@ -15,12 +16,14 @@ import { MOCK as M } from '../mock.js';
       <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-section)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <SectionTitle style={{ marginBottom: 0 }}>杭州数蚕智能科技有限公司</SectionTitle>
-          <button type="button" onClick={onOpenNotify} aria-label="消息通知" style={{ position: 'relative', width: 40, height: 40, flex: 'none', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-title)' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-            {unread > 0 && (
-              <span style={{ position: 'absolute', top: 4, right: 4, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: 'var(--danger,#e23b3b)', color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: '16px', textAlign: 'center' }}>{unread}</span>
-            )}
-          </button>
+          <AnnotatedWrapper id="notifyBell" layout="inline" placement="bottom">
+            <button type="button" onClick={onOpenNotify} aria-label="消息通知" style={{ position: 'relative', width: 40, height: 40, flex: 'none', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-title)' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              {unread > 0 && (
+                <span style={{ position: 'absolute', top: 4, right: 4, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: 'var(--danger,#e23b3b)', color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: '16px', textAlign: 'center' }}>{unread}</span>
+              )}
+            </button>
+          </AnnotatedWrapper>
         </div>
 
         {/* 品牌条（压扁） */}
@@ -38,7 +41,9 @@ import { MOCK as M } from '../mock.js';
         <div>
           <SectionTitle style={{ marginBottom: 12 }}>快捷入口</SectionTitle>
           <div style={{ display: 'flex', gap: 12 }}>
-            <Quick label="待检任务" count={pendingCount} tone="pending" icon="inbox" onClick={() => onQuick?.('pending')} />
+            <AnnotatedWrapper id="quickPending" layout="flex" placement="bottom">
+              <Quick label="待检任务" count={pendingCount} tone="pending" icon="inbox" onClick={() => onQuick?.('pending')} />
+            </AnnotatedWrapper>
             <Quick label="检测中任务" count={testingCount} tone="testing" icon="loader" onClick={() => onQuick?.('testing')} />
             <Quick label="已检任务" count={doneCount} tone="done" icon="check" onClick={() => onQuick?.('done')} />
           </div>
@@ -57,12 +62,16 @@ import { MOCK as M } from '../mock.js';
   function WorkOverview({ metrics, onFocus }) {
     return (
       <div>
-        <SectionTitle style={{ marginBottom: 6 }}>今日工作概览</SectionTitle>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-          优先处理逾期与退回项，关注 3 日内到期任务
-        </div>
+        <AnnotatedWrapper id="workOverview" layout="block" placement="bottom">
+          <SectionTitle style={{ marginBottom: 6 }}>今日工作概览</SectionTitle>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
+            优先处理逾期与退回项，关注 3 日内到期任务
+          </div>
+        </AnnotatedWrapper>
         <div style={{ display: 'flex', gap: 12 }}>
-          <StatCard label="逾期任务" value={metrics.overdueTasks} tone="overdue" onClick={() => onFocus?.('overdue')} />
+          <AnnotatedWrapper id="overdueCard" layout="flex" placement="bottom">
+            <StatCard label="逾期任务" value={metrics.overdueTasks} tone="overdue" onClick={() => onFocus?.('overdue')} />
+          </AnnotatedWrapper>
           <StatCard label="3日内到期" value={metrics.dueSoonTasks} tone="pending" onClick={() => onFocus?.('dueSoon')} />
           <StatCard label="退回复测" value={metrics.returnedTests} tone="brand" onClick={() => onFocus?.('returned')} />
         </div>

@@ -4,6 +4,7 @@ import { MOCK as M } from '../mock.js';
 import { SCAN_SAMPLE_ID, ScanSampleOverlay, resolveTaskForSample } from './ScanSampleOverlay.jsx';
 import { TaskListSort } from './TaskListSort.jsx';
 import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx';
+import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index.js';
 
 /* 检测模块 — 工位上下文 + 按设备/按任务双模式 + 钻取试验项
    · 按设备：L1 设备列表 → L2 委托任务 → L3 样品(左)+试验项(右)，仅展示该设备相关样品与试验项
@@ -163,8 +164,10 @@ import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx
           <AppBar title="检测" onBack={onBack} />
           <div style={{ flex: 1, minHeight: 0, padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, gap: 12 }}>
-              <SegmentedSwitch value={mode} onChange={switchMode}
-                options={[{ value: 'device', label: '按设备' }, { value: 'task', label: '按任务' }]} />
+              <AnnotatedWrapper id="modeSwitch" layout="inline" placement="bottom">
+                <SegmentedSwitch value={mode} onChange={switchMode}
+                  options={[{ value: 'device', label: '按设备' }, { value: 'task', label: '按任务' }]} />
+              </AnnotatedWrapper>
               {mode === 'device'
                 ? renderInlineStation()
                 : (
@@ -222,10 +225,12 @@ import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx
                       </div>
                     ))
                 : (fTasks.length
-                    ? fTasks.map((t) => (
-                        <TaskCard key={t.code} code={t.code} sampleName={t.sampleName} client={t.client}
-                          time={t.time} status={t.status} detectDeadline={t.detectDeadline}
-                          onClick={() => openTask(t, 'task')} />
+                    ? fTasks.map((t, i) => (
+                        <AnnotatedWrapper key={t.code} id={i === 0 ? 'taskList' : undefined} layout="block" placement="right">
+                          <TaskCard code={t.code} sampleName={t.sampleName} client={t.client}
+                            time={t.time} status={t.status} detectDeadline={t.detectDeadline}
+                            onClick={() => openTask(t, 'task')} />
+                        </AnnotatedWrapper>
                       ))
                     : (
                       <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -293,6 +298,7 @@ import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx
       || (cur.code && cur.code.toLowerCase().includes(ql2)));
 
     return (
+      <AnnotationPageKeyProvider pageKey="inspect-l3">
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="试验检测" onBack={() => setView(taskBackView)} />
         <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -369,11 +375,18 @@ import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
             {its.length ? its.map((t, i) => {
               const info = testCardInfo(t);
-              return (
-                <TestItemCard key={i} name={t.name} device={info.deviceText} method={info.method} methods={info.methods}
+              const card = (
+                <TestItemCard name={t.name} device={info.deviceText} method={info.method} methods={info.methods}
                   status={t.status} overdueTag={t.overdueTag}
                   onClick={() => onCollect(M.buildCollectCtx({ sample: cur, item: t, task, stationId }))}
                 />
+              );
+              return i === 0 ? (
+                <AnnotatedWrapper key={i} id="testItemCard" layout="block" placement="left">
+                  {card}
+                </AnnotatedWrapper>
+              ) : (
+                <React.Fragment key={i}>{card}</React.Fragment>
               );
             }) : (
               <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
@@ -393,6 +406,7 @@ import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx
           )}
         </div>
       </div>
+      </AnnotationPageKeyProvider>
     );
   }
 

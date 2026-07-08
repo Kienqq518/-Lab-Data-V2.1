@@ -3,6 +3,7 @@ import { AppBar, Card, SearchBar, StatusTag, TaskCard, TestItemCard } from '../d
 import { MOCK as M } from '../mock.js';
 import { SCAN_SAMPLE_ID, ScanSampleOverlay, resolveTaskForSample } from './ScanSampleOverlay.jsx';
 import { TaskListSort, TASK_SORT_OPTIONS, RETURNED_SORT_OPTIONS } from './TaskListSort.jsx';
+import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 配置驱动的任务聚焦页（方案 A）：L2 任务列表 → L3 样品+试验项 → L4 采集
    一套组件覆盖：待检 / 检测中 / 逾期 / 临期 / 退回复测。
@@ -232,9 +233,11 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
           onScan={cfg.scan ? () => setScanOpen(true) : undefined} />
         <TaskListSort value={taskSort} onChange={setTaskSort} options={sortOptions} />
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
-          {filtered.length ? filtered.map((t) => (
-            <TaskCard key={t.code} code={t.code} sampleName={t.sampleName} client={t.client}
-              time={t.time} status={kind === 'returned' ? 'testing' : t.status} detectDeadline={t.detectDeadline} onClick={() => openTask(t)} />
+          {filtered.length ? filtered.map((t, i) => (
+            <AnnotatedWrapper key={t.code} id={kind === 'returned' && i === 0 ? 'taskCard' : undefined} layout="block" placement="right">
+              <TaskCard code={t.code} sampleName={t.sampleName} client={t.client}
+                time={t.time} status={kind === 'returned' ? 'testing' : t.status} detectDeadline={t.detectDeadline} onClick={() => openTask(t)} />
+            </AnnotatedWrapper>
           )) : (
             <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <div style={{ fontSize: 'var(--fs-base)' }}>{cfg.emptyText || `暂无${cfg.title}`}</div>
