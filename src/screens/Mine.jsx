@@ -2,6 +2,7 @@ import React from 'react';
 import { AppBar, Button, Card, Input, SectionTitle } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import logoMark from '../../assets/logo-mark.png';
+import { getApiBaseUrl, setApiBaseUrl } from '../api-config.js';
 
 /* 我的 — 用户信息 / 消息通知 / 设置 / 帮助与反馈
    采用「我的」Tab 内部页面栈：main → 各详情页（AppBar 返回）。 */
@@ -25,7 +26,7 @@ import logoMark from '../../assets/logo-mark.png';
     if (view === 'profile') screen = <ProfilePage user={U} onBack={() => setView('main')} onToast={showToast} />;
     else if (view === 'settings') screen = <SettingsPage onBack={() => setView('main')} onPrivacy={() => setView('privacy')} onAbout={() => setView('about')} onToast={showToast} />;
     else if (view === 'privacy') screen = <PrivacyPage onBack={() => setView('settings')} />;
-    else if (view === 'about') screen = <AboutPage onBack={() => setView('settings')} onPrivacy={() => setView('privacy')} onService={() => setView('service')} />;
+    else if (view === 'about') screen = <AboutPage onBack={() => setView('settings')} onService={() => setView('service')} />;
     else if (view === 'service') screen = <ServiceAgreementPage onBack={() => setView('about')} />;
     else if (view === 'password') screen = <PasswordPage onBack={() => setView('main')} onToast={showToast} />;
     else if (view === 'help') screen = <HelpPage onBack={() => setView('main')} onFeedback={() => setView('feedback')} onToast={showToast} />;
@@ -123,10 +124,46 @@ import logoMark from '../../assets/logo-mark.png';
     const [push, setPush] = React.useState(true);
     const [overdue, setOverdue] = React.useState(true);
     const [returned, setReturned] = React.useState(true);
+    const [apiBaseUrl, setApiBaseUrlInput] = React.useState(() => getApiBaseUrl());
+
+    /** 保存数采 Web 端连接地址 */
+    function saveApiBaseUrl() {
+      const value = apiBaseUrl.trim();
+      if (!value) {
+        onToast('请输入数采 Web 端地址');
+        return;
+      }
+      try {
+        const saved = setApiBaseUrl(value);
+        setApiBaseUrlInput(saved);
+        onToast('连接地址已保存');
+      } catch {
+        onToast('地址格式无效，请检查后重试');
+      }
+    }
+
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="设置" onBack={onBack} />
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <SectionTitle style={{ marginBottom: 10 }}>IP</SectionTitle>
+            <Card>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Input
+                  value={apiBaseUrl}
+                  onChange={(e) => setApiBaseUrlInput(e.target.value)}
+                  placeholder="请设置"
+                  style={{ flex: 1 }}
+                />
+                <Button variant="secondary" onClick={saveApiBaseUrl} style={{ flex: 'none', minWidth: 72, height: 44, padding: '0 16px' }}>设置</Button>
+              </div>
+              <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                配置当前连接的数采 Web 端环境，例如 http://8.149.129.137:8086/api/
+              </div>
+            </Card>
+          </div>
+
           <div>
             <SectionTitle style={{ marginBottom: 10 }}>消息推送</SectionTitle>
             <Card padding="0">
@@ -183,7 +220,7 @@ import logoMark from '../../assets/logo-mark.png';
   }
 
   /* ===== 关于我们 ===== */
-  function AboutPage({ onBack, onPrivacy, onService }) {
+  function AboutPage({ onBack, onService }) {
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="关于我们" onBack={onBack} />
@@ -198,11 +235,7 @@ import logoMark from '../../assets/logo-mark.png';
           </div>
         </div>
         <div style={{ padding: 'var(--gap-page)', paddingBottom: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button type="button" onClick={onService} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--brand-action)' }}>服务协议</button>
-            <span style={{ width: 1, height: 12, background: 'var(--divider)' }} />
-            <button type="button" onClick={onPrivacy} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--brand-action)' }}>个人信息保护政策</button>
-          </div>
+          <button type="button" onClick={onService} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--brand-action)' }}>服务协议</button>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>浙ICP备18037361号-3</div>
         </div>
       </div>
