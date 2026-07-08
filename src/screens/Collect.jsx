@@ -6,6 +6,7 @@ import { CollectLite } from './CollectLite.jsx';
 import { isCompositeItem, isFlowReturned, resolveInspectStampState } from './collect-model.js';
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
+import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 采集详情（L4）— 基础/设备/环境 + 按「采集方式」自适应的 N 次字段录入 + 汇总 + 上传
    试验次数 N = 样段数量 × 试样数量 × 测试芯数（随 LIMS 任务下发，检测员不可改）。
@@ -378,8 +379,11 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
         <AppBar title="检测任务" onBack={onBack} />
         {inspectState && <Stamp state={inspectState} />}
         <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
+          <AnnotatedWrapper id="flowBanner" layout="block">
           <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
+          </AnnotatedWrapper>
           {/* 基础信息（滚动时固定） */}
+          <AnnotatedWrapper id="basicInfo" layout="block">
           <Section title="基础信息" icon="info">
             <Grid items={[
               ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
@@ -394,11 +398,13 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
             )}
             <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>试验次数随任务下发 · 不可修改</div>
           </Section>
+          </AnnotatedWrapper>
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* 设备信息 */}
+          <AnnotatedWrapper id="deviceInfo" layout="block">
           <Section title="设备信息" icon="cpu" extra={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CollectBadge method={method} size="sm" />
@@ -421,7 +427,9 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
               </div>
             )}
           </Section>
+          </AnnotatedWrapper>
 
+          <AnnotatedWrapper id="envInfo" layout="block">
           <EnvInfoSection
             envMock={envMock}
             env={env}
@@ -429,8 +437,10 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
             Section={Section}
             Grid={Grid}
           />
+          </AnnotatedWrapper>
 
           {/* 试验数据 —— N 组并列字段卡 */}
+          <AnnotatedWrapper id="testDataEntry" layout="block">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '2px 2px -2px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
@@ -680,6 +690,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
           )}
 
           <div style={{ height: 8 }} />
+          </AnnotatedWrapper>
         </div>
 
         {/* 演示：一键切换 LIMS 流程节点状态（仅用于 demo 对比） */}
@@ -695,6 +706,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
         </div>
 
         {/* 底部操作 */}
+        <AnnotatedWrapper id="uploadActions" layout="block">
         <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
           {!flowLocked && <Button variant="secondary" block onClick={reset}>重置全部</Button>}
           <Button block
@@ -706,6 +718,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
               : N > 1 ? `上传已完成（${pendingUpload}/${N}）` : '上传'}
           </Button>
         </div>
+        </AnnotatedWrapper>
 
         {/* 切换设备底部抽屉（统一单选样式） */}
         {devSwitchOpen && (

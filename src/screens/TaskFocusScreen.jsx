@@ -3,7 +3,7 @@ import { AppBar, Card, SearchBar, StatusTag, TaskCard, TestItemCard } from '../d
 import { MOCK as M } from '../mock.js';
 import { SCAN_SAMPLE_ID, ScanSampleOverlay, resolveTaskForSample } from './ScanSampleOverlay.jsx';
 import { TaskListSort, TASK_SORT_OPTIONS, RETURNED_SORT_OPTIONS } from './TaskListSort.jsx';
-import { AnnotatedWrapper } from '../annotation/index.js';
+import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index.js';
 
 /* 配置驱动的任务聚焦页（方案 A）：L2 任务列表 → L3 样品+试验项 → L4 采集
    一套组件覆盖：待检 / 检测中 / 逾期 / 临期 / 退回复测。
@@ -157,9 +157,11 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
       || (cur.code && cur.code.toLowerCase().includes(ql2)));
 
     return (
+      <AnnotationPageKeyProvider pageKey="focus-l3">
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="试验检测" onBack={backFromTask} />
         <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <AnnotatedWrapper id="focusL3Summary" layout="block">
           <Card padding="12px 16px">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
               <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>{task.code}</span>
@@ -176,10 +178,14 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
               )}
             </div>
           </Card>
+          </AnnotatedWrapper>
+          <AnnotatedWrapper id="focusL2Search" layout="block">
           <SearchBar value={q} onChange={(e) => setQ(e.target.value)} placeholder="请输入试样编号、试验项进行搜索" />
+          </AnnotatedWrapper>
         </div>
 
         <div style={{ display: 'flex', flex: 1, minHeight: 0, padding: 'var(--gap-page)', gap: 12 }}>
+          <AnnotatedWrapper id="focusL3Samples" layout="inline">
           <div style={{ width: 160, flex: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
             {tSamples.length ? tSamples.map((s, i) => {
               const on = cur && s.id === cur.id;
@@ -205,7 +211,9 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
               <div style={{ padding: '24px 8px', textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>暂无相关样品</div>
             )}
           </div>
+          </AnnotatedWrapper>
 
+          <AnnotatedWrapper id="focusL3Tests" layout="flex">
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
             {its.length ? its.map((t, i) => {
               const info = M.testCardInfo(t);
@@ -218,23 +226,31 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
               <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>无匹配试验项</div>
             )}
           </div>
+          </AnnotatedWrapper>
         </div>
       </div>
+      </AnnotationPageKeyProvider>
     );
   }
 
   // ===== L2：任务列表 =====
+  const focusPageKey = `focus-${kind}`;
   return (
+    <AnnotationPageKeyProvider pageKey={focusPageKey}>
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
       <AppBar title={cfg.title} onBack={onBack} />
       <div style={{ flex: 1, minHeight: 0, padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <AnnotatedWrapper id="focusL2Search" layout="block">
         <SearchBar value={q} onChange={(e) => setQ(e.target.value)}
           placeholder="请输入任务编号、样品名称、委托单位搜索"
           onScan={cfg.scan ? () => setScanOpen(true) : undefined} />
+        </AnnotatedWrapper>
+        <AnnotatedWrapper id="focusL2Sort" layout="block">
         <TaskListSort value={taskSort} onChange={setTaskSort} options={sortOptions} />
+        </AnnotatedWrapper>
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
           {filtered.length ? filtered.map((t, i) => (
-            <AnnotatedWrapper key={t.code} id={kind === 'returned' && i === 0 ? 'taskCard' : undefined} layout="block" placement="right">
+            <AnnotatedWrapper key={t.code} id={i === 0 ? (kind === 'returned' ? 'taskCard' : 'focusL2List') : undefined} layout="block" placement="right">
               <TaskCard code={t.code} sampleName={t.sampleName} client={t.client}
                 time={t.time} status={kind === 'returned' ? 'testing' : t.status} detectDeadline={t.detectDeadline} onClick={() => openTask(t)} />
             </AnnotatedWrapper>
@@ -248,6 +264,7 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
 
       {scanOpen && <ScanSampleOverlay onCancel={() => setScanOpen(false)} onScan={doScan} />}
     </div>
+    </AnnotationPageKeyProvider>
   );
 }
 

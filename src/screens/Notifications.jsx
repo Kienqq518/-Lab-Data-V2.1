@@ -50,6 +50,7 @@ function Notifications({ onBack, onGoReturned }) {
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="通知详情" onBack={() => setActiveId(null)} />
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <AnnotatedWrapper id="notifyDetail" layout="block">
           <div style={{ background: 'var(--white)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
               <TypeIcon type={active.type} />
@@ -77,6 +78,7 @@ function Notifications({ onBack, onGoReturned }) {
               {active.desc}
             </div>
           </div>
+          </AnnotatedWrapper>
 
           {active.type === 'returned' && (
             <AnnotatedWrapper id="returnedGoProcess" layout="block" placement="top">
@@ -93,8 +95,11 @@ function Notifications({ onBack, onGoReturned }) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
       <AppBar title="消息通知" onBack={onBack}
         right={unread > 0 ? (
+          <AnnotatedWrapper id="markAllRead" layout="inline">
           <button type="button" onClick={markAllRead} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--brand-action)', fontSize: 'var(--fs-sm)', fontWeight: 600, whiteSpace: 'nowrap', padding: '0 4px' }}>全部已读</button>
+          </AnnotatedWrapper>
         ) : null} />
+      <AnnotatedWrapper id="notifyList" layout="block">
       <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
         {items.length ? items.map((n) => {
           const meta = TYPE_META[n.type] || TYPE_META.assigned;
@@ -122,6 +127,7 @@ function Notifications({ onBack, onGoReturned }) {
           </div>
         )}
       </div>
+      </AnnotatedWrapper>
     </div>
   );
 }

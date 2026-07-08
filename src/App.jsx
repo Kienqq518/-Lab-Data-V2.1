@@ -9,7 +9,8 @@ import { Login } from './screens/Login.jsx';
 import { Mine } from './screens/Mine.jsx';
 import { Notifications } from './screens/Notifications.jsx';
 import { TaskFocusScreen } from './screens/TaskFocusScreen.jsx';
-import { AnnotationProvider, AnnotationRail } from './annotation/index.js';
+import { AnnotationProvider, AnnotationSideRails, useAnnotation } from './annotation/index.js';
+import { STAGE_WIDTH_ANNOTATED, STAGE_WIDTH_COLLAPSED } from './annotation/annotation-layout.js';
 
 /** 解析当前批注页面 key（随 tab / overlay 变化） */
 function resolveAnnotationPageKey({ authed, tab, overlay, focusKind }) {
@@ -87,24 +88,31 @@ function StationSheet({ stationId, onSelect, onClear, onClose }) {
   );
 }
 
-function useStageScale() {
-  const [scale, setScale] = React.useState(1);
+/** 舞台缩放容器：随批注模式动态预留双侧轨道宽度 */
+function PrototypeStage({ frameRef, children }) {
+  const { isAnnotationMode } = useAnnotation();
+  const [liveScale, setLiveScale] = React.useState(1);
 
   React.useEffect(() => {
-    /** 预留手机框右侧批注轨道宽度（800 + 300），避免开启批注时溢出视口 */
     const fit = () => {
-      setScale(Math.min(window.innerWidth / 1100, window.innerHeight / 1280));
+      const stageWidth = isAnnotationMode ? STAGE_WIDTH_ANNOTATED : STAGE_WIDTH_COLLAPSED;
+      setLiveScale(Math.min(window.innerWidth / stageWidth, window.innerHeight / 1280));
     };
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
-  }, []);
+  }, [isAnnotationMode]);
 
-  return scale;
+  return (
+    <div className="ds-stage" style={{ transform: `scale(${liveScale})` }}>
+      <AnnotationSideRails frameRef={frameRef}>
+        {children}
+      </AnnotationSideRails>
+    </div>
+  );
 }
 
 function App() {
-  const scale = useStageScale();
   const frameRef = React.useRef(null);
   const [authed, setAuthed] = React.useState(false);
   const [tab, setTab] = React.useState('home');
@@ -194,8 +202,7 @@ function App() {
   return (
     <AnnotationProvider pageKey={annotationPageKey} frameRef={frameRef}>
     <main className="app-viewport">
-      <div className="ds-stage" style={{ transform: `scale(${scale})` }}>
-        <div className="prototype-row">
+      <PrototypeStage frameRef={frameRef}>
         <div className="ds-frame" ref={frameRef}>
           <StatusBar onBrand={!authed} />
           <div className="screen">
@@ -250,9 +257,7 @@ function App() {
             )}
           </div>
         </div>
-        <AnnotationRail />
-        </div>
-      </div>
+      </PrototypeStage>
     </main>
     </AnnotationProvider>
   );

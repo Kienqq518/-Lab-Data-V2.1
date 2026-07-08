@@ -1,14 +1,23 @@
 import { homeAnnotations } from './pages/home.js';
 import { inspectAnnotations } from './pages/inspect.js';
 import { focusAnnotations } from './pages/focus.js';
+import { collectAnnotations } from './pages/collect.js';
+import { notifyAnnotations } from './pages/notify.js';
 
 /** 按页面 key 聚合批注配置 */
 const REGISTRY = {
   home: homeAnnotations,
   'inspect-l1': inspectAnnotations,
+  'inspect-l2-device': inspectAnnotations,
   'inspect-l3': inspectAnnotations,
+  collect: collectAnnotations,
+  notify: notifyAnnotations,
+  'focus-pending': focusAnnotations,
+  'focus-testing': focusAnnotations,
+  'focus-overdue': focusAnnotations,
+  'focus-dueSoon': focusAnnotations,
   'focus-returned': focusAnnotations,
-  notify: focusAnnotations,
+  'focus-l3': focusAnnotations,
 };
 
 /**

@@ -1,0 +1,181 @@
+import React from 'react';
+import { useAnnotation } from './AnnotationContext.jsx';
+import { AnnotationToggle } from './AnnotationToggle.jsx';
+import { AnnotationTooltip } from './AnnotationTooltip.jsx';
+import {
+  RAIL_WIDTH,
+  RAIL_WIDTH_COLLAPSED,
+  splitItemsToSides,
+  spreadNonOverlapping,
+} from './annotation-layout.js';
+
+/**
+ * 单侧批注轨道列
+ */
+function AnnotationRailColumn({ side, showToggle, items, frameRef }) {
+  const { isAnnotationMode, activeAnnotationId } = useAnnotation();
+  const railRef = React.useRef(null);
+  const heightRefs = React.useRef({});
+  const [positions, setPositions] = React.useState([]);
+  const [measurePass, setMeasurePass] = React.useState(0);
+
+  React.useEffect(() => {
+    setMeasurePass(0);
+  }, [items, isAnnotationMode]);
+
+  /** 根据锚点计算初始纵向位置 */
+  const buildRawItems = React.useCallback(() => {
+    const frame = frameRef.current;
+    const rail = railRef.current;
+    if (!frame || !rail || !items.length) return [];
+
+    const frameRect = frame.getBoundingClientRect();
+    const railRect = rail.getBoundingClientRect();
+    const bodyTop = railRect.top + (showToggle ? 52 : 0);
+
+    return items.map((item) => {
+      const anchorRect = item.anchorRect;
+      const top = anchorRect.top - bodyTop;
+      const anchorMidY = anchorRect.top + anchorRect.height / 2 - bodyTop;
+      const connectorLen = side === 'left'
+        ? frameRect.left - railRect.right
+        : frameRect.right - railRect.left;
+
+      return {
+        ...item,
+        top: Math.max(0, top),
+        anchorMidY,
+        connectorLen: Math.max(12, connectorLen + 8),
+      };
+    }).sort((a, b) => a.top - b.top);
+  }, [items, frameRef, showToggle, side]);
+
+  /** 测量高度后重新排布，消除重叠 */
+  React.useLayoutEffect(() => {
+    if (!isAnnotationMode || !items.length) {
+      setPositions([]);
+      return;
+    }
+
+    const raw = buildRawItems();
+    const heightMap = {};
+    raw.forEach((item) => {
+      heightMap[item.id] = heightRefs.current[item.id]?.offsetHeight || 0;
+    });
+
+    setPositions(spreadNonOverlapping(raw, heightMap, 14));
+
+    const needRemeasure = raw.some((item) => !heightMap[item.id]) && measurePass < 4;
+    if (needRemeasure) {
+      requestAnimationFrame(() => setMeasurePass((p) => p + 1));
+    }
+  }, [isAnnotationMode, items, buildRawItems, measurePass]);
+
+  const width = isAnnotationMode ? RAIL_WIDTH : RAIL_WIDTH_COLLAPSED;
+
+  return (
+    <aside
+      ref={railRef}
+      className={`annotation-rail annotation-rail--${side}${isAnnotationMode ? ' annotation-rail--on' : ''}`}
+      style={{ width }}
+    >
+      {showToggle && (
+        <div className="annotation-rail__header">
+          <AnnotationToggle />
+        </div>
+      )}
+      {isAnnotationMode && (
+        <div className="annotation-rail__body">
+          {positions.map((item) => {
+            const highlighted = activeAnnotationId === item.id;
+            const dimmed = !!activeAnnotationId && activeAnnotationId !== item.id;
+            const connectorTop = item.anchorMidY - item.top;
+
+            return (
+              <div key={item.id} className="annotation-rail__item" style={{ top: item.top }}>
+                <svg
+                  className={`annotation-rail__connector annotation-rail__connector--${side}`}
+                  style={{
+                    width: item.connectorLen,
+                    top: connectorTop,
+                    ...(side === 'left' ? { left: '100%' } : { right: '100%' }),
+                  }}
+                  height={Math.max(2, Math.abs(connectorTop) + 2)}
+                  aria-hidden
+                >
+                  <line
+                    x1={side === 'left' ? 0 : item.connectorLen}
+                    y1={connectorTop < 0 ? Math.abs(connectorTop) + 1 : 1}
+                    x2={side === 'left' ? item.connectorLen : 0}
+                    y2={1}
+                    stroke="rgba(124,58,237,0.42)"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 3"
+                  />
+                </svg>
+                <div ref={(el) => { heightRefs.current[item.id] = el; }}>
+                  <AnnotationTooltip data={item.data} highlighted={highlighted} dimmed={dimmed} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </aside>
+  );
+}
+
+/**
+ * 双侧批注布局：左轨 | 手机框 children | 右轨
+ */
+export function AnnotationSideRails({ frameRef, children }) {
+  const {
+    isAnnotationMode,
+    anchorsRef,
+    layoutTick,
+    requestLayout,
+    frameRef: contextFrameRef,
+  } = useAnnotation();
+  const effectiveFrameRef = frameRef || contextFrameRef;
+
+  const anchorItems = React.useMemo(() => {
+    const list = [];
+    anchorsRef.current.forEach((entry, id) => {
+      const el = entry.element;
+      if (!el || !entry.data) return;
+      list.push({ id, data: entry.data, anchorRect: el.getBoundingClientRect() });
+    });
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorsRef, layoutTick]);
+
+  const { left, right } = React.useMemo(() => {
+    if (!anchorItems.length) return { left: [], right: [] };
+    return splitItemsToSides(anchorItems.map((item) => ({ ...item, top: item.anchorRect.top })));
+  }, [anchorItems]);
+
+  React.useEffect(() => {
+    if (!isAnnotationMode) return undefined;
+    const frame = effectiveFrameRef.current;
+    const onChange = () => requestLayout();
+    window.addEventListener('resize', onChange);
+    frame?.addEventListener('scroll', onChange, true);
+    const timer = setInterval(onChange, 500);
+    return () => {
+      window.removeEventListener('resize', onChange);
+      frame?.removeEventListener('scroll', onChange, true);
+      clearInterval(timer);
+    };
+  }, [isAnnotationMode, effectiveFrameRef, requestLayout]);
+
+  return (
+    <div className="prototype-row">
+      <AnnotationRailColumn side="left" showToggle={false} items={left} frameRef={effectiveFrameRef} />
+      {children}
+      <AnnotationRailColumn side="right" showToggle items={right} frameRef={effectiveFrameRef} />
+    </div>
+  );
+}
+
+/** 兼容旧导出 */
+export { AnnotationSideRails as AnnotationRail };

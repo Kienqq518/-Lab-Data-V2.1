@@ -169,7 +169,11 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
                   options={[{ value: 'device', label: '按设备' }, { value: 'task', label: '按任务' }]} />
               </AnnotatedWrapper>
               {mode === 'device'
-                ? renderInlineStation()
+                ? (
+                  <AnnotatedWrapper id="stationPicker" layout="inline">
+                    {renderInlineStation()}
+                  </AnnotatedWrapper>
+                )
                 : (
                   <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', flexShrink: 0 }}>
                     {fTasks.length} 个任务
@@ -177,17 +181,26 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
                 )}
             </div>
 
+            <AnnotatedWrapper id="searchBar" layout="block">
             <SearchBar value={q} onChange={(e) => setQ(e.target.value)}
               placeholder={mode === 'device' ? '请输入设备名称、编号、型号搜索' : '请输入任务编号、样品名称、委托单位搜索'}
               onScan={() => setScanOpen(true)} />
+            </AnnotatedWrapper>
 
             {mode === 'device' && (
+              <AnnotatedWrapper id="methodFilter" layout="block">
               <MethodFilterChips value={methodFilter} onChange={setMethodFilter} counts={methodCounts} />
+              </AnnotatedWrapper>
             )}
 
-            {mode === 'task' && <TaskListSort value={taskSort} onChange={setTaskSort} />}
+            {mode === 'task' && (
+              <AnnotatedWrapper id="taskSort" layout="block">
+                <TaskListSort value={taskSort} onChange={setTaskSort} />
+              </AnnotatedWrapper>
+            )}
 
             {mode === 'device' && station && (
+              <AnnotatedWrapper id="offDevicePanel" layout="block">
               <div ref={offPanelRef} style={{ flexShrink: 0, borderRadius: 'var(--radius-md)', border: '1px dashed var(--collect-ble)', background: offOpen ? 'var(--white)' : 'var(--collect-ble-bg)' }}>
                 <button type="button" onClick={toggleOffOpen} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--collect-ble)', textAlign: 'left' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg>
@@ -209,15 +222,18 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
                   </div>
                 )}
               </div>
+              </AnnotatedWrapper>
             )}
 
             <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
               {mode === 'device'
                 ? (fDevices.length
-                    ? fDevices.map((d) => (
-                        <DeviceCard key={d.id} name={d.name} code={d.code} model={d.model}
+                    ? fDevices.map((d, i) => (
+                        <AnnotatedWrapper key={d.id} id={i === 0 ? 'deviceCard' : undefined} layout="block">
+                        <DeviceCard name={d.name} code={d.code} model={d.model}
                           area={d.station ? stationName(d.station) : '非工位设备'} method={d.method} itemCount={d.items.length}
                           onClick={() => openDevice(d)} />
+                        </AnnotatedWrapper>
                       ))
                     : (
                       <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -249,9 +265,11 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
     if (view === 'device') {
       const dtasks = M.sortTaskList(tasksForDevice(device), taskSort);
       return (
+        <AnnotationPageKeyProvider pageKey="inspect-l2-device">
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
           <AppBar title="选择委托任务" onBack={() => setView('list')} />
           <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16, flex: 1, overflow: 'auto' }}>
+            <AnnotatedWrapper id="deviceSummary" layout="block">
             <Card padding="14px 16px">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                 <div>
@@ -261,9 +279,13 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
                 <CollectBadge method={device.method} size="sm" />
               </div>
             </Card>
+            </AnnotatedWrapper>
 
+            <AnnotatedWrapper id="taskSort" layout="block">
             <TaskListSort value={taskSort} onChange={setTaskSort} />
+            </AnnotatedWrapper>
 
+            <AnnotatedWrapper id="deviceTaskList" layout="block">
             <div>
               <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>委托任务（{dtasks.length}）</div>
               {dtasks.length ? (
@@ -279,8 +301,10 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
                 </div>
               )}
             </div>
+            </AnnotatedWrapper>
           </div>
         </div>
+        </AnnotationPageKeyProvider>
       );
     }
 
@@ -303,6 +327,7 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
         <AppBar title="试验检测" onBack={() => setView(taskBackView)} />
         <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {task && (
+            <AnnotatedWrapper id="taskSummary" layout="block">
             <Card padding="12px 16px">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
                 <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>{task.code}</span>
@@ -319,11 +344,15 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
                 )}
               </div>
             </Card>
+            </AnnotatedWrapper>
           )}
+          <AnnotatedWrapper id="searchBar" layout="block">
           <SearchBar value={q} onChange={(e) => setQ(e.target.value)} placeholder="请输入试样编号、试验项进行搜索" />
+          </AnnotatedWrapper>
         </div>
 
         <div ref={taskRootRef} style={{ position: 'relative', display: 'flex', flex: 1, minHeight: 0, padding: 'var(--gap-page)', gap: 12 }}>
+          <AnnotatedWrapper id="sampleSidebar" layout="inline">
           <div style={{ width: 160, flex: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
             {tSamples.length ? tSamples.map((s, i) => {
               const on = cur && s.id === cur.id;
@@ -371,6 +400,7 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
               <div style={{ padding: '24px 8px', textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>该设备暂无相关样品</div>
             )}
           </div>
+          </AnnotatedWrapper>
 
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
             {its.length ? its.map((t, i) => {

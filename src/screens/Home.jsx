@@ -15,7 +15,9 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     return (
       <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-section)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <SectionTitle style={{ marginBottom: 0 }}>杭州数蚕智能科技有限公司</SectionTitle>
+          <AnnotatedWrapper id="companyHeader" layout="flex">
+            <SectionTitle style={{ marginBottom: 0 }}>杭州数蚕智能科技有限公司</SectionTitle>
+          </AnnotatedWrapper>
           <AnnotatedWrapper id="notifyBell" layout="inline" placement="bottom">
             <button type="button" onClick={onOpenNotify} aria-label="消息通知" style={{ position: 'relative', width: 40, height: 40, flex: 'none', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-title)' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
@@ -27,12 +29,14 @@ import { AnnotatedWrapper } from '../annotation/index.js';
         </div>
 
         {/* 品牌条（压扁） */}
+        <AnnotatedWrapper id="brandBanner" layout="block">
         <div style={{ position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'var(--blue-700)', color: '#fff', padding: '16px 20px' }}>
           <div style={{ position: 'absolute', right: -24, top: -24, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
           <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4, letterSpacing: '0.1em' }}>实验室数智化系统</div>
           <div style={{ fontSize: 19, fontWeight: 600 }}>试验数据 · 实时自动采集</div>
           <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>采集即上传，杜绝人工抄录改数</div>
         </div>
+        </AnnotatedWrapper>
 
         {/* 工作概览：替代轮播，聚焦逾期/临期/退回三类异常待办 */}
         <WorkOverview metrics={metrics} onFocus={onFocus} />
@@ -44,16 +48,22 @@ import { AnnotatedWrapper } from '../annotation/index.js';
             <AnnotatedWrapper id="quickPending" layout="flex" placement="bottom">
               <Quick label="待检任务" count={pendingCount} tone="pending" icon="inbox" onClick={() => onQuick?.('pending')} />
             </AnnotatedWrapper>
-            <Quick label="检测中任务" count={testingCount} tone="testing" icon="loader" onClick={() => onQuick?.('testing')} />
-            <Quick label="已检任务" count={doneCount} tone="done" icon="check" onClick={() => onQuick?.('done')} />
+            <AnnotatedWrapper id="quickTesting" layout="flex" placement="bottom">
+              <Quick label="检测中任务" count={testingCount} tone="testing" icon="loader" onClick={() => onQuick?.('testing')} />
+            </AnnotatedWrapper>
+            <AnnotatedWrapper id="quickDone" layout="flex" placement="bottom">
+              <Quick label="已检任务" count={doneCount} tone="done" icon="check" onClick={() => onQuick?.('done')} />
+            </AnnotatedWrapper>
           </div>
         </div>
 
         {/* 个人检测统计 */}
+        <AnnotatedWrapper id="inspectorStats" layout="block">
         <div>
           <SectionTitle style={{ marginBottom: 14 }}>个人检测统计</SectionTitle>
           <StatsPanel />
         </div>
+        </AnnotatedWrapper>
       </div>
     );
   }
@@ -72,8 +82,12 @@ import { AnnotatedWrapper } from '../annotation/index.js';
           <AnnotatedWrapper id="overdueCard" layout="flex" placement="bottom">
             <StatCard label="逾期任务" value={metrics.overdueTasks} tone="overdue" onClick={() => onFocus?.('overdue')} />
           </AnnotatedWrapper>
-          <StatCard label="3日内到期" value={metrics.dueSoonTasks} tone="pending" onClick={() => onFocus?.('dueSoon')} />
-          <StatCard label="退回复测" value={metrics.returnedTests} tone="brand" onClick={() => onFocus?.('returned')} />
+          <AnnotatedWrapper id="dueSoonCard" layout="flex" placement="bottom">
+            <StatCard label="3日内到期" value={metrics.dueSoonTasks} tone="pending" onClick={() => onFocus?.('dueSoon')} />
+          </AnnotatedWrapper>
+          <AnnotatedWrapper id="returnedCard" layout="flex" placement="bottom">
+            <StatCard label="退回复测" value={metrics.returnedTests} tone="brand" onClick={() => onFocus?.('returned')} />
+          </AnnotatedWrapper>
         </div>
       </div>
     );

@@ -1,4 +1,4 @@
-/* 批注模式：锚点在手机内，气泡在手机框外侧留白区 */
+/* 批注模式：锚点在手机内，气泡在左右双侧宽留白区 */
 
 .prototype-row {
   display: flex;
@@ -14,9 +14,15 @@
   transition: width 0.2s ease;
 }
 
-.annotation-rail--on {
-  padding-left: 8px;
-  background: rgba(255, 255, 255, 0.55);
+.annotation-rail--left.annotation-rail--on {
+  padding-right: 10px;
+  background: rgba(255, 255, 255, 0.62);
+  border-radius: 20px 0 0 20px;
+}
+
+.annotation-rail--right.annotation-rail--on {
+  padding-left: 10px;
+  background: rgba(255, 255, 255, 0.62);
   border-radius: 0 20px 20px 0;
 }
 
@@ -30,13 +36,14 @@
 .annotation-rail__body {
   position: relative;
   min-height: calc(1280px - 52px);
+  padding-bottom: 80px;
 }
 
 .annotation-rail__item {
   position: absolute;
   left: 0;
   right: 0;
-  padding-right: 4px;
+  padding: 0 6px;
 }
 
 .annotation-rail__connector {
@@ -103,6 +110,10 @@
   min-width: 0;
 }
 
+.annotated-wrapper--anchor-only {
+  display: contents;
+}
+
 .annotated-wrapper--on {
   outline: 1.5px dashed rgba(124, 58, 237, 0.55);
   outline-offset: 2px;
@@ -126,8 +137,8 @@
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 288px;
-  padding: 10px 11px;
+  max-width: 100%;
+  padding: 10px 12px;
   border-radius: var(--radius-md);
   border: 1px solid rgba(124, 58, 237, 0.28);
   background: #fff;
@@ -158,7 +169,7 @@
 }
 
 .annotation-tooltip__section {
-  margin-top: 5px;
+  margin-top: 6px;
 }
 
 .annotation-tooltip__section:first-of-type {
@@ -174,7 +185,14 @@
 .annotation-tooltip__label--req { color: #b45309; }
 .annotation-tooltip__label--display { color: #0369a1; }
 .annotation-tooltip__label--interaction { color: #6d28d9; }
+.annotation-tooltip__label--elements { color: #0f766e; }
 
 .annotation-tooltip__text {
   color: var(--text-secondary);
+}
+
+.annotation-tooltip__text--elements {
+  white-space: pre-wrap;
+  font-size: 10.5px;
+  line-height: 1.6;
 }

@@ -13,6 +13,7 @@ export function AnnotatedWrapper({
   layout = 'block',
   placement: _placement,
   pageKey: pageKeyOverride,
+  anchorOnly = false,
 }) {
   const {
     isAnnotationMode,
@@ -39,6 +40,7 @@ export function AnnotatedWrapper({
   const wrapperClass = [
     'annotated-wrapper',
     `annotated-wrapper--${layout}`,
+    anchorOnly ? 'annotated-wrapper--anchor-only' : '',
     isAnnotationMode ? 'annotated-wrapper--on' : '',
     highlighted ? 'annotated-wrapper--active' : '',
   ].filter(Boolean).join(' ');
