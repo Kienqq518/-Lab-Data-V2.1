@@ -4,7 +4,7 @@ import { MOCK as M } from '../mock.js';
 
 /* 首页（检测员）— 公司名 / 工作概览 / 快捷入口 / 个人检测统计 */
 
-  function Home({ onEnterInspect, onQuick }) {
+  function Home({ onEnterInspect, onQuick, onFocus }) {
     const pendingCount = M.tasks.filter(M.isPendingTask).length;
     const testingCount = M.tasks.filter(M.isTestingTask).length;
     const doneCount = M.tasks.filter((t) => t.status === 'done' && t.doneAt).length;
@@ -22,8 +22,8 @@ import { MOCK as M } from '../mock.js';
           <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>采集即上传，杜绝人工抄录改数</div>
         </div>
 
-        {/* 工作概览：替代轮播，展示检测员最关心的待办维度 */}
-        <WorkOverview metrics={metrics} onQuick={onQuick} onEnterInspect={onEnterInspect} />
+        {/* 工作概览：替代轮播，聚焦逾期/临期/退回三类异常待办 */}
+        <WorkOverview metrics={metrics} onFocus={onFocus} />
 
         {/* 快捷入口（统计维度：委托任务） */}
         <div>
@@ -44,19 +44,18 @@ import { MOCK as M } from '../mock.js';
     );
   }
 
-  /** 今日工作概览：逾期、临期、退回、在检四个检测员高频关注维度 */
-  function WorkOverview({ metrics, onQuick, onEnterInspect }) {
+  /** 今日工作概览：逾期 / 临期 / 退回三类异常待办，各自进入专属聚焦页 */
+  function WorkOverview({ metrics, onFocus }) {
     return (
       <div>
         <SectionTitle style={{ marginBottom: 6 }}>今日工作概览</SectionTitle>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
           优先处理逾期与退回项，关注 3 日内到期任务
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <StatCard label="逾期任务" value={metrics.overdueTasks} tone="overdue" onClick={() => onQuick?.('pending')} />
-          <StatCard label="3日内到期" value={metrics.dueSoonTasks} tone="pending" onClick={() => onQuick?.('pending')} />
-          <StatCard label="退回复测" value={metrics.returnedTests} tone="brand" onClick={() => onEnterInspect?.()} />
-          <StatCard label="检测中试验项" value={metrics.testingItems} tone="testing" onClick={() => onQuick?.('testing')} />
+        <div style={{ display: 'flex', gap: 12 }}>
+          <StatCard label="逾期任务" value={metrics.overdueTasks} tone="overdue" onClick={() => onFocus?.('overdue')} />
+          <StatCard label="3日内到期" value={metrics.dueSoonTasks} tone="pending" onClick={() => onFocus?.('dueSoon')} />
+          <StatCard label="退回复测" value={metrics.returnedTests} tone="brand" onClick={() => onFocus?.('returned')} />
         </div>
       </div>
     );

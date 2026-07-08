@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** L2 任务列表可选排序项 */
+/** L2 任务列表默认排序项（任务编号 / 下发时间 / 检测时效） */
 export const TASK_SORT_OPTIONS = [
   { value: 'code:asc', label: '任务编号 ↑' },
   { value: 'code:desc', label: '任务编号 ↓' },
@@ -10,10 +10,17 @@ export const TASK_SORT_OPTIONS = [
   { value: 'detectDeadline:desc', label: '检测时效 ↓' },
 ];
 
+/** 退回复测排序项（在默认项前追加“退回时间”） */
+export const RETURNED_SORT_OPTIONS = [
+  { value: 'returnedAt:desc', label: '退回时间 ↓' },
+  { value: 'returnedAt:asc', label: '退回时间 ↑' },
+  ...TASK_SORT_OPTIONS,
+];
+
 /**
- * L2 任务列表排序选择器（按设备 / 按任务 / 快捷入口共用）
+ * L2 任务列表排序选择器（各聚焦页共用，排序项可配置）
  */
-export function TaskListSort({ value, onChange, style }) {
+export function TaskListSort({ value, onChange, options = TASK_SORT_OPTIONS, style }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, ...style }}>
       <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', flex: 'none' }}>排序</span>
@@ -32,7 +39,7 @@ export function TaskListSort({ value, onChange, style }) {
           color: 'var(--text-title)',
         }}
       >
-        {TASK_SORT_OPTIONS.map((opt) => (
+        {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>

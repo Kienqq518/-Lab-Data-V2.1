@@ -7,7 +7,7 @@ import { Home } from './screens/Home.jsx';
 import { Inspect } from './screens/Inspect.jsx';
 import { Login } from './screens/Login.jsx';
 import { Mine } from './screens/Mine.jsx';
-import { QuickTasks } from './screens/QuickTasks.jsx';
+import { TaskFocusScreen } from './screens/TaskFocusScreen.jsx';
 
 function StatusBar({ onBrand }) {
   return (
@@ -93,13 +93,13 @@ function App() {
   const [overlay, setOverlay] = React.useState(null);
   const [stationId, setStationId] = React.useState('zy');
   const [ctx, setCtx] = React.useState(null);
-  const [quickFilter, setQuickFilter] = React.useState(null);
-  const [quickRestore, setQuickRestore] = React.useState(null);
+  const [focusKind, setFocusKind] = React.useState(null);
+  const [focusRestore, setFocusRestore] = React.useState(null);
   const [sheet, setSheet] = React.useState(false);
 
   function closeCollect() {
     if (ctx?.reviewMode) setOverlay('done');
-    else if (ctx?.quickEntry) setOverlay('quick');
+    else if (ctx?.focusEntry) setOverlay('focus');
     else setOverlay(null);
   }
 
@@ -115,8 +115,9 @@ function App() {
               onEnterInspect={() => setTab('inspect')}
               onQuick={(kind) => {
                 if (kind === 'done') setOverlay('done');
-                else { setQuickFilter(kind); setQuickRestore(null); setOverlay('quick'); }
+                else { setFocusKind(kind); setFocusRestore(null); setOverlay('focus'); }
               }}
+              onFocus={(kind) => { setFocusKind(kind); setFocusRestore(null); setOverlay('focus'); }}
             />
           )}
           {tab === 'inspect' && (
@@ -158,15 +159,15 @@ function App() {
                 />
               </div>
             )}
-            {authed && overlay === 'quick' && quickFilter && (
+            {authed && overlay === 'focus' && focusKind && (
               <div className="overlay-screen">
-                <QuickTasks
-                  filter={quickFilter}
+                <TaskFocusScreen
+                  kind={focusKind}
                   stationId={stationId}
-                  restore={quickRestore}
-                  onBack={() => { setOverlay(null); setQuickFilter(null); setQuickRestore(null); }}
+                  restore={focusRestore}
+                  onBack={() => { setOverlay(null); setFocusKind(null); setFocusRestore(null); }}
                   onCollect={(collectCtx) => {
-                    setQuickRestore(collectCtx.quickRestore || null);
+                    setFocusRestore(collectCtx.focusRestore || null);
                     setCtx(collectCtx);
                     setOverlay('collect');
                   }}

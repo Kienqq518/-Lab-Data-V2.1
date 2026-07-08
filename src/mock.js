@@ -247,7 +247,8 @@
       ] },
     { id: 's1b', code: 'SC2026/01001-02', name: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', status: 'testing', cable: true, client: '杭州数蚕智能科技有限公司',
       tests: [
-        { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'testing', phased: true, uploadedPhases: ['红'] },
+        { name: '导体直流电阻', device: 'dcr',  method: 'ocr',  status: 'testing', phased: true, uploadedPhases: ['红'],
+          flow: { node: '试验检测', returned: true, returnReason: '第 2 次正向电阻读数与历史数据偏差较大，疑似拍照识别误差，请复测后重新上传', returnedFrom: '数据审核', by: '张伟', role: '数据审核', at: '2026-07-06 14:30' } },
         { name: '结构尺寸检查—非金属护套&钢带铠装', device: 'cal', method: 'ble', status: 'pending', phased: false, subs: sheathArmorSubs },
         { name: 'XLPE绝缘的收缩试验', device: 'shr', method: 'auto', status: 'pending' },
       ] },
@@ -310,8 +311,9 @@
           candidateDevices: rodAcDrawerDevices },
         { id: 'rod-app', name: '绝缘操作杆 - 外观及尺寸', device: 'visual', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodAppearanceFields,
           candidateDevices: rodAppDrawerDevices },
-        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodBendDynamicFields,
-          candidateDevices: rodBendDrawerDevices },
+        { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'testing', count: 1, fields: rodBendDynamicFields,
+          candidateDevices: rodBendDrawerDevices,
+          flow: { node: '试验检测', returned: true, returnReason: '静负荷位移量记录缺失，抗弯动负荷结论证据不足，请补测后重新提交', returnedFrom: '技术负责人', by: '李芳', role: '技术负责人', at: '2026-07-07 10:12' } },
         { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodBendStaticFields,
           candidateDevices: rodBendDrawerDevices },
       ] },
@@ -382,11 +384,11 @@
   // doneAt = 该任务下分配给本检测员的试验项全部完成检测的时间（仅 done 任务有）
   const tasks = [
     { code: 'SC2026/01001', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-06-18 09:20:11', status: 'testing', detectDeadline: '2026-07-18' },
-    { code: 'SC2026/01002', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-17 14:05:42', status: 'pending', detectDeadline: '2026-07-17' },
+    { code: 'SC2026/01002', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-17 14:05:42', status: 'pending', detectDeadline: '2026-07-10' },
     { code: 'SC2026/01003', sampleName: '8.7/10kV-3芯 电力电缆', client: '国网杭州供电公司', time: '2026-06-10 08:30:00', status: 'overdue', detectDeadline: '2026-06-15' },
     { code: 'SC2026/00998', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '国网杭州供电公司', time: '2026-06-12 10:18:41', status: 'done', doneAt: '2026-06-24 16:02:10', sampleCount: 3, testCount: 8, detectDeadline: '2026-07-12' },
     { code: 'SC2026/00990', sampleName: '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-05-29 16:31:51', status: 'overdue', detectDeadline: '2026-05-31' },
-    { code: 'SC2026/01630', sampleName: '实壁类塑料电缆导管 带承口 PVC-C', client: '国网杭州供电公司', time: '2026-06-20 10:15:00', status: 'testing', detectDeadline: '2026-07-20' },
+    { code: 'SC2026/01630', sampleName: '实壁类塑料电缆导管 带承口 PVC-C', client: '国网杭州供电公司', time: '2026-06-20 10:15:00', status: 'testing', detectDeadline: '2026-07-11' },
     { code: 'SC2026/00490101', sampleName: '绝缘操作杆', client: '国网浙江省电力有限公司', time: '2026-06-22 09:00:00', status: 'testing', detectDeadline: '2026-07-22' },
     // —— 历史已检任务（用于「已检任务」时间范围筛选演示）——
     { code: 'SC2026/00982', sampleName: '低烟无卤阻燃聚烯烃护套电力电缆', client: '国网杭州供电公司', time: '2026-06-19 08:40:00', status: 'done', doneAt: '2026-06-23 11:20:00', sampleCount: 2, testCount: 4, detectDeadline: '2026-06-21', overdueDone: true },
@@ -562,7 +564,56 @@
     return Number.isNaN(ts) ? 0 : ts;
   }
 
-  /** 按指定规则排序任务列表（code / time / detectDeadline，升序或降序） */
+  // 首页工作概览的“当前时间”基准（mock，保证临期/逾期判定稳定可演示）
+  const NOW = new Date('2026-07-08T09:00:00');
+  const DUE_SOON_DAYS = 3;
+
+  /** 试验项是否为“待复测退回”（被审核退回且尚未复测完成） */
+  function isReturnedTest(test) {
+    return !!(test?.flow?.returned) && test.status !== 'done';
+  }
+
+  /** 任务是否临期（未完成、未逾期，且 N 日内到期） */
+  function isDueSoonTask(task) {
+    if (task.status === 'done' || task.status === 'overdue') return false;
+    const deadline = parseTaskDateTime(task.detectDeadline);
+    if (!deadline) return false;
+    return deadline >= NOW.getTime() && deadline <= NOW.getTime() + DUE_SOON_DAYS * 86400000;
+  }
+
+  /** 任务是否逾期 */
+  function isOverdueTask(task) {
+    return task.status === 'overdue';
+  }
+
+  /** 任务下是否含待复测退回的试验项 */
+  function isReturnedTask(task) {
+    return taskTests(task).some(isReturnedTest);
+  }
+
+  /** 样品下是否含待复测退回的试验项 */
+  function sampleHasReturned(sample) {
+    return (sample?.tests || []).some(isReturnedTest);
+  }
+
+  /** 任务下仅保留含退回试验项的样品（退回复测 L3 展示过滤） */
+  function taskReturnedSamples(task) {
+    return taskSamples(task).filter(sampleHasReturned);
+  }
+
+  /** 样品下仅保留退回的试验项（退回复测 L3 展示过滤） */
+  function sampleReturnedTests(sample) {
+    return (sample?.tests || []).filter(isReturnedTest);
+  }
+
+  /** 任务最近一次退回时间（退回复测排序用） */
+  function taskReturnedAt(task) {
+    return taskTests(task)
+      .filter(isReturnedTest)
+      .reduce((max, t) => Math.max(max, parseTaskDateTime(t.flow?.at)), 0);
+  }
+
+  /** 按指定规则排序任务列表（code / time / detectDeadline / returnedAt，升序或降序） */
   function sortTaskList(list, sortKey = 'code:asc') {
     const [field, order] = String(sortKey || 'code:asc').split(':');
     const dir = order === 'desc' ? -1 : 1;
@@ -571,6 +622,7 @@
       if (field === 'code') cmp = String(a.code).localeCompare(String(b.code), 'zh-CN', { numeric: true });
       else if (field === 'time') cmp = parseTaskDateTime(a.time) - parseTaskDateTime(b.time);
       else if (field === 'detectDeadline') cmp = parseTaskDateTime(a.detectDeadline) - parseTaskDateTime(b.detectDeadline);
+      else if (field === 'returnedAt') cmp = taskReturnedAt(a) - taskReturnedAt(b);
       if (cmp === 0) cmp = String(a.code).localeCompare(String(b.code), 'zh-CN', { numeric: true });
       return cmp * dir;
     });
@@ -581,23 +633,28 @@
     return sample?.code ? sample.code.replace(/-\d+$/, '') : '—';
   }
 
-  /** 检测员首页工作概览指标 */
-  function inspectorWorkMetrics() {
-    const overdueTasks = tasks.filter((t) => t.status === 'overdue').length;
-    const now = Date.now();
-    const soonLimit = now + 3 * 86400000;
-    const dueSoonTasks = tasks.filter((t) => {
-      if (t.status === 'done' || t.status === 'overdue') return false;
-      const deadline = parseTaskDateTime(t.detectDeadline);
-      return deadline > 0 && deadline <= soonLimit;
-    }).length;
-    const returnedTests = samples
-      .flatMap((s) => s.tests || [])
-      .filter((t) => t.flow?.returned && t.status !== 'done').length;
-    const testingItems = samples
-      .flatMap((s) => s.tests || [])
-      .filter((t) => t.status === 'testing').length;
-    return { overdueTasks, dueSoonTasks, returnedTests, testingItems };
+  /** 逾期任务列表 */
+  function overdueTasks() {
+    return tasks.filter(isOverdueTask);
   }
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, inspectorWorkMetrics };
+  /** 临期任务列表（N 日内到期） */
+  function dueSoonTasks() {
+    return tasks.filter(isDueSoonTask);
+  }
+
+  /** 退回复测任务列表 */
+  function returnedTasks() {
+    return tasks.filter(isReturnedTask);
+  }
+
+  /** 检测员首页工作概览指标 */
+  function inspectorWorkMetrics() {
+    return {
+      overdueTasks: overdueTasks().length,
+      dueSoonTasks: dueSoonTasks().length,
+      returnedTests: samples.flatMap((s) => s.tests || []).filter(isReturnedTest).length,
+    };
+  }
+
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks };
