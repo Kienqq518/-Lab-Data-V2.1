@@ -29,7 +29,7 @@ textarea {
 }
 
 .ds-stage {
-  width: 800px;
+  width: auto;
   height: 1280px;
   position: relative;
   transform-origin: center center;
