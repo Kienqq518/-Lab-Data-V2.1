@@ -9,7 +9,7 @@ import { Login } from './screens/Login.jsx';
 import { Mine } from './screens/Mine.jsx';
 import { Notifications } from './screens/Notifications.jsx';
 import { TaskFocusScreen } from './screens/TaskFocusScreen.jsx';
-import { AnnotationProvider, AnnotationToggle } from './annotation/index.js';
+import { AnnotationProvider, AnnotationRail } from './annotation/index.js';
 
 /** 解析当前批注页面 key（随 tab / overlay 变化） */
 function resolveAnnotationPageKey({ authed, tab, overlay, focusKind }) {
@@ -91,8 +91,9 @@ function useStageScale() {
   const [scale, setScale] = React.useState(1);
 
   React.useEffect(() => {
+    /** 预留手机框右侧批注轨道宽度（800 + 300），避免开启批注时溢出视口 */
     const fit = () => {
-      setScale(Math.min(window.innerWidth / 800, window.innerHeight / 1280));
+      setScale(Math.min(window.innerWidth / 1100, window.innerHeight / 1280));
     };
     fit();
     window.addEventListener('resize', fit);
@@ -104,6 +105,7 @@ function useStageScale() {
 
 function App() {
   const scale = useStageScale();
+  const frameRef = React.useRef(null);
   const [authed, setAuthed] = React.useState(false);
   const [tab, setTab] = React.useState('home');
   const [overlay, setOverlay] = React.useState(null);
@@ -190,11 +192,11 @@ function App() {
   const annotationPageKey = resolveAnnotationPageKey({ authed, tab, overlay, focusKind });
 
   return (
-    <AnnotationProvider pageKey={annotationPageKey}>
+    <AnnotationProvider pageKey={annotationPageKey} frameRef={frameRef}>
     <main className="app-viewport">
       <div className="ds-stage" style={{ transform: `scale(${scale})` }}>
-        <div className="ds-frame">
-          <AnnotationToggle />
+        <div className="prototype-row">
+        <div className="ds-frame" ref={frameRef}>
           <StatusBar onBrand={!authed} />
           <div className="screen">
             <div className="app-layer fade" key={(authed ? 'a' : 'l') + tab}>{body}</div>
@@ -247,6 +249,8 @@ function App() {
               />
             )}
           </div>
+        </div>
+        <AnnotationRail />
         </div>
       </div>
     </main>

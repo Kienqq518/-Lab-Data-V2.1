@@ -1,10 +1,55 @@
-/* 批注模式：视觉辅助层，不拦截业务点击 */
+/* 批注模式：锚点在手机内，气泡在手机框外侧留白区 */
+
+.prototype-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.annotation-rail {
+  flex: none;
+  min-height: 1280px;
+  position: relative;
+  background: transparent;
+  transition: width 0.2s ease;
+}
+
+.annotation-rail--on {
+  padding-left: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 0 20px 20px 0;
+}
+
+.annotation-rail__header {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  padding: 8px 0 12px;
+}
+
+.annotation-rail__body {
+  position: relative;
+  min-height: calc(1280px - 52px);
+}
+
+.annotation-rail__item {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding-right: 4px;
+}
+
+.annotation-rail__connector {
+  position: absolute;
+  pointer-events: none;
+  overflow: visible;
+}
 
 .annotation-toggle {
-  position: absolute;
-  top: 38px;
-  right: 14px;
-  z-index: 400;
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: 10;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -78,45 +123,25 @@
 
 .annotation-tooltip {
   pointer-events: none;
-  position: absolute;
-  z-index: 220;
-  width: 248px;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 288px;
   padding: 10px 11px;
   border-radius: var(--radius-md);
   border: 1px solid rgba(124, 58, 237, 0.28);
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
   font-size: 11px;
   line-height: 1.55;
   color: var(--text-body);
   transition: opacity 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.annotation-tooltip--right {
-  left: calc(100% + 8px);
-  top: 0;
-}
-
-.annotation-tooltip--bottom {
-  left: 0;
-  top: calc(100% + 8px);
-}
-
-.annotation-tooltip--top {
-  left: 0;
-  bottom: calc(100% + 8px);
-}
-
-.annotation-tooltip--left {
-  right: calc(100% + 8px);
-  top: 0;
-}
-
 .annotation-tooltip--highlight {
-  z-index: 230;
   border-color: #7c3aed;
   box-shadow: 0 10px 28px rgba(124, 58, 237, 0.22);
-  transform: scale(1.02);
+  transform: scale(1.01);
 }
 
 .annotation-tooltip--dimmed {

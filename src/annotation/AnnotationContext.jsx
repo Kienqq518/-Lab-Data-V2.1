@@ -5,9 +5,9 @@ const STORAGE_KEY = 'labdata_annotation_mode';
 const AnnotationContext = React.createContext(null);
 
 /**
- * 批注模式全局 Provider：跨路由保持 isAnnotationMode 持久化
+ * 批注模式全局 Provider：跨路由保持 isAnnotationMode 持久化，并管理锚点注册
  */
-export function AnnotationProvider({ pageKey, children }) {
+export function AnnotationProvider({ pageKey, frameRef: frameRefProp, children }) {
   const [isAnnotationMode, setIsAnnotationMode] = React.useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) === '1';
@@ -16,6 +16,10 @@ export function AnnotationProvider({ pageKey, children }) {
     }
   });
   const [activeAnnotationId, setActiveAnnotationId] = React.useState(null);
+  const [layoutTick, setLayoutTick] = React.useState(0);
+  const anchorsRef = React.useRef(new Map());
+  const internalFrameRef = React.useRef(null);
+  const frameRef = frameRefProp || internalFrameRef;
 
   /** 切换批注模式并持久化 */
   function toggleAnnotationMode() {
@@ -31,13 +35,38 @@ export function AnnotationProvider({ pageKey, children }) {
     });
   }
 
+  /** 注册批注锚点（由 AnnotatedWrapper 调用） */
+  function registerAnchor(id, element, data) {
+    if (!id || !element || !data) return;
+    anchorsRef.current.set(id, { element, data });
+    setLayoutTick((t) => t + 1);
+  }
+
+  /** 注销批注锚点 */
+  function unregisterAnchor(id) {
+    if (anchorsRef.current.delete(id)) {
+      setLayoutTick((t) => t + 1);
+    }
+  }
+
+  /** 请求外侧轨道重新计算气泡位置 */
+  function requestLayout() {
+    setLayoutTick((t) => t + 1);
+  }
+
   const value = React.useMemo(() => ({
     isAnnotationMode,
     toggleAnnotationMode,
     pageKey,
     activeAnnotationId,
     setActiveAnnotationId,
-  }), [isAnnotationMode, pageKey, activeAnnotationId]);
+    anchorsRef,
+    layoutTick,
+    registerAnchor,
+    unregisterAnchor,
+    requestLayout,
+    frameRef,
+  }), [isAnnotationMode, pageKey, activeAnnotationId, layoutTick]);
 
   return (
     <AnnotationContext.Provider value={value}>
@@ -51,18 +80,6 @@ export function useAnnotation() {
   const ctx = React.useContext(AnnotationContext);
   if (!ctx) throw new Error('useAnnotation must be used within AnnotationProvider');
   return ctx;
-}
-
-/**
- * 子页面覆盖 pageKey（如 Inspect L3）；卸载时恢复
- * @param {string} pageKey 当前页面批注配置 key
- */
-export function useAnnotationPage(pageKey) {
-  const [localKey, setLocalKey] = React.useState(pageKey);
-  React.useEffect(() => {
-    setLocalKey(pageKey);
-  }, [pageKey]);
-  return localKey;
 }
 
 /** 供 Provider 外部读取 pageKey 覆盖（Inspect 等嵌套页） */

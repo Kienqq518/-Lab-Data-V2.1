@@ -1,14 +1,13 @@
 import React from 'react';
 
 /**
- * 批注 Tooltip 气泡（pointer-events: none，不阻挡下层点击）
+ * 批注 Tooltip 气泡（pointer-events: none，由外侧轨道定位）
  */
-export function AnnotationTooltip({ data, placement = 'right', highlighted, dimmed }) {
+export function AnnotationTooltip({ data, highlighted, dimmed }) {
   if (!data) return null;
 
   const className = [
     'annotation-tooltip',
-    `annotation-tooltip--${placement}`,
     highlighted ? 'annotation-tooltip--highlight' : '',
     dimmed ? 'annotation-tooltip--dimmed' : '',
   ].filter(Boolean).join(' ');
