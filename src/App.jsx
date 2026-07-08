@@ -7,6 +7,7 @@ import { Home } from './screens/Home.jsx';
 import { Inspect } from './screens/Inspect.jsx';
 import { Login } from './screens/Login.jsx';
 import { Mine } from './screens/Mine.jsx';
+import { Notifications } from './screens/Notifications.jsx';
 import { TaskFocusScreen } from './screens/TaskFocusScreen.jsx';
 
 function StatusBar({ onBrand }) {
@@ -118,6 +119,7 @@ function App() {
                 else { setFocusKind(kind); setFocusRestore(null); setOverlay('focus'); }
               }}
               onFocus={(kind) => { setFocusKind(kind); setFocusRestore(null); setOverlay('focus'); }}
+              onOpenNotify={() => setOverlay('notify')}
             />
           )}
           {tab === 'inspect' && (
@@ -128,7 +130,7 @@ function App() {
               onCollect={(collectCtx) => { setCtx(collectCtx); setOverlay('collect'); }}
             />
           )}
-          {tab === 'me' && <Mine onLogout={() => setAuthed(false)} />}
+          {tab === 'me' && <Mine onLogout={() => setAuthed(false)} onOpenNotify={() => setOverlay('notify')} />}
         </div>
         <BottomTabBar
           active={tab}
@@ -179,6 +181,14 @@ function App() {
                 <DoneTasks
                   onBack={() => setOverlay(null)}
                   onCollect={(collectCtx) => { setCtx(collectCtx); setOverlay('collect'); }}
+                />
+              </div>
+            )}
+            {authed && overlay === 'notify' && (
+              <div className="overlay-screen">
+                <Notifications
+                  onBack={() => setOverlay(null)}
+                  onGoReturned={() => { setFocusKind('returned'); setFocusRestore(null); setOverlay('focus'); }}
                 />
               </div>
             )}

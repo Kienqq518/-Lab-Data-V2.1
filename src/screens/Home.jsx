@@ -4,15 +4,24 @@ import { MOCK as M } from '../mock.js';
 
 /* 首页（检测员）— 公司名 / 工作概览 / 快捷入口 / 个人检测统计 */
 
-  function Home({ onEnterInspect, onQuick, onFocus }) {
+  function Home({ onEnterInspect, onQuick, onFocus, onOpenNotify }) {
     const pendingCount = M.tasks.filter(M.isPendingTask).length;
     const testingCount = M.tasks.filter(M.isTestingTask).length;
     const doneCount = M.tasks.filter((t) => t.status === 'done' && t.doneAt).length;
     const metrics = M.inspectorWorkMetrics();
+    const unread = M.unreadNotificationCount();
 
     return (
       <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-section)' }}>
-        <SectionTitle>杭州数蚕智能科技有限公司</SectionTitle>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <SectionTitle style={{ marginBottom: 0 }}>杭州数蚕智能科技有限公司</SectionTitle>
+          <button type="button" onClick={onOpenNotify} aria-label="消息通知" style={{ position: 'relative', width: 40, height: 40, flex: 'none', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-title)' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            {unread > 0 && (
+              <span style={{ position: 'absolute', top: 4, right: 4, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: 'var(--danger,#e23b3b)', color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: '16px', textAlign: 'center' }}>{unread}</span>
+            )}
+          </button>
+        </div>
 
         {/* 品牌条（压扁） */}
         <div style={{ position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'var(--blue-700)', color: '#fff', padding: '16px 20px' }}>
