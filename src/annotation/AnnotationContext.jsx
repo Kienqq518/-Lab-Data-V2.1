@@ -22,7 +22,7 @@ export function AnnotationProvider({ pageKey, frameRef: frameRefProp, children }
   const frameRef = frameRefProp || internalFrameRef;
 
   /** 切换批注模式并持久化 */
-  function toggleAnnotationMode() {
+  const toggleAnnotationMode = React.useCallback(() => {
     setIsAnnotationMode((prev) => {
       const next = !prev;
       try {
@@ -33,26 +33,26 @@ export function AnnotationProvider({ pageKey, frameRef: frameRefProp, children }
       if (!next) setActiveAnnotationId(null);
       return next;
     });
-  }
+  }, []);
 
   /** 注册批注锚点（由 AnnotatedWrapper 调用） */
-  function registerAnchor(id, element, data) {
+  const registerAnchor = React.useCallback((id, element, data) => {
     if (!id || !element || !data) return;
     anchorsRef.current.set(id, { element, data });
     setLayoutTick((t) => t + 1);
-  }
+  }, []);
 
   /** 注销批注锚点 */
-  function unregisterAnchor(id) {
+  const unregisterAnchor = React.useCallback((id) => {
     if (anchorsRef.current.delete(id)) {
       setLayoutTick((t) => t + 1);
     }
-  }
+  }, []);
 
   /** 请求外侧轨道重新计算气泡位置 */
-  function requestLayout() {
+  const requestLayout = React.useCallback(() => {
     setLayoutTick((t) => t + 1);
-  }
+  }, []);
 
   const value = React.useMemo(() => ({
     isAnnotationMode,
@@ -66,7 +66,7 @@ export function AnnotationProvider({ pageKey, frameRef: frameRefProp, children }
     unregisterAnchor,
     requestLayout,
     frameRef,
-  }), [isAnnotationMode, pageKey, activeAnnotationId, layoutTick]);
+  }), [isAnnotationMode, pageKey, activeAnnotationId, layoutTick, toggleAnnotationMode, registerAnchor, unregisterAnchor, requestLayout]);
 
   return (
     <AnnotationContext.Provider value={value}>
