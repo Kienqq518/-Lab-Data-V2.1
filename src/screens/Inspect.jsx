@@ -5,6 +5,7 @@ import { SCAN_SAMPLE_ID, ScanSampleOverlay, resolveTaskForSample } from './ScanS
 import { TaskListSort } from './TaskListSort.jsx';
 import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx';
 import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index.js';
+import { filterL3View } from './l3-search-filter.js';
 
 /* 检测模块 — 工位上下文 + 按设备/按任务双模式 + 钻取试验项
    · 按设备：L1 设备列表 → L2 委托任务 → L3 样品(左)+试验项(右)，仅展示该设备相关样品与试验项
@@ -312,14 +313,12 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
     const tSamples = cameFrom === 'device' && device
       ? M.taskSamplesForDevice(task, device)
       : M.taskSamples(task);
-    const cur = tSamples.find((s) => s.id === taskSample) || tSamples[0];
-    const ql2 = q.trim().toLowerCase();
-    const baseTests = cur
-      ? (cameFrom === 'device' && device ? M.sampleTestsForDevice(cur, device) : cur.tests)
-      : [];
-    const its = baseTests.filter((t) => !ql2
-      || t.name.toLowerCase().includes(ql2)
-      || (cur.code && cur.code.toLowerCase().includes(ql2)));
+    const getBaseTests = (sample) => (
+      cameFrom === 'device' && device ? M.sampleTestsForDevice(sample, device) : sample.tests
+    );
+    const { samples: visibleSamples, getTests } = filterL3View(tSamples, getBaseTests, q);
+    const cur = visibleSamples.find((s) => s.id === taskSample) || visibleSamples[0];
+    const its = cur ? getTests(cur) : [];
 
     return (
       <AnnotationPageKeyProvider pageKey="inspect-l3">
@@ -335,7 +334,7 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>委托单位：{task.client || '—'}</span>
-                <span>样品数：{tSamples.length}</span>
+                <span>样品数：{visibleSamples.length}</span>
                 {task.time && <span style={{ fontVariantNumeric: 'tabular-nums' }}>下发时间：{task.time}</span>}
                 {task.detectDeadline && (
                   <span style={{ fontVariantNumeric: 'tabular-nums', color: task.status === 'overdue' ? 'var(--status-overdue-fg,#c53030)' : 'var(--text-secondary)' }}>
@@ -346,15 +345,15 @@ import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index
             </Card>
             </AnnotatedWrapper>
           )}
-          <AnnotatedWrapper id="searchBar" layout="block">
-          <SearchBar value={q} onChange={(e) => setQ(e.target.value)} placeholder="请输入试样编号、试验项进行搜索" />
+          <AnnotatedWrapper id="l3SearchBar" layout="block">
+          <SearchBar value={q} onChange={(e) => setQ(e.target.value)} placeholder="请输入样品名称、样品编号、试验项搜索" />
           </AnnotatedWrapper>
         </div>
 
         <div ref={taskRootRef} style={{ position: 'relative', display: 'flex', flex: 1, minHeight: 0, padding: 'var(--gap-page)', gap: 12 }}>
           <AnnotatedWrapper id="sampleSidebar" layout="inline">
           <div style={{ width: 160, flex: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
-            {tSamples.length ? tSamples.map((s, i) => {
+            {visibleSamples.length ? visibleSamples.map((s, i) => {
               const on = cur && s.id === cur.id;
               const isFrom = s.id === fromSampleId;
               return (

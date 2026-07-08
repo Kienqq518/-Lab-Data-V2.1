@@ -4,6 +4,7 @@ import { MOCK as M } from '../mock.js';
 import { SCAN_SAMPLE_ID, ScanSampleOverlay, resolveTaskForSample } from './ScanSampleOverlay.jsx';
 import { TaskListSort, TASK_SORT_OPTIONS, RETURNED_SORT_OPTIONS } from './TaskListSort.jsx';
 import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index.js';
+import { filterL3View } from './l3-search-filter.js';
 
 /* 配置驱动的任务聚焦页（方案 A）：L2 任务列表 → L3 样品+试验项 → L4 采集
    一套组件覆盖：待检 / 检测中 / 逾期 / 临期 / 退回复测。
@@ -149,12 +150,10 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
   // ===== L3：样品(左) + 试验项(右) 主从 =====
   if (view === 'task' && task) {
     const tSamples = visibleSamples(task);
-    const cur = tSamples.find((s) => s.id === taskSample) || tSamples[0];
-    const ql2 = q.trim().toLowerCase();
-    const baseTests = cur ? visibleTests(cur) : [];
-    const its = baseTests.filter((t) => !ql2
-      || t.name.toLowerCase().includes(ql2)
-      || (cur.code && cur.code.toLowerCase().includes(ql2)));
+    const getBaseTests = (sample) => visibleTests(sample);
+    const { samples: filteredSamples, getTests } = filterL3View(tSamples, getBaseTests, q);
+    const cur = filteredSamples.find((s) => s.id === taskSample) || filteredSamples[0];
+    const its = cur ? getTests(cur) : [];
 
     return (
       <AnnotationPageKeyProvider pageKey="focus-l3">
@@ -169,7 +168,7 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>委托单位：{task.client || '—'}</span>
-              <span>样品数：{tSamples.length}</span>
+              <span>样品数：{filteredSamples.length}</span>
               {task.time && <span style={{ fontVariantNumeric: 'tabular-nums' }}>下发时间：{task.time}</span>}
               {task.detectDeadline && (
                 <span style={{ fontVariantNumeric: 'tabular-nums', color: task.status === 'overdue' ? 'var(--status-overdue-fg,#c53030)' : 'var(--text-secondary)' }}>
@@ -179,15 +178,15 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
             </div>
           </Card>
           </AnnotatedWrapper>
-          <AnnotatedWrapper id="focusL2Search" layout="block">
-          <SearchBar value={q} onChange={(e) => setQ(e.target.value)} placeholder="请输入试样编号、试验项进行搜索" />
+          <AnnotatedWrapper id="focusL3Search" layout="block">
+          <SearchBar value={q} onChange={(e) => setQ(e.target.value)} placeholder="请输入样品名称、样品编号、试验项搜索" />
           </AnnotatedWrapper>
         </div>
 
         <div style={{ display: 'flex', flex: 1, minHeight: 0, padding: 'var(--gap-page)', gap: 12 }}>
           <AnnotatedWrapper id="focusL3Samples" layout="inline">
           <div style={{ width: 160, flex: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)', overflow: 'auto' }}>
-            {tSamples.length ? tSamples.map((s, i) => {
+            {filteredSamples.length ? filteredSamples.map((s, i) => {
               const on = cur && s.id === cur.id;
               const isFrom = s.id === fromSampleId;
               return (

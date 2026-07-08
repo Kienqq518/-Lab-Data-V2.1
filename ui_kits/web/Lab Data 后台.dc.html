@@ -336,7 +336,7 @@
           <div style="height:1px; background:#f0f2f6; margin:2px 0;"></div>
           <div style="display:flex; flex-direction:column; gap:11px;">
             <label style="font-size:13px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 采集方式 <span style="color:#aab2bf;">— 决定 App 检测员采集页的录入交互</span></label>
-            <sc-for list="{{ methodOptions }}" as="o" hint-placeholder-count="4">
+            <sc-for list="{{ methodOptions }}" as="o" hint-placeholder-count="5">
               <div onClick="{{ o.pick }}" style="border:1.5px solid {{ o.border }}; background:{{ o.cardBg }}; border-radius:9px; padding:12px 14px; cursor:pointer; display:flex; gap:11px; align-items:flex-start;">
                 <span style="width:16px; height:16px; border-radius:50%; border:1.5px solid {{ o.radioBorder }}; flex:none; margin-top:2px; display:flex; align-items:center; justify-content:center;">
                   <span style="width:8px; height:8px; border-radius:50%; background:{{ o.radioDot }};"></span>
@@ -495,7 +495,7 @@ class Component extends DCLogic {
       { code: 'YM-WRH-01', name: '电缆直流电阻快速测量系统-无人化版', model: 'YM-WRH-01', dept: '应敏科技',     area: '无人化试验室', method: 'direct',  on: true },
       { code: 'YM-S03',    name: '智能型数字电桥',                 model: 'QJ36-ZS',   dept: '应敏科技',     area: '力学检测室2',   method: 'ocr',     on: true },
       { code: 'DL-27',     name: '数显卡尺',                      model: '(0-200)mm', dept: '材料检测组',   area: '力学检测室1',   method: 'ble',     on: true },
-      { code: 'YM-FMK',    name: '电子天平（砝码库）',             model: 'YM-FMK',    dept: '应敏科技',     area: '无人化试验室', method: 'ble', external: true, on: true },
+      { code: 'YM-FMK',    name: '电子天平（砝码库）',             model: 'YM-FMK',    dept: '应敏科技',     area: '无人化试验室', method: 'serial', external: true, on: true },
       { code: 'YM-WRH-07', name: '热延伸试验箱',                  model: 'YRSC-200I', dept: '应敏科技',     area: '无人化试验室', method: 'ocr',     on: true },
       { code: 'SL-005',    name: '安全帽冲击试验机',               model: 'YFM-20I',   dept: '安全工器具检测组', area: '力学检测室1', method: 'ocr', on: true },
       { code: 'LX-05',     name: '微机控制电子万能试验机',          model: 'LD26504',   dept: '实链检测',     area: '力学检测室1',   method: 'direct',  on: true },
@@ -539,7 +539,8 @@ class Component extends DCLogic {
   METHODS = {
     direct:  { label: '设备直采', tag: '直连', desc: '设备有通讯接口、可直连读数；App 一键采集，失败可切手输。',          bg:'#eef4ff', fg:'#1d54c4', dot:'#2563eb' },
     ocr:     { label: '图像采集', tag: 'OCR',  desc: '无直连但有读数屏，已配「数据识别规则」；App 拍照识别回填，识别差时手输矫正。', bg:'#efeaff', fg:'#6a48e0', dot:'#7c5cff' },
-    ble:     { label: '蓝牙/串口', tag: '节点', desc: '数显卡尺、电子天平等智能采集节点；连接后同步读数，可手输。',        bg:'#e2f7f9', fg:'#0a8a96', dot:'#0fb5c4' },
+    ble:     { label: '蓝牙采集', tag: '蓝牙', desc: '数显卡尺等蓝牙节点；App 连接后逐条同步读数，连接异常时可手输。',        bg:'#e2f7f9', fg:'#0a8a96', dot:'#0fb5c4' },
+    serial:  { label: '串口采集', tag: '串口', desc: '电子天平等经工业平板串口程序代采写库；App 端读取已采数据，异常时可手输。', bg:'#ede9fe', fg:'#6d4bd1', dot:'#8b6bd6' },
     manual:  { label: '人工录入', tag: '手工', desc: '以上均不支持，仅现场手工录入数据。',                            bg:'#eef1f5', fg:'#5b6677', dot:'#828c9c' },
   };
 
@@ -563,7 +564,7 @@ class Component extends DCLogic {
   };
 
   meta(r) {
-    if (r.method === 'ble' && r.external) return { label: '外部程序采集', bg:'#e2f7f9', fg:'#0a8a96', dot:'#11a3b0' };
+    if (r.method === 'serial' && r.external) return { label: '外部程序采集', bg:'#e2f7f9', fg:'#0a8a96', dot:'#11a3b0' };
     const m = this.METHODS[r.method];
     return { label: m.label, bg: m.bg, fg: m.fg, dot: m.dot };
   }
@@ -671,7 +672,7 @@ class Component extends DCLogic {
       drawerTitle: s.devEditIdx == null ? '新增设备' : '编辑设备',
       editName: er ? er.name : '—', editCode: er ? er.code : '—', editArea: er ? er.area : '—',
       methodOptions,
-      showExternal: s.methodSel === 'ble',
+      showExternal: s.methodSel === 'serial',
       extSwBg: s.external ? '#0fb5c4' : '#cdd3dc',
       extSwX: s.external ? '18px' : '2px',
       toggleExternal: () => this.setState((st) => ({ external: !st.external })),
@@ -679,7 +680,7 @@ class Component extends DCLogic {
       saveDrawer: () => this.setState((st) => {
         if (st.devEditIdx == null) return { drawerOpen: false };
         const rs = st.devRows.slice();
-        rs[st.devEditIdx] = { ...rs[st.devEditIdx], method: st.methodSel, external: st.methodSel === 'ble' ? st.external : false };
+        rs[st.devEditIdx] = { ...rs[st.devEditIdx], method: st.methodSel, external: st.methodSel === 'serial' ? st.external : false };
         return { devRows: rs, drawerOpen: false };
       }),
       // rules

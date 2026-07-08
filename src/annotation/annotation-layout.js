@@ -1,5 +1,5 @@
 /** 单侧批注轨道展开宽度 */
-export const RAIL_WIDTH = 380;
+export const RAIL_WIDTH = 440;
 
 /** 批注关闭时轨道占位宽度（仅放开关） */
 export const RAIL_WIDTH_COLLAPSED = 52;
@@ -39,7 +39,7 @@ export function splitItemsToSides(items) {
 export function spreadNonOverlapping(items, heightMap, minGap = 14) {
   let lastBottom = -minGap;
   return items.map((item) => {
-    const height = heightMap[item.id] || 200;
+    const height = heightMap[item.id] || 240;
     let top = item.top;
     if (top < lastBottom + minGap) top = lastBottom + minGap;
     lastBottom = top + height;

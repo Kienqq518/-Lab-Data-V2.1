@@ -42,20 +42,16 @@ import { AnnotatedWrapper } from '../annotation/index.js';
         <WorkOverview metrics={metrics} onFocus={onFocus} />
 
         {/* 快捷入口（统计维度：委托任务） */}
+        <AnnotatedWrapper id="quickEntrySection" layout="block">
         <div>
           <SectionTitle style={{ marginBottom: 12 }}>快捷入口</SectionTitle>
           <div style={{ display: 'flex', gap: 12 }}>
-            <AnnotatedWrapper id="quickPending" layout="flex" placement="bottom">
-              <Quick label="待检任务" count={pendingCount} tone="pending" icon="inbox" onClick={() => onQuick?.('pending')} />
-            </AnnotatedWrapper>
-            <AnnotatedWrapper id="quickTesting" layout="flex" placement="bottom">
-              <Quick label="检测中任务" count={testingCount} tone="testing" icon="loader" onClick={() => onQuick?.('testing')} />
-            </AnnotatedWrapper>
-            <AnnotatedWrapper id="quickDone" layout="flex" placement="bottom">
-              <Quick label="已检任务" count={doneCount} tone="done" icon="check" onClick={() => onQuick?.('done')} />
-            </AnnotatedWrapper>
+            <Quick label="待检任务" count={pendingCount} tone="pending" icon="inbox" onClick={() => onQuick?.('pending')} />
+            <Quick label="检测中任务" count={testingCount} tone="testing" icon="loader" onClick={() => onQuick?.('testing')} />
+            <Quick label="已检任务" count={doneCount} tone="done" icon="check" onClick={() => onQuick?.('done')} />
           </div>
         </div>
+        </AnnotatedWrapper>
 
         {/* 个人检测统计 */}
         <AnnotatedWrapper id="inspectorStats" layout="block">
@@ -71,25 +67,16 @@ import { AnnotatedWrapper } from '../annotation/index.js';
   /** 今日工作概览：逾期 / 临期 / 退回三类异常待办，各自进入专属聚焦页 */
   function WorkOverview({ metrics, onFocus }) {
     return (
+      <AnnotatedWrapper id="workOverviewSection" layout="block">
       <div>
-        <AnnotatedWrapper id="workOverview" layout="block" placement="bottom">
-          <SectionTitle style={{ marginBottom: 6 }}>今日工作概览</SectionTitle>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-            优先处理逾期与退回项，关注 3 日内到期任务
-          </div>
-        </AnnotatedWrapper>
+        <SectionTitle style={{ marginBottom: 12 }}>今日工作概览</SectionTitle>
         <div style={{ display: 'flex', gap: 12 }}>
-          <AnnotatedWrapper id="overdueCard" layout="flex" placement="bottom">
-            <StatCard label="逾期任务" value={metrics.overdueTasks} tone="overdue" onClick={() => onFocus?.('overdue')} />
-          </AnnotatedWrapper>
-          <AnnotatedWrapper id="dueSoonCard" layout="flex" placement="bottom">
-            <StatCard label="3日内到期" value={metrics.dueSoonTasks} tone="pending" onClick={() => onFocus?.('dueSoon')} />
-          </AnnotatedWrapper>
-          <AnnotatedWrapper id="returnedCard" layout="flex" placement="bottom">
-            <StatCard label="退回复测" value={metrics.returnedTests} tone="brand" onClick={() => onFocus?.('returned')} />
-          </AnnotatedWrapper>
+          <StatCard label="逾期任务" value={metrics.overdueTasks} tone="overdue" onClick={() => onFocus?.('overdue')} />
+          <StatCard label="3日内到期" value={metrics.dueSoonTasks} tone="pending" onClick={() => onFocus?.('dueSoon')} />
+          <StatCard label="退回复测" value={metrics.returnedTests} tone="brand" onClick={() => onFocus?.('returned')} />
         </div>
       </div>
+      </AnnotatedWrapper>
     );
   }
 
@@ -177,6 +164,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
 
   function LineChart({ data, labels, color }) {
     const W = 700, H = 200, padL = 38, padR = 10, padT = 12, padB = 24;
+    const [activePoint, setActivePoint] = React.useState(null);
     const n = data.length;
     const max = Math.max.apply(null, data.concat(1));
     const niceMax = Math.max(50, Math.ceil(max / 50) * 50);
@@ -185,20 +173,47 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     const Y = (v) => padT + plotH - (v / niceMax) * plotH;
     const ticks = []; for (let t = 0; t <= niceMax + 0.1; t += niceMax / 5) ticks.push(t);
     const dPath = data.map((v, i) => `${i ? 'L' : 'M'} ${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+
+    /** 点击数据点展示 Y 值 */
+    function handlePointClick(i, v, event) {
+      event.stopPropagation();
+      setActivePoint((prev) => (prev && prev.i === i ? null : { i, v, x: X(i), y: Y(v), label: labels.find((l) => l.i === i)?.text || '' }));
+    }
+
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}>
-        {ticks.map((t, k) => (
-          <g key={k}>
-            <line x1={padL} y1={Y(t)} x2={W - padR} y2={Y(t)} stroke="var(--gray-200)" strokeWidth="1" />
-            <text x={padL - 6} y={Y(t) + 4} textAnchor="end" fontSize="11" fill="var(--text-secondary)">{Math.round(t)}</text>
-          </g>
-        ))}
-        <path d={dPath} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        {data.map((v, i) => <circle key={i} cx={X(i)} cy={Y(v)} r="2.4" fill="#fff" stroke={color} strokeWidth="1.5" />)}
-        {labels.map((l, k) => (
-          <text key={k} x={X(l.i)} y={H - 6} textAnchor="middle" fontSize="11" fill="var(--text-secondary)">{l.text}</text>
-        ))}
-      </svg>
+      <div style={{ position: 'relative' }} onClick={() => setActivePoint(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}>
+          {ticks.map((t, k) => (
+            <g key={k}>
+              <line x1={padL} y1={Y(t)} x2={W - padR} y2={Y(t)} stroke="var(--gray-200)" strokeWidth="1" />
+              <text x={padL - 6} y={Y(t) + 4} textAnchor="end" fontSize="11" fill="var(--text-secondary)">{Math.round(t)}</text>
+            </g>
+          ))}
+          <path d={dPath} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          {data.map((v, i) => (
+            <circle
+              key={i}
+              cx={X(i)}
+              cy={Y(v)}
+              r={activePoint?.i === i ? 5 : 3.2}
+              fill={activePoint?.i === i ? color : '#fff'}
+              stroke={color}
+              strokeWidth="1.5"
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => handlePointClick(i, v, e)}
+            />
+          ))}
+          {labels.map((l, k) => (
+            <text key={k} x={X(l.i)} y={H - 6} textAnchor="middle" fontSize="11" fill="var(--text-secondary)">{l.text}</text>
+          ))}
+          {activePoint && (
+            <g pointerEvents="none">
+              <rect x={activePoint.x - 36} y={activePoint.y - 32} width={72} height={26} rx={6} fill="var(--text-title)" opacity={0.92} />
+              <text x={activePoint.x} y={activePoint.y - 16} textAnchor="middle" fontSize="12" fill="#fff" fontWeight="700">{activePoint.v}</text>
+            </g>
+          )}
+        </svg>
+      </div>
     );
   }
 

@@ -3,6 +3,7 @@ import { inspectAnnotations } from './pages/inspect.js';
 import { focusAnnotations } from './pages/focus.js';
 import { collectAnnotations } from './pages/collect.js';
 import { notifyAnnotations } from './pages/notify.js';
+import { doneAnnotations } from './pages/done.js';
 
 /** 按页面 key 聚合批注配置 */
 const REGISTRY = {
@@ -11,6 +12,7 @@ const REGISTRY = {
   'inspect-l2-device': inspectAnnotations,
   'inspect-l3': inspectAnnotations,
   collect: collectAnnotations,
+  done: doneAnnotations,
   notify: notifyAnnotations,
   'focus-pending': focusAnnotations,
   'focus-testing': focusAnnotations,

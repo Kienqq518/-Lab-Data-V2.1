@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppBar, Card, SearchBar, StatusTag, TestItemCard } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
+import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 已检任务（首页「已检任务」入口）
    L1 任务列表 → L3 样品+试验项（主从）→ L4 采集详情（只读复核） */
@@ -166,7 +167,9 @@ function DoneTasks({ onBack, onCollect }) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
       <AppBar title="已检任务" onBack={onBack} />
 
-      <div style={{ padding: 'var(--gap-page)', paddingBottom: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <AnnotatedWrapper id="doneSection" layout="flex">
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%' }}>
+      <div style={{ padding: 'var(--gap-page)', paddingBottom: 10, display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 8 }}>
           {RANGES.map((r) => {
             const on = r.value === range;
@@ -204,6 +207,8 @@ function DoneTasks({ onBack, onCollect }) {
           </div>
         </div>
       </div>
+      </div>
+      </AnnotatedWrapper>
     </div>
   );
 }
