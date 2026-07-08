@@ -355,6 +355,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
         <Section title="基础信息" icon="info">
           <Grid items={[
+            ['任务编号', ctx.task?.code || MOCK.taskCodeFromSample(ctx.sample)],
             ['样品编号', ctx.sample.code],
             ['样品名称', ctx.sample.name],
             ['试验名称', ctx.item.name],

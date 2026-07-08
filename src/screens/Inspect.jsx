@@ -1,13 +1,12 @@
 import React from 'react';
 import { AppBar, Card, CollectBadge, DeviceCard, SearchBar, SegmentedSwitch, StatusTag, TaskCard, TestItemCard } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
+import { SCAN_SAMPLE_ID, ScanSampleOverlay, resolveTaskForSample } from './ScanSampleOverlay.jsx';
+import { TaskListSort } from './TaskListSort.jsx';
 
 /* 检测模块 — 工位上下文 + 按设备/按任务双模式 + 钻取试验项
    · 按设备：L1 设备列表 → L2 委托任务 → L3 样品(左)+试验项(右)，仅展示该设备相关样品与试验项
    · 按任务：L2 委托任务列表 → L3 样品(左)+试验项(右) → L4 采集（与按设备 L2/L3/L4 同源逻辑） */
-
-  // 扫码 mock：扫描后固定跳转到该样品的 L3
-  const SCAN_SAMPLE_ID = 's1b';
 
   function Inspect({ stationId, onBack, onCollect, onSwitchStation, onClearStation }) {
     const station = M.stations.find((s) => s.id === stationId) || null;
@@ -24,6 +23,8 @@ import { MOCK as M } from '../mock.js';
     const [offOpen, setOffOpen] = React.useState(false);
     const [scanOpen, setScanOpen] = React.useState(false);
     const [fromSampleId, setFromSampleId] = React.useState(null);
+    const [taskSort, setTaskSort] = React.useState('detectDeadline:asc');
+    const [taskBackView, setTaskBackView] = React.useState('list');
 
     React.useEffect(() => { setOffOpen(false); }, [stationId]);
 
@@ -41,7 +42,7 @@ import { MOCK as M } from '../mock.js';
       || (t.sampleName && t.sampleName.toLowerCase().includes(ql))
       || (t.client && t.client.toLowerCase().includes(ql));
     const fDevices = devices.filter(matchDevice);
-    const fTasks = M.tasks.filter(matchTask);
+    const fTasks = M.sortTaskList(M.tasks.filter(matchTask), taskSort);
     const fOff = M.offDevices.filter(matchDevice);
 
     /** 切换按设备/按任务时重置钻取状态 */
@@ -54,6 +55,7 @@ import { MOCK as M } from '../mock.js';
       setTaskSample(null);
       setCameFrom(next === 'task' ? 'task' : 'device');
       setFromSampleId(null);
+      setTaskBackView('list');
     }
 
     function toggleOffOpen() {
@@ -81,18 +83,19 @@ import { MOCK as M } from '../mock.js';
       setTaskSample(first ? first.id : null);
       setCameFrom(from);
       setFromSampleId(null);
+      setTaskBackView(from === 'device' ? 'device' : 'list');
       setQ('');
       setView('task');
     }
 
     /** 扫码进入：直达样品所在任务 L3，并高亮该样品 */
     function openScannedSample(s) {
-      const t = M.tasks.find((tk) => s.code.startsWith(tk.code))
-        || { code: s.code.replace(/-\d+$/, ''), sampleName: s.name, client: s.client, time: '', status: s.status };
+      const t = resolveTaskForSample(s, M.tasks);
       setTask(t);
       setTaskSample(s.id);
-      setCameFrom(mode);
+      setCameFrom(mode === 'device' && device ? 'device' : 'task');
       setFromSampleId(s.id);
+      setTaskBackView('list');
       setQ('');
       setView('task');
     }
@@ -170,6 +173,8 @@ import { MOCK as M } from '../mock.js';
               placeholder={mode === 'device' ? '请输入设备名称、编号、型号搜索' : '请输入任务编号、样品名称、委托单位搜索'}
               onScan={() => setScanOpen(true)} />
 
+            {mode === 'task' && <TaskListSort value={taskSort} onChange={setTaskSort} />}
+
             {mode === 'device' && station && (
               <div ref={offPanelRef} style={{ flexShrink: 0, borderRadius: 'var(--radius-md)', border: '1px dashed var(--collect-ble)', background: offOpen ? 'var(--white)' : 'var(--collect-ble-bg)' }}>
                 <button type="button" onClick={toggleOffOpen} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--collect-ble)', textAlign: 'left' }}>
@@ -221,14 +226,14 @@ import { MOCK as M } from '../mock.js';
             </div>
           </div>
 
-          {scanOpen && <ScanOverlay onCancel={() => setScanOpen(false)} onScan={doScan} />}
+          {scanOpen && <ScanSampleOverlay onCancel={() => setScanOpen(false)} onScan={doScan} />}
         </div>
       );
     }
 
     // ===== 按设备 L2：选委托任务 =====
     if (view === 'device') {
-      const dtasks = tasksForDevice(device);
+      const dtasks = M.sortTaskList(tasksForDevice(device), taskSort);
       return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
           <AppBar title="选择委托任务" onBack={() => setView('list')} />
@@ -242,6 +247,8 @@ import { MOCK as M } from '../mock.js';
                 <CollectBadge method={device.method} size="sm" />
               </div>
             </Card>
+
+            <TaskListSort value={taskSort} onChange={setTaskSort} />
 
             <div>
               <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>委托任务（{dtasks.length}）</div>
@@ -278,7 +285,7 @@ import { MOCK as M } from '../mock.js';
 
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
-        <AppBar title="试验检测" onBack={() => setView(cameFrom === 'task' ? 'list' : 'device')} />
+        <AppBar title="试验检测" onBack={() => setView(taskBackView)} />
         <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {task && (
             <Card padding="12px 16px">
@@ -375,30 +382,6 @@ import { MOCK as M } from '../mock.js';
               boxShadow: '0 8px 24px rgba(0,0,0,0.22)', cursor: 'pointer',
             }}>{nameTip.name}</div>
           )}
-        </div>
-      </div>
-    );
-  }
-
-  /** 扫码取景页（mock）：点击取景框即模拟扫码成功 */
-  function ScanOverlay({ onCancel, onScan }) {
-    return (
-      <div style={{ position: 'absolute', inset: 0, zIndex: 200, background: '#0b0d10', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', color: '#fff' }}>
-          <button onClick={onCancel} style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: 'var(--fs-base)' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            取消
-          </button>
-          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>扫描样品二维码</span>
-          <span style={{ width: 56 }} />
-        </div>
-        <div style={{ flex: 1, position: 'relative', margin: '0 16px 24px', borderRadius: 'var(--radius-lg,16px)', overflow: 'hidden', background: 'repeating-linear-gradient(135deg,#1a1d22 0 14px,#16191e 14px 28px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <button onClick={onScan} style={{ position: 'absolute', inset: '20% 14%', border: '2px solid rgba(255,255,255,0.85)', borderRadius: 12, background: 'transparent', cursor: 'pointer' }}>
-            {['-1px -1px', '-1px auto auto -1px', 'auto -1px -1px auto', 'auto auto -1px -1px'].map((p, k) => (
-              <span key={k} style={{ position: 'absolute', width: 26, height: 26, border: '3px solid var(--brand-action)', ...(k === 0 ? { top: -1, left: -1, borderRight: 'none', borderBottom: 'none' } : k === 1 ? { top: -1, right: -1, borderLeft: 'none', borderBottom: 'none' } : k === 2 ? { bottom: -1, left: -1, borderRight: 'none', borderTop: 'none' } : { bottom: -1, right: -1, borderLeft: 'none', borderTop: 'none' }) }} />
-            ))}
-            <span style={{ position: 'absolute', bottom: -34, left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.85)', fontSize: 'var(--fs-sm)' }}>将样品二维码对准取景框（点击模拟扫码）</span>
-          </button>
         </div>
       </div>
     );

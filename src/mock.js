@@ -555,4 +555,30 @@
     return (sample?.tests || []).filter((t) => testUsesDevice(t, dev));
   }
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice };
+  /** 解析任务时间字段为可比较时间戳 */
+  function parseTaskDateTime(value) {
+    if (!value) return 0;
+    const ts = Date.parse(String(value).replace(' ', 'T'));
+    return Number.isNaN(ts) ? 0 : ts;
+  }
+
+  /** 按指定规则排序任务列表（code / time / detectDeadline，升序或降序） */
+  function sortTaskList(list, sortKey = 'code:asc') {
+    const [field, order] = String(sortKey || 'code:asc').split(':');
+    const dir = order === 'desc' ? -1 : 1;
+    return list.slice().sort((a, b) => {
+      let cmp = 0;
+      if (field === 'code') cmp = String(a.code).localeCompare(String(b.code), 'zh-CN', { numeric: true });
+      else if (field === 'time') cmp = parseTaskDateTime(a.time) - parseTaskDateTime(b.time);
+      else if (field === 'detectDeadline') cmp = parseTaskDateTime(a.detectDeadline) - parseTaskDateTime(b.detectDeadline);
+      if (cmp === 0) cmp = String(a.code).localeCompare(String(b.code), 'zh-CN', { numeric: true });
+      return cmp * dir;
+    });
+  }
+
+  /** 从样品编号推导任务编号 */
+  function taskCodeFromSample(sample) {
+    return sample?.code ? sample.code.replace(/-\d+$/, '') : '—';
+  }
+
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample };

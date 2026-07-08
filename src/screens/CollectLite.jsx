@@ -75,6 +75,7 @@ function CollectLite({ ctx, onBack, onDone }) {
       <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', paddingTop: flowLocked || flowReturned ? 0 : 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Section title="基础信息" icon="info">
           <Grid items={[
+            ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
             ['样品编号', ctx.sample?.code || '—'],
             ['样品名称', ctx.sample?.name || '—'],
             ['试验名称', ctx.item?.name || '—'],
