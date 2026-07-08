@@ -159,7 +159,7 @@ import { getApiBaseUrl, setApiBaseUrl } from '../api-config.js';
                 <Button variant="secondary" onClick={saveApiBaseUrl} style={{ flex: 'none', minWidth: 72, height: 44, padding: '0 16px' }}>设置</Button>
               </div>
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                配置当前连接的数采 Web 端环境，例如 http://8.149.129.137:8086/api/
+                配置当前连接的数采 Web 端环境
               </div>
             </Card>
           </div>
