@@ -3,6 +3,7 @@ import { AppBar, Button, Card, CollectBadge, FieldRow } from '../design-system.j
 import { MOCK as M } from '../mock.js';
 import { EnvInfoSection, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
+import { resolveInspectStampState } from './collect-model.js';
 
 /* 轻量 LIMS 试验项 L4：参数平铺展示，结论由检测员手工录入 */
 
@@ -35,6 +36,7 @@ function CollectLite({ ctx, onBack, onDone }) {
   const flowReturned = !flowLocked && !!flow.returned;
   const readOnly = isReview || flowLocked;
 
+  const [returnTouched, setReturnTouched] = React.useState(false);
   const [vals, setVals] = React.useState(() => {
     const init = {};
     fields.forEach((f) => { init[f.key] = demoVals[f.key] ?? ''; });
@@ -48,14 +50,28 @@ function CollectLite({ ctx, onBack, onDone }) {
     [ctx.sample?.code, ctx.item?.name, method],
   );
 
-  const inspectState = (uploaded || isReview) ? 'done' : uploading ? 'doing' : 'todo';
+  const filledCount = fields.some((f) => String(vals[f.key] || '').trim() !== '') ? 1 : 0;
+  const inspectState = resolveInspectStampState({
+    flowReturned,
+    returnTouched,
+    filledCount,
+    uploadedCount: uploaded ? 1 : 0,
+    total: 1,
+  });
+
+  /** 退回复测：用户修改后标记，用于展示右上角状态水印 */
+  function touchReturn() {
+    if (flowReturned) setReturnTouched(true);
+  }
 
   function setField(key, value) {
-    if (readOnly || uploaded || uploading) return;
+    if (readOnly || uploading) return;
+    touchReturn();
     setVals((prev) => ({ ...prev, [key]: value }));
   }
 
   function upload() {
+    touchReturn();
     setUploading(true);
     setTimeout(() => {
       setUploading(false);
@@ -68,7 +84,7 @@ function CollectLite({ ctx, onBack, onDone }) {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
       <AppBar title={ctx.item?.name || '试验检测'} onBack={onBack} />
-      <Stamp state={inspectState} />
+      {inspectState && <Stamp state={inspectState} />}
       <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
         <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
       </div>

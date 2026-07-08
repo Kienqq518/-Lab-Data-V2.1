@@ -234,7 +234,7 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
           {filtered.length ? filtered.map((t) => (
             <TaskCard key={t.code} code={t.code} sampleName={t.sampleName} client={t.client}
-              time={t.time} status={t.status} detectDeadline={t.detectDeadline} onClick={() => openTask(t)} />
+              time={t.time} status={kind === 'returned' ? 'testing' : t.status} detectDeadline={t.detectDeadline} onClick={() => openTask(t)} />
           )) : (
             <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <div style={{ fontSize: 'var(--fs-base)' }}>{cfg.emptyText || `暂无${cfg.title}`}</div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppBar, Button, Card, Input, SectionTitle } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
+import logoMark from '../../assets/logo-mark.png';
 
 /* 我的 — 用户信息 / 消息通知 / 设置 / 帮助与反馈
    采用「我的」Tab 内部页面栈：main → 各详情页（AppBar 返回）。 */
@@ -22,8 +23,10 @@ import { MOCK as M } from '../mock.js';
 
     let screen;
     if (view === 'profile') screen = <ProfilePage user={U} onBack={() => setView('main')} onToast={showToast} />;
-    else if (view === 'settings') screen = <SettingsPage onBack={() => setView('main')} onPrivacy={() => setView('privacy')} onToast={showToast} />;
+    else if (view === 'settings') screen = <SettingsPage onBack={() => setView('main')} onPrivacy={() => setView('privacy')} onAbout={() => setView('about')} onToast={showToast} />;
     else if (view === 'privacy') screen = <PrivacyPage onBack={() => setView('settings')} />;
+    else if (view === 'about') screen = <AboutPage onBack={() => setView('settings')} onPrivacy={() => setView('privacy')} onService={() => setView('service')} />;
+    else if (view === 'service') screen = <ServiceAgreementPage onBack={() => setView('about')} />;
     else if (view === 'password') screen = <PasswordPage onBack={() => setView('main')} onToast={showToast} />;
     else if (view === 'help') screen = <HelpPage onBack={() => setView('main')} onFeedback={() => setView('feedback')} onToast={showToast} />;
     else if (view === 'feedback') screen = <FeedbackPage onBack={() => setView('help')} onToast={showToast} />;
@@ -116,7 +119,7 @@ import { MOCK as M } from '../mock.js';
   }
 
   /* ===== 设置 ===== */
-  function SettingsPage({ onBack, onPrivacy, onToast }) {
+  function SettingsPage({ onBack, onPrivacy, onAbout, onToast }) {
     const [push, setPush] = React.useState(true);
     const [overdue, setOverdue] = React.useState(true);
     const [returned, setReturned] = React.useState(true);
@@ -138,7 +141,7 @@ import { MOCK as M } from '../mock.js';
             <Card padding="0">
               <Row icon="trash" label="清除缓存" note="12.6 MB" onClick={() => onToast('缓存已清除（演示）')} />
               <Row icon="shield" label="隐私政策" onClick={onPrivacy} />
-              <Row icon="info" label="关于" note="Lab Data v2.1.0" />
+              <Row icon="info" label="关于我们" note="Lab Data v2.1.0" onClick={onAbout} />
               <Row icon="refresh" label="检查更新" note="已是最新" onClick={() => onToast('当前已是最新版本')} last />
             </Card>
           </div>
@@ -168,6 +171,62 @@ import { MOCK as M } from '../mock.js';
               本政策旨在向你说明本应用如何收集、使用、存储和保护你的个人信息。请在使用前仔细阅读并充分理解本政策的全部内容。
             </div>
             {P.map(([h, body]) => (
+              <div key={h} style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-title)', marginBottom: 6 }}>{h}</div>
+                <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-body)', lineHeight: 1.8 }}>{body}</div>
+              </div>
+            ))}
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  /* ===== 关于我们 ===== */
+  function AboutPage({ onBack, onPrivacy, onService }) {
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
+        <AppBar title="关于我们" onBack={onBack} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--gap-page)', gap: 14 }}>
+          <div style={{ width: 96, height: 96, borderRadius: 22, background: 'var(--white)', boxShadow: 'var(--shadow-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src={logoMark} alt="数蚕 Lab Data" style={{ width: 64, height: 64, objectFit: 'contain' }} />
+          </div>
+          <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>数蚕 Lab Data v2.1.0</div>
+          <div style={{ textAlign: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+            <div>Copyright©2024-2026</div>
+            <div>杭州数蚕科技有限公司 All rights reserved</div>
+          </div>
+        </div>
+        <div style={{ padding: 'var(--gap-page)', paddingBottom: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button type="button" onClick={onService} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--brand-action)' }}>服务协议</button>
+            <span style={{ width: 1, height: 12, background: 'var(--divider)' }} />
+            <button type="button" onClick={onPrivacy} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--brand-action)' }}>个人信息保护政策</button>
+          </div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>浙ICP备18037361号-3</div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ===== 服务协议（mock 详情） ===== */
+  function ServiceAgreementPage({ onBack }) {
+    const sections = [
+      ['一、协议范围', '本服务协议（以下简称“本协议”）由你（检测员用户）与杭州数蚕科技有限公司（以下简称“我们”）就数蚕 Lab Data 移动端应用的使用所订立。使用本应用即表示你已阅读并同意本协议。'],
+      ['二、服务内容', '本应用为实验室检测业务提供任务查看、试验数据采集与上传、设备连接、消息通知等功能。具体功能以实际发布版本及你所属检测机构在 TestOS 底座中的配置为准。'],
+      ['三、账号与安全', '你应使用机构分配的账号登录，并妥善保管密码。账号相关信息统一在数采系统 Web 端 的TestOS 底座维护，移动端不支持修改部门、手机号、邮箱等账号信息。'],
+      ['四、数据与知识产权', '你在检测过程中产生的试验数据归你所属检测机构所有。本应用的界面、程序及相关知识产权归我们所有，未经授权不得复制或用于其他用途。'],
+      ['五、免责声明', '因网络、设备故障或不可抗力导致的数据延迟、丢失，我们将在合理范围内协助排查，但不承担超出法律法规规定范围的责任。'],
+      ['六、协议变更', '我们可能适时修订本协议，修订后将通过应用内通知或版本更新说明告知。若你继续使用本应用，即视为接受修订后的协议。'],
+    ];
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
+        <AppBar title="服务协议" onBack={onBack} />
+        <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)' }}>
+          <Card>
+            <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)', marginBottom: 6 }}>数蚕 Lab Data 服务协议</div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 14 }}>更新日期：2026-07-01 · 杭州数蚕科技有限公司</div>
+            {sections.map(([h, body]) => (
               <div key={h} style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-title)', marginBottom: 6 }}>{h}</div>
                 <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-body)', lineHeight: 1.8 }}>{body}</div>

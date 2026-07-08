@@ -3,7 +3,7 @@ import { AppBar, Button, Card, CollectBadge, FieldRow, UploadStatus } from '../d
 import { MOCK as M } from '../mock.js';
 import { CollectStructured } from './CollectStructured.jsx';
 import { CollectLite } from './CollectLite.jsx';
-import { isCompositeItem } from './collect-model.js';
+import { isCompositeItem, isFlowReturned, resolveInspectStampState } from './collect-model.js';
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 
@@ -117,10 +117,12 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
     const flow = demoFlow ? DEMO_FLOWS[demoFlow] : (ctx.flow || ctx.item?.flow || { node: '试验检测' });
     const flowLocked = FLOW_LOCK_AFTER.includes(flow.node);
     const flowReturned = !flowLocked && !!flow.returned;
+    const initialReturned = isFlowReturned(ctx.flow || ctx.item?.flow);
 
     const initTimes = () => Array.from({ length: N }, () => ({ status: 'idle', vals: {}, uploaded: false }));
     const [times, setTimes] = React.useState(initTimes);
     const [summary, setSummary] = React.useState({ status: 'idle', vals: {} });
+    const [returnTouched, setReturnTouched] = React.useState(false);
     const [busy, setBusy] = React.useState(null);   // 'all' | time index | null
     const [phase, setPhase] = React.useState(ctx.status === 'done' ? 'done' : 'idle'); // idle|filled|uploading|done
     const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
@@ -161,7 +163,18 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
       return v;
     }
 
+    /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
+    function touchReturn() {
+      if (flowReturned) setReturnTouched(true);
+    }
+
     React.useEffect(() => {
+      if (initialReturned) {
+        const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
+        setTimes(ts);
+        setSummary({ status: 'done', vals: computeSummary(ts) });
+        return;
+      }
       if (ctx.status === 'done') {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
         setTimes(ts); setSummary({ status: 'done', vals: computeSummary(ts) });
@@ -187,13 +200,18 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
     const uploadedCount = times.filter((t) => t.uploaded).length;
     const allUploaded = N > 0 && uploadedCount === N;
 
-    // L4 检测状态印章：未检测（无已上传数据）→ 检测中（完成至少一次上传）→ 已检测（全部上传完成）
-    const inspectState = allUploaded ? 'done'
-      : uploadedCount > 0 ? 'doing'
-      : 'todo';
+    // L4 检测状态印章：退回复测未修改前不展示；修改后按未检测/检测中/已检测规则展示
+    const inspectState = resolveInspectStampState({
+      flowReturned,
+      returnTouched,
+      filledCount,
+      uploadedCount,
+      total: N,
+    });
 
     // 设备直采：上位机整批写库，一键取值，全部时次 + 汇总一次性回填（只读）
     function captureAll() {
+      touchReturn();
       setBusy('all');
       setTimeout(() => {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: false }));
@@ -203,6 +221,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
     }
     // 蓝牙/图采：逐条采集第 i 次
     function captureTime(i) {
+      touchReturn();
       setBusy(i);
       setTimeout(() => {
         setTimes((prev) => {
@@ -231,10 +250,12 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
       }, 1000);
     }
     function manualTime(i) {
+      touchReturn();
       setTimes((prev) => { const next = prev.slice(); const v = {}; measureFields.forEach((f) => { v[f.key] = ''; }); next[i] = { status: 'filled', vals: v, uploaded: false }; return next; });
     }
     function setField(i, key, value) {
       if (flowLocked) return; // 流程已锁定，禁止修改
+      touchReturn();
       setTimes((prev) => {
         const next = prev.slice();
         const vals = { ...next[i].vals, [key]: value };
@@ -250,6 +271,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
     // 拍照识别/相册：取景页内识别，完成后回填该次并关闭
     function doShoot() {
       const i = shootIdx;
+      touchReturn();
       setShotPhase('recognizing');
       setTimeout(() => {
         setTimes((prev) => {
@@ -265,6 +287,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
     // 拍照识别·重新识别：用「上一次拍的同一张照片」重新做识别提取数据（区别于清除图片重新拍照上传）
     function reRecognize(i) {
       if (!(attachments[i] || []).length) return;
+      touchReturn();
       setBusy(i);
       setTimeout(() => {
         setTimes((prev) => {
@@ -278,6 +301,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
       }, 950);
     }
     function upload() {
+      touchReturn();
       setPhase('uploading');
       setTimeout(() => {
         setTimes((prev) => prev.map((t) => (t.status === 'filled' ? { ...t, uploaded: true } : t)));
@@ -286,15 +310,17 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
     }
     // 拍照识别/蓝牙：逐条采集完一次即可单独上传该次
     function uploadTime(i) {
+      touchReturn();
       setBusy('up' + i);
       setTimeout(() => {
         setTimes((prev) => prev.map((t, idx) => (idx === i ? { ...t, uploaded: true } : t)));
         setBusy(null);
       }, 800);
     }
-    function reset() { setTimes(initTimes()); setSummary({ status: 'idle', vals: {} }); setPhase('idle'); }
+    function reset() { touchReturn(); setTimes(initTimes()); setSummary({ status: 'idle', vals: {} }); setPhase('idle'); }
     function resetTime(i) {
       if (flowLocked) return;
+      touchReturn();
       setTimes((prev) => {
         const next = prev.slice();
         next[i] = { status: 'idle', vals: {}, uploaded: false };
@@ -350,7 +376,7 @@ import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
         <AppBar title="检测任务" onBack={onBack} />
-        <Stamp state={inspectState} />
+        {inspectState && <Stamp state={inspectState} />}
         <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
           <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
           {/* 基础信息（滚动时固定） */}

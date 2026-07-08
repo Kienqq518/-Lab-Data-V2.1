@@ -74,7 +74,8 @@ export function createCollectCells(ctx) {
   const item = ctx?.item || {};
   return getSubItems(ctx).flatMap((sub) => {
     const device = sub.device;
-    const hasExistingData = ctx?.status === 'done';
+    const itemFlow = ctx?.flow || ctx?.item?.flow;
+    const hasExistingData = ctx?.status === 'done' || isFlowReturned(itemFlow);
     const phases = getPhases(sub);
     const repeats = getRepeatCount(sub);
     const rows = phases.length
@@ -145,6 +146,19 @@ export function isFlowLocked(flow) {
 
 export function isFlowReturned(flow) {
   return !isFlowLocked(flow) && !!flow?.returned;
+}
+
+/** 计算 L4 右上角状态水印（退回复测在未修改/重置前不展示） */
+export function resolveInspectStampState({ flowReturned, returnTouched, filledCount, uploadedCount, total }) {
+  if (flowReturned && !returnTouched) return null;
+  if (flowReturned && returnTouched) {
+    if (filledCount === 0) return 'todo';
+    if (total > 0 && uploadedCount >= total) return 'done';
+    return 'doing';
+  }
+  if (total > 0 && uploadedCount >= total) return 'done';
+  if (uploadedCount > 0 || filledCount > 0) return 'doing';
+  return 'todo';
 }
 
 export function toCellMap(cells) {

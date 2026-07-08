@@ -12,6 +12,7 @@ import {
   markCellFilled,
   markCellUploaded,
   normalizeDevice,
+  resolveInspectStampState,
   summarizeCells,
   toCellMap,
   updateCell,
@@ -77,6 +78,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
   });
   const [deviceDrawerOpen, setDeviceDrawerOpen] = React.useState(false);
 
+  const [returnTouched, setReturnTouched] = React.useState(false);
   const [activeSubId, setActiveSubId] = React.useState(subs[0]?.id || '');
   const [cells, setCells] = React.useState(() => toCellMap(createCollectCells(ctx)));
   const [activeCellKey, setActiveCellKey] = React.useState('');
@@ -96,6 +98,19 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const flowReturned = isFlowReturned(flow);
   const summary = summarizeCells(cells);
 
+  /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
+  function touchReturn() {
+    if (flowReturned) setReturnTouched(true);
+  }
+
+  const inspectState = resolveInspectStampState({
+    flowReturned,
+    returnTouched,
+    filledCount: summary.filled,
+    uploadedCount: summary.uploaded,
+    total: summary.total,
+  });
+
   const activeSub = subs.find((sub) => sub.id === activeSubId) || subs[0];
   const activeCells = React.useMemo(() => sortCells(Object.values(cells).filter((cell) => cell.subItemId === activeSub?.id)), [cells, activeSub?.id]);
   const activeCell = cells[activeCellKey] || activeCells[0];
@@ -113,6 +128,24 @@ function CollectStructured({ ctx, onBack, onDone }) {
   function deviceForSub(sub) {
     return selectedDevices[sub?.id] || null;
   }
+
+  /** 退回复测：回填上次提交的试验数据 */
+  React.useEffect(() => {
+    const itemFlow = ctx.flow || ctx.item?.flow;
+    if (!isFlowReturned(itemFlow)) return;
+    setCells((prev) => {
+      const next = { ...prev };
+      Object.values(prev).forEach((cell) => {
+        const sub = subs.find((s) => s.id === cell.subItemId);
+        if (!sub) return;
+        const index = cell.repeatIndex ?? 0;
+        const vals = {};
+        sub.fields.forEach((field) => { vals[field.key] = genVal(field, index); });
+        next[cell.key] = { ...cell, status: 'uploaded', vals };
+      });
+      return next;
+    });
+  }, []);
 
   React.useEffect(() => {
     if (!activeSub && subs[0]) setActiveSubId(subs[0].id);
@@ -138,6 +171,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
   function captureSub(sub) {
     const device = deviceForSub(sub);
     if (!sub || flowLocked || !device) return;
+    touchReturn();
     const source = device.method || 'manual';
     setBusy('all-' + sub.id);
     setTimeout(() => {
@@ -158,6 +192,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
   function collectOne(sub, cell) {
     const device = deviceForSub(sub);
     if (!sub || !cell || flowLocked || !device) return;
+    touchReturn();
     const source = device.method || 'manual';
     setBusy('c-' + cell.key);
     setTimeout(() => {
@@ -178,6 +213,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function setField(cellKey, field, value, idx) {
     if (flowLocked) return;
+    touchReturn();
     const cell = cells[cellKey];
     if (!cell || (cell.status === 'uploaded' && !flowReturned)) return;
     setCells((prev) => updateCell(prev, cellKey, (cur) => {
@@ -204,6 +240,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function uploadCell(cellKey) {
     if (flowLocked) return;
+    touchReturn();
     setBusy('up-' + cellKey);
     setTimeout(() => {
       setCells((prev) => markCellUploaded(prev, cellKey));
@@ -213,6 +250,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function uploadAll() {
     if (flowLocked) return;
+    touchReturn();
     setBusy('upload-all');
     setTimeout(() => {
       setCells((prev) => {
@@ -228,6 +266,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function reset() {
     if (flowLocked) return;
+    touchReturn();
     setCells((prev) => Object.fromEntries(Object.values(prev).map((cell) => [
       cell.key,
       cell.status === 'uploaded' ? cell : { ...cell, status: 'idle', vals: {}, attachments: [], uploadedAt: null, collectedAt: null, deviceId: null, source: null },
@@ -236,6 +275,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function reRecognizeCell(sub, cell) {
     if (!sub || !cell || flowLocked || !cell.attachments.length) return;
+    touchReturn();
     const device = deviceForSub(sub);
     if (!device) return;
     const source = device.method || 'manual';
@@ -249,6 +289,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function resetCell(cellKey) {
     if (flowLocked) return;
+    touchReturn();
     setCells((prev) => updateCell(prev, cellKey, (cell) => ({
       ...cell,
       status: 'idle',
@@ -349,7 +390,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
       <AppBar title="检测任务" onBack={onBack} />
-      <Stamp state={summary.inspectState} />
+      {inspectState && <Stamp state={inspectState} />}
 
       <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
         <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />

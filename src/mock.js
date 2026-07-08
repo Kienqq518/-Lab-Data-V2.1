@@ -313,6 +313,7 @@
           candidateDevices: rodAppDrawerDevices },
         { id: 'rod-bd', name: '绝缘操作杆 - 抗弯动负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'testing', count: 1, fields: rodBendDynamicFields,
           candidateDevices: rodBendDrawerDevices,
+          doneVals: { syc: '1', bzz: '1', syz: '93', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' },
           flow: { node: '试验检测', returned: true, returnReason: '静负荷位移量记录缺失，抗弯动负荷结论证据不足，请补测后重新提交', returnedFrom: '技术负责人', by: '李芳', role: '技术负责人', at: '2026-07-07 10:12' } },
         { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'pending', count: 1, fields: rodBendStaticFields,
           candidateDevices: rodBendDrawerDevices },
