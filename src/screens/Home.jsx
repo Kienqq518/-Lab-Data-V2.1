@@ -1,13 +1,14 @@
 import React from 'react';
-import { Card, SectionTitle, SegmentedSwitch } from '../design-system.js';
+import { Card, SectionTitle, SegmentedSwitch, StatCard } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 
-/* 首页（检测员）— 公司名 / 轮播 / 快捷入口 / 检测模块入口 / 个人检测统计 */
+/* 首页（检测员）— 公司名 / 工作概览 / 快捷入口 / 个人检测统计 */
 
   function Home({ onEnterInspect, onQuick }) {
     const pendingCount = M.tasks.filter(M.isPendingTask).length;
     const testingCount = M.tasks.filter(M.isTestingTask).length;
     const doneCount = M.tasks.filter((t) => t.status === 'done' && t.doneAt).length;
+    const metrics = M.inspectorWorkMetrics();
 
     return (
       <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-section)' }}>
@@ -21,13 +22,12 @@ import { MOCK as M } from '../mock.js';
           <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>采集即上传，杜绝人工抄录改数</div>
         </div>
 
-        {/* 轮播图 */}
-        <Carousel />
+        {/* 工作概览：替代轮播，展示检测员最关心的待办维度 */}
+        <WorkOverview metrics={metrics} onQuick={onQuick} onEnterInspect={onEnterInspect} />
 
         {/* 快捷入口（统计维度：委托任务） */}
         <div>
-          <SectionTitle style={{ marginBottom: 6 }}>快捷入口</SectionTitle>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>按「委托任务」统计：以任务下分配给本检测员的试验项完成度划分</div>
+          <SectionTitle style={{ marginBottom: 12 }}>快捷入口</SectionTitle>
           <div style={{ display: 'flex', gap: 12 }}>
             <Quick label="待检任务" count={pendingCount} tone="pending" icon="inbox" onClick={() => onQuick?.('pending')} />
             <Quick label="检测中任务" count={testingCount} tone="testing" icon="loader" onClick={() => onQuick?.('testing')} />
@@ -39,6 +39,24 @@ import { MOCK as M } from '../mock.js';
         <div>
           <SectionTitle style={{ marginBottom: 14 }}>个人检测统计</SectionTitle>
           <StatsPanel />
+        </div>
+      </div>
+    );
+  }
+
+  /** 今日工作概览：逾期、临期、退回、在检四个检测员高频关注维度 */
+  function WorkOverview({ metrics, onQuick, onEnterInspect }) {
+    return (
+      <div>
+        <SectionTitle style={{ marginBottom: 6 }}>今日工作概览</SectionTitle>
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
+          优先处理逾期与退回项，关注 3 日内到期任务
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <StatCard label="逾期任务" value={metrics.overdueTasks} tone="overdue" onClick={() => onQuick?.('pending')} />
+          <StatCard label="3日内到期" value={metrics.dueSoonTasks} tone="pending" onClick={() => onQuick?.('pending')} />
+          <StatCard label="退回复测" value={metrics.returnedTests} tone="brand" onClick={() => onEnterInspect?.()} />
+          <StatCard label="检测中试验项" value={metrics.testingItems} tone="testing" onClick={() => onQuick?.('testing')} />
         </div>
       </div>
     );
@@ -150,37 +168,6 @@ import { MOCK as M } from '../mock.js';
           <text key={k} x={X(l.i)} y={H - 6} textAnchor="middle" fontSize="11" fill="var(--text-secondary)">{l.text}</text>
         ))}
       </svg>
-    );
-  }
-
-  function Carousel() {
-    const slides = [
-      { tint: 'var(--blue-600)', tag: '工位风采', title: '电缆制样工位 · 无人化流水线', icon: 'M2 6h20v12H2z M2 16l5-5 4 4 3-3 6 6' },
-      { tint: '#1f7a8c', tag: '安全规范', title: '安全第一 · 精准检测 · 公正透明', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4' },
-      { tint: '#3a5a99', tag: '本周通知', title: '6 项待检 · 3 项检测中', icon: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0' },
-    ];
-    const [i, setI] = React.useState(0);
-    React.useEffect(() => {
-      const t = setInterval(() => setI((p) => (p + 1) % slides.length), 3500);
-      return () => clearInterval(t);
-    }, []);
-    return (
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '690 / 340', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
-        {slides.map((s, idx) => (
-          <div key={idx} style={{ position: 'absolute', inset: 0, background: s.tint, color: '#fff', padding: 20, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', opacity: idx === i ? 1 : 0, transition: 'opacity 0.5s var(--ease-out)' }}>
-            <div style={{ position: 'absolute', right: 18, top: 16, opacity: 0.22 }}>
-              <svg width="104" height="104" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d={s.icon} /></svg>
-            </div>
-            <span style={{ alignSelf: 'flex-start', fontSize: 11, fontWeight: 600, padding: '2px 10px', borderRadius: 'var(--radius-pill)', background: 'rgba(255,255,255,0.2)', marginBottom: 8 }}>{s.tag}</span>
-            <span style={{ fontSize: 17, fontWeight: 600 }}>{s.title}</span>
-          </div>
-        ))}
-        <div style={{ position: 'absolute', bottom: 12, right: 16, display: 'flex', gap: 6 }}>
-          {slides.map((_, idx) => (
-            <button key={idx} onClick={() => setI(idx)} style={{ width: idx === i ? 16 : 6, height: 6, borderRadius: 3, border: 'none', padding: 0, cursor: 'pointer', background: idx === i ? '#fff' : 'rgba(255,255,255,0.5)', transition: 'width 0.3s' }} />
-          ))}
-        </div>
-      </div>
     );
   }
 

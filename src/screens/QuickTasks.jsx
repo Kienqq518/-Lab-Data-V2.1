@@ -7,8 +7,8 @@ import { TaskListSort } from './TaskListSort.jsx';
 /* 快捷入口 L2 任务列表 → L3 样品+试验项 → L4 采集（与检测模块共用 mock 与上下文） */
 
 const FILTER_CFG = {
-  pending: { title: '待检任务', hint: '尚未开始检测的委托任务（含未检测已逾期）' },
-  testing: { title: '检测中任务', hint: '已开始检测、存在检测中试验项的委托任务' },
+  pending: { title: '待检任务' },
+  testing: { title: '检测中任务' },
 };
 
 function QuickTasks({ filter, stationId, onBack, onCollect, restore }) {
@@ -164,7 +164,6 @@ function QuickTasks({ filter, stationId, onBack, onCollect, restore }) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
       <AppBar title={cfg.title} onBack={onBack} />
       <div style={{ flex: 1, minHeight: 0, padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{cfg.hint}</div>
         <SearchBar value={q} onChange={(e) => setQ(e.target.value)} placeholder="请输入任务编号、样品名称、委托单位搜索" onScan={() => setScanOpen(true)} />
         <TaskListSort value={taskSort} onChange={setTaskSort} />
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>

@@ -581,4 +581,23 @@
     return sample?.code ? sample.code.replace(/-\d+$/, '') : '—';
   }
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample };
+  /** 检测员首页工作概览指标 */
+  function inspectorWorkMetrics() {
+    const overdueTasks = tasks.filter((t) => t.status === 'overdue').length;
+    const now = Date.now();
+    const soonLimit = now + 3 * 86400000;
+    const dueSoonTasks = tasks.filter((t) => {
+      if (t.status === 'done' || t.status === 'overdue') return false;
+      const deadline = parseTaskDateTime(t.detectDeadline);
+      return deadline > 0 && deadline <= soonLimit;
+    }).length;
+    const returnedTests = samples
+      .flatMap((s) => s.tests || [])
+      .filter((t) => t.flow?.returned && t.status !== 'done').length;
+    const testingItems = samples
+      .flatMap((s) => s.tests || [])
+      .filter((t) => t.status === 'testing').length;
+    return { overdueTasks, dueSoonTasks, returnedTests, testingItems };
+  }
+
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, inspectorWorkMetrics };

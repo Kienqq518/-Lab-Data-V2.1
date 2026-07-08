@@ -3,6 +3,7 @@ import { AppBar, Card, CollectBadge, DeviceCard, SearchBar, SegmentedSwitch, Sta
 import { MOCK as M } from '../mock.js';
 import { SCAN_SAMPLE_ID, ScanSampleOverlay, resolveTaskForSample } from './ScanSampleOverlay.jsx';
 import { TaskListSort } from './TaskListSort.jsx';
+import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx';
 
 /* 检测模块 — 工位上下文 + 按设备/按任务双模式 + 钻取试验项
    · 按设备：L1 设备列表 → L2 委托任务 → L3 样品(左)+试验项(右)，仅展示该设备相关样品与试验项
@@ -25,6 +26,7 @@ import { TaskListSort } from './TaskListSort.jsx';
     const [fromSampleId, setFromSampleId] = React.useState(null);
     const [taskSort, setTaskSort] = React.useState('detectDeadline:asc');
     const [taskBackView, setTaskBackView] = React.useState('list');
+    const [methodFilter, setMethodFilter] = React.useState('');
 
     React.useEffect(() => { setOffOpen(false); }, [stationId]);
 
@@ -37,13 +39,15 @@ import { TaskListSort } from './TaskListSort.jsx';
       || (d.name && d.name.toLowerCase().includes(ql))
       || (d.code && d.code.toLowerCase().includes(ql))
       || (d.model && d.model.toLowerCase().includes(ql));
+    const matchMethod = (d) => !methodFilter || d.method === methodFilter;
     const matchTask = (t) => !ql
       || (t.code && t.code.toLowerCase().includes(ql))
       || (t.sampleName && t.sampleName.toLowerCase().includes(ql))
       || (t.client && t.client.toLowerCase().includes(ql));
-    const fDevices = devices.filter(matchDevice);
+    const fDevices = devices.filter(matchDevice).filter(matchMethod);
     const fTasks = M.sortTaskList(M.tasks.filter(matchTask), taskSort);
-    const fOff = M.offDevices.filter(matchDevice);
+    const fOff = M.offDevices.filter(matchDevice).filter(matchMethod);
+    const methodCounts = countDevicesByMethod([...devices, ...M.offDevices].filter(matchDevice));
 
     /** 切换按设备/按任务时重置钻取状态 */
     function switchMode(next) {
@@ -56,6 +60,7 @@ import { TaskListSort } from './TaskListSort.jsx';
       setCameFrom(next === 'task' ? 'task' : 'device');
       setFromSampleId(null);
       setTaskBackView('list');
+      setMethodFilter('');
     }
 
     function toggleOffOpen() {
@@ -172,6 +177,10 @@ import { TaskListSort } from './TaskListSort.jsx';
             <SearchBar value={q} onChange={(e) => setQ(e.target.value)}
               placeholder={mode === 'device' ? '请输入设备名称、编号、型号搜索' : '请输入任务编号、样品名称、委托单位搜索'}
               onScan={() => setScanOpen(true)} />
+
+            {mode === 'device' && (
+              <MethodFilterChips value={methodFilter} onChange={setMethodFilter} counts={methodCounts} />
+            )}
 
             {mode === 'task' && <TaskListSort value={taskSort} onChange={setTaskSort} />}
 
