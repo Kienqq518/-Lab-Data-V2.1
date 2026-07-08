@@ -244,7 +244,7 @@ import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx
     if (view === 'device') {
       const dtasks = M.sortTaskList(tasksForDevice(device), taskSort);
       return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
           <AppBar title="选择委托任务" onBack={() => setView('list')} />
           <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16, flex: 1, overflow: 'auto' }}>
             <Card padding="14px 16px">
