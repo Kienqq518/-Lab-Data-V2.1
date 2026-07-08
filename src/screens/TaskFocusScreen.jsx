@@ -52,6 +52,9 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
   const [task, setTask] = React.useState(restore?.task || null);
   const [taskSample, setTaskSample] = React.useState(restore?.taskSample || null);
   const [fromSampleId, setFromSampleId] = React.useState(restore?.fromSampleId || null);
+  const [narrowReturn, setNarrowReturn] = React.useState(!!restore?.narrowReturn);
+  const [targetTestName, setTargetTestName] = React.useState(restore?.targetTestName || null);
+  const [fromNotify, setFromNotify] = React.useState(!!restore?.fromNotify);
   const [q, setQ] = React.useState('');
   const [taskSort, setTaskSort] = React.useState(restore?.taskSort || cfg.defaultSort);
   const [scanOpen, setScanOpen] = React.useState(false);
@@ -64,9 +67,18 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
     || (t.sampleName && t.sampleName.toLowerCase().includes(ql))
     || (t.client && t.client.toLowerCase().includes(ql))), taskSort);
 
-  /** 取任务在当前维度下应展示的样品（退回复测只展示含退回项的样品） */
+  /** 取任务在当前维度下应展示的样品（退回复测只展示含退回项的样品；通知深链仅展示目标样品） */
   function visibleSamples(t) {
-    return cfg.sampleFilter ? M.taskSamples(t).filter(cfg.sampleFilter) : M.taskSamples(t);
+    let list = cfg.sampleFilter ? M.taskSamples(t).filter(cfg.sampleFilter) : M.taskSamples(t);
+    if (narrowReturn && taskSample) list = list.filter((s) => s.id === taskSample);
+    return list;
+  }
+
+  /** 取样品下应展示的试验项（通知深链仅展示目标退回试验项） */
+  function visibleTests(sample) {
+    let list = cfg.testFilter ? sample.tests.filter(cfg.testFilter) : sample.tests;
+    if (narrowReturn && targetTestName) list = list.filter((t) => t.name === targetTestName);
+    return list;
   }
 
   /** 从 L2 任务列表进入 L3 */
@@ -96,12 +108,19 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
     if (s) openScannedSample(s);
   }
 
-  /** L3 返回 L2 列表 */
+  /** L3 返回：通知深链直接退出聚焦页，否则回 L2 列表 */
   function backFromTask() {
+    if (fromNotify) {
+      onBack?.();
+      return;
+    }
     setView('list');
     setTask(null);
     setTaskSample(null);
     setFromSampleId(null);
+    setNarrowReturn(false);
+    setTargetTestName(null);
+    setFromNotify(false);
   }
 
   function openCollect(sample, item) {
@@ -118,6 +137,9 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
           taskSample: sample.id,
           fromSampleId,
           taskSort,
+          narrowReturn,
+          targetTestName,
+          fromNotify,
         },
       },
     }));
@@ -128,9 +150,7 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
     const tSamples = visibleSamples(task);
     const cur = tSamples.find((s) => s.id === taskSample) || tSamples[0];
     const ql2 = q.trim().toLowerCase();
-    const baseTests = cur
-      ? (cfg.testFilter ? cur.tests.filter(cfg.testFilter) : cur.tests)
-      : [];
+    const baseTests = cur ? visibleTests(cur) : [];
     const its = baseTests.filter((t) => !ql2
       || t.name.toLowerCase().includes(ql2)
       || (cur.code && cur.code.toLowerCase().includes(ql2)));

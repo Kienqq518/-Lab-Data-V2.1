@@ -96,7 +96,34 @@ function App() {
   const [ctx, setCtx] = React.useState(null);
   const [focusKind, setFocusKind] = React.useState(null);
   const [focusRestore, setFocusRestore] = React.useState(null);
+  const [notifyReturn, setNotifyReturn] = React.useState(false);
   const [sheet, setSheet] = React.useState(false);
+
+  /** 退回复测通知「去处理」：直达 L3，仅展示对应样品与试验项 */
+  function goReturnedFromNotify(notification) {
+    const { task, sample } = MOCK.resolveReturnNotification(notification);
+    if (!task || !sample) return;
+    setFocusKind('returned');
+    setNotifyReturn(true);
+    setFocusRestore({
+      view: 'task',
+      task,
+      taskSample: sample.id,
+      targetTestName: notification.testName,
+      narrowReturn: true,
+      fromNotify: true,
+    });
+    setOverlay('focus');
+  }
+
+  /** 关闭聚焦页：来自通知深链时回到通知中心 */
+  function closeFocus() {
+    const backToNotify = notifyReturn;
+    setOverlay(backToNotify ? 'notify' : null);
+    setFocusKind(null);
+    setFocusRestore(null);
+    setNotifyReturn(false);
+  }
 
   function closeCollect() {
     if (ctx?.reviewMode) setOverlay('done');
@@ -167,7 +194,7 @@ function App() {
                   kind={focusKind}
                   stationId={stationId}
                   restore={focusRestore}
-                  onBack={() => { setOverlay(null); setFocusKind(null); setFocusRestore(null); }}
+                  onBack={closeFocus}
                   onCollect={(collectCtx) => {
                     setFocusRestore(collectCtx.focusRestore || null);
                     setCtx(collectCtx);
@@ -188,7 +215,7 @@ function App() {
               <div className="overlay-screen">
                 <Notifications
                   onBack={() => setOverlay(null)}
-                  onGoReturned={() => { setFocusKind('returned'); setFocusRestore(null); setOverlay('focus'); }}
+                  onGoReturned={goReturnedFromNotify}
                 />
               </div>
             )}

@@ -65,7 +65,11 @@ function Notifications({ onBack, onGoReturned }) {
               {active.taskCode && <DetailLine label="任务编号" value={active.taskCode} />}
               {active.sampleCode && <DetailLine label="样品编号" value={active.sampleCode} />}
               {active.testName && <DetailLine label="试验项" value={active.testName} />}
-              {active.by && <DetailLine label="来源" value={active.by} />}
+              {active.type === 'returned' && active.returnNode && <DetailLine label="退回节点" value={active.returnNode} />}
+              {active.type === 'returned' && active.returnBy && (
+                <DetailLine label="退回人" value={`${active.returnBy}${active.returnDept ? `（${active.returnDept}）` : ''}`} />
+              )}
+              {active.type !== 'returned' && active.by && <DetailLine label="来源" value={active.by} />}
             </div>
 
             <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken,#f5f6f8)', fontSize: 'var(--fs-sm)', color: 'var(--text-body)', lineHeight: 1.7 }}>
@@ -74,7 +78,7 @@ function Notifications({ onBack, onGoReturned }) {
           </div>
 
           {active.type === 'returned' && (
-            <Button block size="lg" onClick={() => onGoReturned?.()}>去处理</Button>
+            <Button block size="lg" onClick={() => onGoReturned?.(active)}>去处理</Button>
           )}
         </div>
       </div>

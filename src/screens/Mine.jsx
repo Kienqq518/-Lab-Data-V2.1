@@ -2,7 +2,7 @@ import React from 'react';
 import { AppBar, Button, Card, Input, SectionTitle } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 
-/* 我的 — 用户信息 / 我的权限 / 消息通知 / 设置 / 帮助与反馈
+/* 我的 — 用户信息 / 消息通知 / 设置 / 帮助与反馈
    采用「我的」Tab 内部页面栈：main → 各详情页（AppBar 返回）。 */
 
   function Mine({ onLogout, onOpenNotify }) {
@@ -22,7 +22,6 @@ import { MOCK as M } from '../mock.js';
 
     let screen;
     if (view === 'profile') screen = <ProfilePage user={U} onBack={() => setView('main')} onToast={showToast} />;
-    else if (view === 'permission') screen = <PermissionPage user={U} onBack={() => setView('main')} />;
     else if (view === 'settings') screen = <SettingsPage onBack={() => setView('main')} onPrivacy={() => setView('privacy')} onToast={showToast} />;
     else if (view === 'privacy') screen = <PrivacyPage onBack={() => setView('settings')} />;
     else if (view === 'password') screen = <PasswordPage onBack={() => setView('main')} onToast={showToast} />;
@@ -36,7 +35,10 @@ import { MOCK as M } from '../mock.js';
             <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#fff', color: 'var(--blue-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, flex: 'none' }}>{U.initial}</div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 20, fontWeight: 600 }}>{U.name}</div>
-              <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>账号 {U.account}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, opacity: 0.85 }}>账号 {U.account}</span>
+                <RoleTag label={U.role} />
+              </div>
             </div>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
           </button>
@@ -47,7 +49,6 @@ import { MOCK as M } from '../mock.js';
         <div>
           <SectionTitle style={{ marginBottom: 14 }}>更多操作</SectionTitle>
           <Card padding="0">
-            <Row icon="shield" label="我的权限" onClick={() => setView('permission')} />
             <Row icon="bell" label="消息通知" badge={unread} onClick={onOpenNotify} />
             <Row icon="settings" label="设置" onClick={() => setView('settings')} />
             <Row icon="key" label="修改密码" onClick={() => setView('password')} />
@@ -98,10 +99,6 @@ import { MOCK as M } from '../mock.js';
             <FieldRow label="邮箱" value={user.email} last />
           </Card>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '0 4px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
-            <span>除头像外，账号信息（部门、手机号、邮箱等）统一在数采系统 Web 端 testos 底座维护，移动端不支持修改。</span>
-          </div>
         </div>
 
         {avatarOpen && (
@@ -114,68 +111,6 @@ import { MOCK as M } from '../mock.js';
             onClose={() => setAvatarOpen(false)}
           />
         )}
-      </div>
-    );
-  }
-
-  /* ===== 我的权限 ===== */
-  function PermissionPage({ user, onBack }) {
-    const perms = [
-      { name: '检测数据填报', on: true },
-      { name: '退回复测', on: true },
-      { name: '数据审核', on: false },
-      { name: '任务分配', on: false },
-      { name: '设备管理', on: false },
-    ];
-    const stations = M.stationOptions;
-    return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
-        <AppBar title="我的权限" onBack={onBack} />
-        <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ width: 44, height: 44, flex: 'none', borderRadius: '50%', background: 'var(--blue-50)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              </span>
-              <div>
-                <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>{user.role}</div>
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 2 }}>移动端仅开放检测员角色登录</div>
-              </div>
-            </div>
-          </Card>
-
-          <div>
-            <SectionTitle style={{ marginBottom: 10 }}>业务权限</SectionTitle>
-            <Card padding="0">
-              {perms.map((p, i) => (
-                <div key={p.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '13px 16px', borderBottom: i === perms.length - 1 ? 'none' : '1px solid var(--divider)' }}>
-                  <span style={{ fontSize: 'var(--fs-base)', color: p.on ? 'var(--text-title)' : 'var(--text-placeholder)' }}>{p.name}</span>
-                  {p.on ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--status-done-fg,#1b8a5a)' }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>已授权
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>未授权</span>
-                  )}
-                </div>
-              ))}
-            </Card>
-          </div>
-
-          <div>
-            <SectionTitle style={{ marginBottom: 10 }}>可操作工位</SectionTitle>
-            <Card>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {stations.map((s) => (
-                  <span key={s.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 'var(--radius-pill)', background: 'var(--surface-sunken,#f5f6f8)', fontSize: 'var(--fs-sm)', color: 'var(--text-title)' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                    {s.name}
-                  </span>
-                ))}
-              </div>
-            </Card>
-          </div>
-        </div>
       </div>
     );
   }
@@ -216,10 +151,10 @@ import { MOCK as M } from '../mock.js';
   function PrivacyPage({ onBack }) {
     const P = [
       ['一、我们如何收集和使用信息', '数蚕 Lab Data（以下简称“本应用”）由杭州数蚕科技有限公司提供。为完成实验室检测数据采集与上传，我们会在你使用相应功能时收集必要信息，包括账号与工号、所属机构与部门、检测任务与试验数据、设备与工位信息，以及为拍照识别采集所需的相机权限。'],
-      ['二、信息的存储', '你在本应用产生的检测数据将上传至你所属检测机构的数采系统（testos 底座）并存储于机构指定的服务器，存储期限遵循机构与相关法律法规要求。'],
+      ['二、信息的存储', '你在本应用产生的检测数据将上传至你所属检测机构的数采系统（TestOS 底座）并存储于机构指定的服务器，存储期限遵循机构与相关法律法规要求。'],
       ['三、信息的共享与披露', '除为完成检测业务向你所属检测机构的数采系统同步数据外，未经你同意，我们不会向第三方共享你的个人信息，法律法规另有规定的除外。'],
       ['四、权限与用途', '相机：用于拍照识别采集试验读数；网络：用于任务与数据的同步上传。你可在系统设置中管理相关权限，关闭后可能影响对应功能的使用。'],
-      ['五、信息安全', '我们采用加密传输、访问控制等安全措施保护你的信息。账号相关信息统一在数采系统 Web 端 testos 底座维护。'],
+      ['五、信息安全', '我们采用加密传输、访问控制等安全措施保护你的信息。账号相关信息统一在数采系统 Web 端 的TestOS 底座维护。'],
       ['六、联系我们', '如对本隐私政策有任何疑问、意见或投诉，可通过“帮助与反馈”提交，或拨打客服电话 400-800-1234 与我们联系。'],
     ];
     return (
@@ -427,6 +362,17 @@ import { MOCK as M } from '../mock.js';
   }
 
   /* ===== 通用小组件 ===== */
+  /** 用户角色标签（展示于头像区账号旁） */
+  function RoleTag({ label }) {
+    return (
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+        background: 'rgba(255,255,255,0.22)', border: '1px solid rgba(255,255,255,0.35)',
+        fontSize: 11, fontWeight: 600, color: '#fff', lineHeight: 1.4,
+      }}>{label}</span>
+    );
+  }
+
   function ActionSheet({ title, actions, onClose }) {
     return (
       <React.Fragment>

@@ -657,7 +657,7 @@
     };
   }
 
-  // 当前登录检测员（账号信息只读，仅数采 Web 端 testos 底座可编辑）
+  // 当前登录试验员（账号信息只读，仅数采 Web 端 TestOS 底座可编辑）
   const currentUser = {
     name: '梁倩',
     account: 'lq',
@@ -666,21 +666,21 @@
     org: '杭州数蚕科技有限公司',
     phone: '176 8248 4331',
     email: 'liangqian@shucan.com',
-    role: '检测员',
+    role: '试验员',
   };
 
   // 消息通知（类型：returned 退回复测 / assigned 任务下发 / overdue 逾期预警；无系统公告）
   const notifications = [
     { id: 'n1', type: 'returned', title: '试验数据被退回', taskCode: 'SC2026/01001', sampleCode: 'SC2026/01001-02', testName: '导体直流电阻',
-      desc: '第 2 次正向电阻读数与历史数据偏差较大，疑似拍照识别误差，请复测后重新上传。', by: '张伟（数据审核）', at: '2026-07-06 14:30', read: false },
+      desc: '第 2 次正向电阻读数与历史数据偏差较大，疑似拍照识别误差，请复测后重新上传。', returnNode: '数据审核', returnBy: '张伟', returnDept: '数据审核', at: '2026-07-06 14:30', read: false },
     { id: 'n2', type: 'returned', title: '试验数据被退回', taskCode: 'SC2026/00490101', sampleCode: 'SC2026/00490101', testName: '绝缘操作杆 - 抗弯动负荷试验',
-      desc: '静负荷位移量记录缺失，抗弯动负荷结论证据不足，请补测后重新提交。', by: '李芳（技术负责人）', at: '2026-07-07 10:12', read: false },
+      desc: '静负荷位移量记录缺失，抗弯动负荷结论证据不足，请补测后重新提交。', returnNode: '技术负责人', returnBy: '李芳', returnDept: '技术负责人', at: '2026-07-07 10:12', read: false },
     { id: 'n3', type: 'assigned', title: '新委托任务下发', taskCode: 'SC2026/01002', sampleCode: '',
-      desc: '委托任务 SC2026/01002（8.7/10kV-3 芯 电力电缆）已分配给你，检测时效 2026-07-10，请及时开检。', by: '系统', at: '2026-07-05 09:00', read: false },
+      desc: '委托任务 SC2026/01002（8.7/10kV-3 芯 电力电缆）已接收，检测时效 2026-07-10，请及时开检。', by: '系统', at: '2026-07-05 09:00', read: false },
     { id: 'n4', type: 'overdue', title: '任务逾期预警', taskCode: 'SC2026/01003', sampleCode: '',
       desc: '委托任务 SC2026/01003 已超过检测时效 2026-06-15，请尽快处理以免影响报告出具。', by: '系统', at: '2026-07-04 08:00', read: true },
     { id: 'n5', type: 'assigned', title: '新委托任务下发', taskCode: 'SC2026/01630', sampleCode: '',
-      desc: '委托任务 SC2026/01630（实壁类塑料电缆导管 带承口 PVC-C）已分配给你，检测时效 2026-07-11。', by: '系统', at: '2026-07-02 15:20', read: true },
+      desc: '委托任务 SC2026/01630（实壁类塑料电缆导管 带承口 PVC-C）已接收，检测时效 2026-07-11。', by: '系统', at: '2026-07-02 15:20', read: true },
     { id: 'n6', type: 'overdue', title: '任务逾期预警', taskCode: 'SC2026/00990', sampleCode: '',
       desc: '委托任务 SC2026/00990 已超过检测时效 2026-05-31，仍有试验项未完成，请尽快处理。', by: '系统', at: '2026-06-30 08:00', read: true },
   ];
@@ -690,14 +690,21 @@
     return notifications.filter((n) => !n.read).length;
   }
 
+  /** 根据退回复测通知解析任务与样品，供深链直达 L3 */
+  function resolveReturnNotification(notification) {
+    const task = tasks.find((t) => t.code === notification.taskCode) || null;
+    const sample = samples.find((s) => s.code === notification.sampleCode) || null;
+    return { task, sample };
+  }
+
   // 帮助中心常见问题
   const faqs = [
     { q: '设备直连的数据没有自动回传怎么办？', a: '请确认设备已开机并与上位机联网。设备直连数据由上位机采集写库，本端仅展示；若长时间未回传，可在「切换设备」中确认设备采集关系是否已在数采 Web「设备采集配置」中维护。' },
     { q: '拍照识别（OCR）识别错误可以手动修改吗？', a: '拍照识别与设备直连为保证数据溯源默认不可手输。如识别有误，请重新拍照采集；蓝牙、串口方式在异常时支持手输兜底。' },
     { q: '试验数据被退回后如何重新提交？', a: '在首页「退回复测」或消息通知中找到被退回的试验项，进入采集页按退回原因复测后重新上传即可。' },
     { q: '为什么有的设备在切换设备时是灰色不可选？', a: '灰色表示该「设备直连」设备尚未在数采 Web「设备采集配置」中维护采集关系，无法回传数据，故不可选。' },
-    { q: '个人资料中的手机号、邮箱如何修改？', a: '账号相关信息（部门、手机号、邮箱等）统一在数采系统 Web 端 testos 底座维护，移动端仅支持修改头像。' },
+    { q: '个人资料中的手机号、邮箱如何修改？', a: '账号相关信息（部门、手机号、邮箱等）统一在数采系统 Web 端 的TestOS 底座维护，移动端仅支持修改头像。' },
     { q: '检测时效是如何计算的？', a: '检测时效随委托任务下发，不可在移动端修改。临近或超过时效的任务会在首页「工作概览」中以逾期 / 临期维度提醒。' },
   ];
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, faqs, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
