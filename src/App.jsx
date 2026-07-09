@@ -88,20 +88,25 @@ function StationSheet({ stationId, onSelect, onClear, onClose }) {
   );
 }
 
-/** 舞台缩放容器：随批注模式动态预留双侧轨道宽度，并按缩放后尺寸居中 */
+/** 舞台缩放容器：随批注模式动态预留双侧轨道宽度，并按缩放后尺寸居中；批注开启时高度随轨道内容增长 */
 function PrototypeStage({ frameRef, children }) {
-  const { isAnnotationMode } = useAnnotation();
+  const { isAnnotationMode, railContentHeight } = useAnnotation();
   const stageWidth = isAnnotationMode ? STAGE_WIDTH_ANNOTATED : STAGE_WIDTH_COLLAPSED;
+  const stageHeight = isAnnotationMode ? Math.max(1280, railContentHeight || 1280) : 1280;
   const [liveScale, setLiveScale] = React.useState(1);
 
   React.useEffect(() => {
     const fit = () => {
-      setLiveScale(Math.min(window.innerWidth / stageWidth, window.innerHeight / 1280));
+      const byWidth = window.innerWidth / stageWidth;
+      // 批注开启且轨道变高时，按手机框高度(1280)适配缩放，舞台整体可纵向滚动查看底部卡片
+      const fitHeight = isAnnotationMode ? Math.min(stageHeight, 1280) : stageHeight;
+      const byHeight = window.innerHeight / fitHeight;
+      setLiveScale(Math.min(byWidth, byHeight, 1));
     };
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
-  }, [stageWidth]);
+  }, [stageWidth, stageHeight, isAnnotationMode]);
 
   // 外层按「缩放后」宽高占位，避免 transform:scale 后仍按未缩放尺寸布局导致整体偏右
   return (
@@ -109,13 +114,14 @@ function PrototypeStage({ frameRef, children }) {
       className="ds-stage-slot"
       style={{
         width: stageWidth * liveScale,
-        height: 1280 * liveScale,
+        height: stageHeight * liveScale,
       }}
     >
       <div
         className="ds-stage"
         style={{
           width: stageWidth,
+          height: stageHeight,
           transform: `scale(${liveScale})`,
           transformOrigin: 'top left',
         }}

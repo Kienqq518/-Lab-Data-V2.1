@@ -18,6 +18,8 @@ export function AnnotationProvider({ pageKey, frameRef: frameRefProp, overlayAct
   });
   const [activeAnnotationId, setActiveAnnotationId] = React.useState(null);
   const [layoutTick, setLayoutTick] = React.useState(0);
+  /** 批注轨道内容所需高度（含错开后的底部卡片），供舞台纵向扩展避免裁切 */
+  const [railContentHeight, setRailContentHeight] = React.useState(1280);
   const anchorsRef = React.useRef(new Map());
   const internalFrameRef = React.useRef(null);
   const frameRef = frameRefProp || internalFrameRef;
@@ -70,7 +72,9 @@ export function AnnotationProvider({ pageKey, frameRef: frameRefProp, overlayAct
     unregisterAnchor,
     requestLayout,
     frameRef,
-  }), [isAnnotationMode, pageKey, overlayActive, activeAnnotationId, layoutTick, toggleAnnotationMode, registerAnchor, unregisterAnchor, requestLayout, frameRef]);
+    railContentHeight,
+    setRailContentHeight,
+  }), [isAnnotationMode, pageKey, overlayActive, activeAnnotationId, layoutTick, toggleAnnotationMode, registerAnchor, unregisterAnchor, requestLayout, frameRef, railContentHeight]);
 
   return (
     <AnnotationContext.Provider value={value}>

@@ -40,8 +40,8 @@
 .annotation-rail__body {
   position: relative;
   min-height: calc(1280px - 52px);
-  /* 底部「上传与底栏」等长批注被纵向错开后需足够留白，避免卡片内容被裁切 */
-  padding-bottom: 520px;
+  /* 底部「结论 / 上传与底栏」等长批注被纵向错开后需足够留白 */
+  padding-bottom: 240px;
 }
 
 .annotation-rail__item {

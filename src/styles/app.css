@@ -24,8 +24,11 @@ textarea {
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  /* 批注轨道变高时允许纵向滚动，避免底部卡片被裁切 */
+  overflow: auto;
   background: #d9dee6;
+  padding: 24px 0;
+  box-sizing: border-box;
 }
 
 .ds-stage-slot {
@@ -40,6 +43,7 @@ textarea {
   position: absolute;
   top: 0;
   left: 0;
+  overflow: visible;
 }
 
 .ds-frame {

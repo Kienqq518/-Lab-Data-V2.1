@@ -453,7 +453,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         {(deviceMissing || methodMissing || fieldMissing) && (
           <ConfigError
             title={deviceMissing ? '当前子项未指派设备' : '当前配置异常'}
-            body={deviceMissing ? '当前子项尚未指派设备，请点上方设备胶囊指派，或点「切换设备」按工位添加设备。' : methodMissing ? '缺少设备采集方式，请先维护采集方式。' : '缺少试验字段模板，请先维护字段配置。'}
+            body={deviceMissing ? '当前子项尚未指派设备，请点上方设备指派，或点「切换设备」按工位添加设备。' : methodMissing ? '缺少设备采集方式，请先维护采集方式。' : '缺少试验字段模板，请先维护字段配置。'}
           />
         )}
 
@@ -484,72 +484,72 @@ function CollectStructured({ ctx, onBack, onDone }) {
                 </Card>
               </AnnotatedWrapper>
             )}
+
+            <div style={{ flex: '1 1 720px', minHeight: 720, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--white)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
+                <div style={{ width: 168, flex: 'none', borderRight: '1px solid var(--divider)', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+                  {activeCells.map((cell, index) => {
+                    const on = activeCell?.key === cell.key;
+                    return (
+                      <button key={cell.key} onClick={() => setActiveCellKey(cell.key)} style={{
+                        display: 'flex', alignItems: 'center', gap: 9, padding: '12px 11px', cursor: 'pointer', textAlign: 'left',
+                        border: 'none', borderBottom: '1px solid var(--divider)',
+                        borderLeft: `3px solid ${on ? 'var(--brand-action)' : 'transparent'}`,
+                        background: on ? 'var(--white)' : 'transparent',
+                      }}>
+                        <TimeStatusIcon state={cell.status} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-base)', fontWeight: on ? 700 : 600, color: on ? 'var(--brand-action)' : 'var(--text-title)' }}>
+                            {cell.phase && <span style={{ width: 9, height: 9, borderRadius: '50%', background: phaseColor(cell.phase), flex: 'none' }} />}
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cellLabel(activeSub, cell)}</span>
+                          </div>
+                          <div style={{ marginTop: 2, fontSize: 'var(--fs-xs)', color: cell.status === 'uploaded' ? 'var(--status-done-fg,#1b8a5a)' : cell.status === 'failed' ? 'var(--danger,#e23b3b)' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                            {statusText(cell.status)}
+                          </div>
+                          <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-tertiary,#9aa3b2)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                            {sampleCodeForCell(ctx.sample.code, index)}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 16, display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto' }}>
+                  {activeCell && (
+                    <AnnotatedWrapper id="testParams" layout="block">
+                    <CellEditor
+                      sub={activeSub}
+                      cell={activeCell}
+                      method={method}
+                      caps={caps}
+                      busy={busy}
+                      flowLocked={flowLocked}
+                      flowReturned={flowReturned}
+                      currentDevice={activeDevice}
+                      deviceCatalog={deviceCatalog}
+                      hint={methodHint}
+                      onCollect={() => collectOne(activeSub, activeCell)}
+                      onReRecognize={() => reRecognizeCell(activeSub, activeCell)}
+                      ocrUnlocked={!!editCells[activeCell.key]}
+                      onSetOcrUnlocked={(unlocked) => setEditCells((prev) => ({ ...prev, [activeCell.key]: unlocked }))}
+                      onChange={setField}
+                      onUpload={uploadCell}
+                      onReset={resetCell}
+                      onAddAttach={addAttach}
+                      onRemoveAttach={removeAttach}
+                    />
+                    </AnnotatedWrapper>
+                  )}
+                </div>
+              </div>
+
+              <AnnotatedWrapper id="conclusionArea" layout="block">
+                <ConclusionCard sub={activeSub} cells={activeCells} />
+              </AnnotatedWrapper>
+            </div>
           </div>
         </AnnotatedWrapper>
-
-        <div style={{ flex: '1 1 720px', minHeight: 720, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--white)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
-            <div style={{ width: 168, flex: 'none', borderRight: '1px solid var(--divider)', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-              {activeCells.map((cell, index) => {
-                const on = activeCell?.key === cell.key;
-                return (
-                  <button key={cell.key} onClick={() => setActiveCellKey(cell.key)} style={{
-                    display: 'flex', alignItems: 'center', gap: 9, padding: '12px 11px', cursor: 'pointer', textAlign: 'left',
-                    border: 'none', borderBottom: '1px solid var(--divider)',
-                    borderLeft: `3px solid ${on ? 'var(--brand-action)' : 'transparent'}`,
-                    background: on ? 'var(--white)' : 'transparent',
-                  }}>
-                    <TimeStatusIcon state={cell.status} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-base)', fontWeight: on ? 700 : 600, color: on ? 'var(--brand-action)' : 'var(--text-title)' }}>
-                        {cell.phase && <span style={{ width: 9, height: 9, borderRadius: '50%', background: phaseColor(cell.phase), flex: 'none' }} />}
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cellLabel(activeSub, cell)}</span>
-                      </div>
-                      <div style={{ marginTop: 2, fontSize: 'var(--fs-xs)', color: cell.status === 'uploaded' ? 'var(--status-done-fg,#1b8a5a)' : cell.status === 'failed' ? 'var(--danger,#e23b3b)' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                        {statusText(cell.status)}
-                      </div>
-                      <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-tertiary,#9aa3b2)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                        {sampleCodeForCell(ctx.sample.code, index)}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 16, display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto' }}>
-              {activeCell && (
-                <AnnotatedWrapper id="testParams" layout="block">
-                <CellEditor
-                  sub={activeSub}
-                  cell={activeCell}
-                  method={method}
-                  caps={caps}
-                  busy={busy}
-                  flowLocked={flowLocked}
-                  flowReturned={flowReturned}
-                  currentDevice={activeDevice}
-                  deviceCatalog={deviceCatalog}
-                  hint={methodHint}
-                  onCollect={() => collectOne(activeSub, activeCell)}
-                  onReRecognize={() => reRecognizeCell(activeSub, activeCell)}
-                  ocrUnlocked={!!editCells[activeCell.key]}
-                  onSetOcrUnlocked={(unlocked) => setEditCells((prev) => ({ ...prev, [activeCell.key]: unlocked }))}
-                  onChange={setField}
-                  onUpload={uploadCell}
-                  onReset={resetCell}
-                  onAddAttach={addAttach}
-                  onRemoveAttach={removeAttach}
-                />
-                </AnnotatedWrapper>
-              )}
-            </div>
-          </div>
-
-          <AnnotatedWrapper id="conclusionArea" layout="block">
-            <ConclusionCard sub={activeSub} cells={activeCells} />
-          </AnnotatedWrapper>
-        </div>
 
         <div style={{ height: 8, flex: 'none' }} />
       </div>

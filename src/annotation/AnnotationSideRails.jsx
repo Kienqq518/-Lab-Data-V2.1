@@ -12,7 +12,7 @@ import {
 /**
  * 单侧批注轨道列
  */
-function AnnotationRailColumn({ side, showToggle, items, frameRef }) {
+function AnnotationRailColumn({ side, showToggle, items, frameRef, onContentHeight }) {
   const { isAnnotationMode, activeAnnotationId } = useAnnotation();
   const railRef = React.useRef(null);
   const heightRefs = React.useRef({});
@@ -73,17 +73,24 @@ function AnnotationRailColumn({ side, showToggle, items, frameRef }) {
 
   const width = isAnnotationMode ? RAIL_WIDTH : RAIL_WIDTH_COLLAPSED;
   const bodyMinHeight = React.useMemo(() => {
-    if (!positions.length) return 'calc(1280px - 52px)';
+    if (!positions.length) return 1280 - 52;
     const last = positions[positions.length - 1];
-    const bottom = (last.top || 0) + (last.measuredHeight || 240) + 80;
+    const bottom = (last.top || 0) + (last.measuredHeight || 240) + 160;
     return Math.max(1280 - 52, bottom);
   }, [positions]);
+
+  const railHeight = isAnnotationMode ? bodyMinHeight + 52 : 1280;
+
+  React.useEffect(() => {
+    if (!onContentHeight) return;
+    onContentHeight(side, isAnnotationMode ? railHeight : 1280);
+  }, [onContentHeight, side, isAnnotationMode, railHeight]);
 
   return (
     <aside
       ref={railRef}
       className={`annotation-rail annotation-rail--${side}${isAnnotationMode ? ' annotation-rail--on' : ''}`}
-      style={{ width, minHeight: isAnnotationMode ? bodyMinHeight + 52 : 1280 }}
+      style={{ width, minHeight: railHeight, height: isAnnotationMode ? railHeight : undefined }}
     >
       {showToggle && (
         <div className="annotation-rail__header">
@@ -91,7 +98,7 @@ function AnnotationRailColumn({ side, showToggle, items, frameRef }) {
         </div>
       )}
       {isAnnotationMode && (
-        <div className="annotation-rail__body" style={{ minHeight: bodyMinHeight, paddingBottom: 80 }}>
+        <div className="annotation-rail__body" style={{ minHeight: bodyMinHeight, paddingBottom: 200 }}>
           {positions.map((item) => {
             const highlighted = activeAnnotationId === item.id;
             const dimmed = !!activeAnnotationId && activeAnnotationId !== item.id;
@@ -141,8 +148,10 @@ export function AnnotationSideRails({ frameRef, children }) {
     layoutTick,
     requestLayout,
     frameRef: contextFrameRef,
+    setRailContentHeight,
   } = useAnnotation();
   const effectiveFrameRef = frameRef || contextFrameRef;
+  const sideHeightsRef = React.useRef({ left: 1280, right: 1280 });
 
   const anchorItems = React.useMemo(() => {
     const list = [];
@@ -160,6 +169,19 @@ export function AnnotationSideRails({ frameRef, children }) {
     return splitItemsToSides(anchorItems.map((item) => ({ ...item, top: item.anchorRect.top })));
   }, [anchorItems]);
 
+  const handleContentHeight = React.useCallback((side, height) => {
+    sideHeightsRef.current[side] = height;
+    const next = Math.max(1280, sideHeightsRef.current.left || 0, sideHeightsRef.current.right || 0);
+    setRailContentHeight((prev) => (prev === next ? prev : next));
+  }, [setRailContentHeight]);
+
+  React.useEffect(() => {
+    if (!isAnnotationMode) {
+      setRailContentHeight(1280);
+      sideHeightsRef.current = { left: 1280, right: 1280 };
+    }
+  }, [isAnnotationMode, setRailContentHeight]);
+
   React.useEffect(() => {
     if (!isAnnotationMode) return undefined;
     const frame = effectiveFrameRef.current;
@@ -175,10 +197,10 @@ export function AnnotationSideRails({ frameRef, children }) {
   }, [isAnnotationMode, effectiveFrameRef, requestLayout]);
 
   return (
-    <div className="prototype-row">
-      <AnnotationRailColumn side="left" showToggle={false} items={left} frameRef={effectiveFrameRef} />
+    <div className="prototype-row" style={{ minHeight: isAnnotationMode ? undefined : 1280, alignItems: 'flex-start' }}>
+      <AnnotationRailColumn side="left" showToggle={false} items={left} frameRef={effectiveFrameRef} onContentHeight={handleContentHeight} />
       {children}
-      <AnnotationRailColumn side="right" showToggle items={right} frameRef={effectiveFrameRef} />
+      <AnnotationRailColumn side="right" showToggle items={right} frameRef={effectiveFrameRef} onContentHeight={handleContentHeight} />
     </div>
   );
 }

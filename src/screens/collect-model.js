@@ -119,8 +119,8 @@ export function summarizeCells(cells) {
     if (cell.status === 'uploaded') cur.uploaded += 1;
     if (cell.status === 'failed') cur.failed += 1;
     if (cell.status === 'filled' || cell.status === 'failed') cur.pendingUpload += 1;
-    cur.state = cur.uploaded === cur.total ? 'uploaded' : cur.filled > 0 ? 'doing' : 'pending';
-    cur.label = cur.uploaded === cur.total ? '已上传' : cur.filled > 0 ? '待上传' : '待采集';
+    cur.state = cur.failed > 0 ? 'failed' : cur.uploaded === cur.total ? 'uploaded' : cur.filled > 0 ? 'doing' : 'pending';
+    cur.label = cur.failed > 0 ? '上传失败' : cur.uploaded === cur.total ? '已上传' : cur.filled > 0 ? '待上传' : '待采集';
     acc[cell.subItemId] = cur;
     return acc;
   }, {});

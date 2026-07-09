@@ -56,16 +56,30 @@ export function AnnotatedWrapper({
     showChrome && highlighted ? 'annotated-wrapper--active' : '',
   ].filter(Boolean).join(' ');
 
+  /** 使用冒泡的 mouseOver/Out：批注开启时 wrapper 为 pointer-events:none，mouseEnter 不会触发 */
+  function handleMouseOver(event) {
+    // 嵌套锚点：由最内层处理，外层不抢高亮（如结论区嵌在试验数据区内）
+    const fromNested = event.target?.closest?.('.annotated-wrapper');
+    if (fromNested && fromNested !== anchorRef.current) return;
+    if (!overlayActive || anchorRef.current?.closest('.overlay-screen')) {
+      setActiveAnnotationId(id);
+    }
+  }
+
+  function handleMouseOut(event) {
+    const next = event.relatedTarget;
+    if (next && anchorRef.current?.contains(next)) return;
+    // 移入嵌套子锚点时，由子锚点接管，外层不清除
+    if (next?.closest?.('.annotated-wrapper') && next.closest('.annotated-wrapper') !== anchorRef.current) return;
+    setActiveAnnotationId((cur) => (cur === id ? null : cur));
+  }
+
   return (
     <span
       ref={anchorRef}
       className={wrapperClass}
-      onMouseEnter={() => {
-        if (!overlayActive || anchorRef.current?.closest('.overlay-screen')) {
-          setActiveAnnotationId(id);
-        }
-      }}
-      onMouseLeave={() => setActiveAnnotationId(null)}
+      onMouseOver={handleMouseOver}
+      onMouseOut={handleMouseOut}
     >
       {children}
     </span>
