@@ -343,12 +343,12 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     }
 
     const methodHint = {
-      auto: '设备直连 · 上位机算毕整批写库，点击下方一键从库取值，不可手输',
+      auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输（下方「一键采集」仅原型演示）',
       ocr: ocrReady ? '逐条拍摄仪器读数屏自动识别，完成一次即可上传，无需等全部完成' : '该试验项识别规则未通过验证，已回退手工录入',
       ble: '蓝牙数显卡尺 · 逐条连接同步读数，也可手动输入',
       manual: '手工逐条录入数据',
-      external: '电子天平由工业平板采集程序代采写库 · App 不在此采集，可手输补录或查看已采数据',
-      serial: '电子天平经工业平板串口采集程序采集写库 · 本端点「一键采集」读取已采数据；串口异常时可在下方手动录入兜底',
+      external: '外部程序代采写库（工业平板）· App 无采集按钮，可查看已采或手输补录',
+      serial: '外部程序·串口通路：工业平板串口程序代采写库 · App 生产无采集按钮；下方「一键采集」仅原型演示，异常可手输兜底',
     }[method];
 
     const verifiedField = measureFields[measureFields.length - 1];
@@ -428,7 +428,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
             {isSerial && (
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--collect-serial,#6d4bd1)', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M6 8h12v4a6 6 0 0 1-12 0Z"/><path d="M12 18v4"/></svg>
-                串口采集（电子天平）· 工业平板串口程序代采写库，本端仅展示，异常时可手输兜底
+                外部程序·串口通路（电子天平）· 工业平板程序代采写库，本端仅展示，异常时可手输兜底
               </div>
             )}
           </Section>
@@ -458,19 +458,20 @@ import { AnnotatedWrapper } from '../annotation/index.js';
 
           <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '0 2px', lineHeight: 1.5 }}>{methodHint}</div>
 
-          {/* 设备直采 / 串口 / 外部程序：整批操作入口（不在每张卡上） */}
+          {/* 原型演示：设备直采 / 外部程序(含串口) 整批回填入口；生产环境无「一键采集」按钮 */}
           {(method === 'auto' || isSerial || isExternal) && !allFilled && !flowLocked && (
+            <AnnotatedWrapper id="demoOneClickCapture" layout="block">
             <Card padding="18px">
               <div style={{ textAlign: 'center' }}>
                 {busy === 'all'
-                  ? <div style={{ color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{isExternal ? '正在拉取平板程序已采数据…' : isSerial ? '正在从数采数据库读取已采数据…' : '正在从数据库整批取值…'}</div></div>
+                  ? <div style={{ color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{isExternal || isSerial ? '正在拉取平板程序已采数据…' : '正在从数据库整批取值…'}</div></div>
                   : <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                      {method === 'auto' && <Button size="lg" onClick={captureAll}>⚡ 一键采集（{N} 次）</Button>}
-                      {isSerial && <Button size="lg" onClick={collectSerial}>⚡ 一键采集（{N} 次）</Button>}
-                      {isExternal && <><Button size="lg" variant="secondary" onClick={pullExternal}>查看已采数据</Button></>}
+                      {(method === 'auto' || isSerial) && <Button size="lg" onClick={method === 'auto' ? captureAll : collectSerial}>⚡ 一键采集（{N} 次）</Button>}
+                      {isExternal && <Button size="lg" variant="secondary" onClick={pullExternal}>查看已采数据</Button>}
                     </div>}
               </div>
             </Card>
+            </AnnotatedWrapper>
           )}
           </div>
           </AnnotatedWrapper>
@@ -644,7 +645,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
                             ))}
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
-                              <span>{method === 'ocr' ? (ocrReady ? '字段待采集 · 点击右上「拍照识别」拍摄读数屏自动填入' : '该试验项识别规则未通过验证 · 请在上方字段手动输入') : method === 'ble' ? '字段待采集 · 点击右上「连接采集」同步，或直接在上方手动输入' : method === 'auto' ? '字段待采集 · 等待上方「一键采集」整批回填' : isExternal ? '字段待采集 · 等待平板程序数据，或在上方手输补录' : isSerial ? '字段待采集 · 点上方「一键采集」读取已采数据，或在下方手动录入兜底' : '字段待采集 · 请在上方手动输入'}</span>
+                              <span>{method === 'ocr' ? (ocrReady ? '字段待采集 · 点击右上「拍照识别」拍摄读数屏自动填入' : '该试验项识别规则未通过验证 · 请在上方字段手动输入') : method === 'ble' ? '字段待采集 · 点击右上「连接采集」同步，或直接在上方手动输入' : method === 'auto' ? '字段待采集 · 等待上位机写库回填（原型可用上方演示「一键采集」）' : isExternal ? '字段待采集 · 等待平板外部程序写库，或在上方手输补录' : isSerial ? '字段待采集 · 等待外部程序·串口写库（原型可用上方演示「一键采集」），或手输兜底' : '字段待采集 · 请在上方手动输入'}</span>
                             </div>
                           </div>}
                     </React.Fragment>

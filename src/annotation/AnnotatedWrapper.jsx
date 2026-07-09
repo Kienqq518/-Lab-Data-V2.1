@@ -3,20 +3,8 @@ import { useAnnotation, useEffectivePageKey } from './AnnotationContext.jsx';
 import { getAnnotation } from './registry.js';
 
 /**
- * 有 overlay 打开时，仅注册位于 .overlay-screen 内的锚点，
- * 避免底层 L1/L2/L3 批注抢占多子项 L4 等上层页面的交互与展示。
- */
-function isInActiveLayer(el) {
-  if (!el || typeof document === 'undefined') return false;
-  const overlays = document.querySelectorAll('.overlay-screen');
-  if (!overlays.length) return true;
-  return !!el.closest('.overlay-screen');
-}
-
-/**
- * 批注锚点包装器：仅绑定 hover + 虚线框，气泡由外侧 AnnotationRail 渲染
- * @param {string} id 批注配置 id
- * @param {'block'|'inline'|'flex'} layout 布局模式
+ * 批注锚点包装器：仅绑定 hover + 虚线框，气泡由外侧 AnnotationRail 渲染。
+ * 有 overlay 时，仅注册位于 .overlay-screen 内的锚点，避免底层 L3 批注泄漏到 L4。
  */
 export function AnnotatedWrapper({
   id,
@@ -32,29 +20,33 @@ export function AnnotatedWrapper({
     setActiveAnnotationId,
     registerAnchor,
     unregisterAnchor,
-    layoutTick,
+    overlayActive,
   } = useAnnotation();
   const pageKey = useEffectivePageKey(pageKeyOverride);
   const config = id ? getAnnotation(pageKey, id) : null;
   const anchorRef = React.useRef(null);
-  const [activeLayer, setActiveLayer] = React.useState(true);
+
+  const shouldRegister = React.useCallback((el) => {
+    if (!config || !id || !el) return false;
+    if (!overlayActive) return true;
+    return !!el.closest('.overlay-screen');
+  }, [config, id, overlayActive]);
 
   React.useLayoutEffect(() => {
     const el = anchorRef.current;
-    const next = isInActiveLayer(el);
-    setActiveLayer(next);
-    if (!config || !id || !next) {
+    if (!shouldRegister(el)) {
       if (id) unregisterAnchor(id);
       return undefined;
     }
     registerAnchor(id, el, config);
     return () => unregisterAnchor(id);
-  }, [id, config, registerAnchor, unregisterAnchor, pageKey, layoutTick]);
+  }, [id, config, registerAnchor, unregisterAnchor, shouldRegister]);
 
   if (!config) return children;
 
+  const inActiveLayer = !overlayActive || !!(anchorRef.current && anchorRef.current.closest('.overlay-screen'));
   const highlighted = activeAnnotationId === id;
-  const showChrome = isAnnotationMode && activeLayer;
+  const showChrome = isAnnotationMode && inActiveLayer;
 
   const wrapperClass = [
     'annotated-wrapper',
@@ -68,7 +60,11 @@ export function AnnotatedWrapper({
     <span
       ref={anchorRef}
       className={wrapperClass}
-      onMouseEnter={() => { if (activeLayer) setActiveAnnotationId(id); }}
+      onMouseEnter={() => {
+        if (!overlayActive || anchorRef.current?.closest('.overlay-screen')) {
+          setActiveAnnotationId(id);
+        }
+      }}
       onMouseLeave={() => setActiveAnnotationId(null)}
     >
       {children}

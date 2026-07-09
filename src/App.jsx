@@ -216,7 +216,7 @@ function App() {
   const annotationPageKey = resolveAnnotationPageKey({ authed, tab, overlay, focusKind });
 
   return (
-    <AnnotationProvider pageKey={annotationPageKey} frameRef={frameRef}>
+    <AnnotationProvider pageKey={annotationPageKey} frameRef={frameRef} overlayActive={!!overlay}>
     <main className="app-viewport">
       <PrototypeStage frameRef={frameRef}>
         <div className="ds-frame" ref={frameRef}>

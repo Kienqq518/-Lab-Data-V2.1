@@ -6,8 +6,9 @@ const AnnotationContext = React.createContext(null);
 
 /**
  * 批注模式全局 Provider：跨路由保持 isAnnotationMode 持久化，并管理锚点注册
+ * @param {boolean} overlayActive 是否有全屏 overlay（collect/done/focus/notify），用于屏蔽底层页批注
  */
-export function AnnotationProvider({ pageKey, frameRef: frameRefProp, children }) {
+export function AnnotationProvider({ pageKey, frameRef: frameRefProp, overlayActive = false, children }) {
   const [isAnnotationMode, setIsAnnotationMode] = React.useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) === '1';
@@ -35,9 +36,11 @@ export function AnnotationProvider({ pageKey, frameRef: frameRefProp, children }
     });
   }, []);
 
-  /** 注册批注锚点（由 AnnotatedWrapper 调用） */
+  /** 注册批注锚点（内容未变时不触发 layoutTick，避免死循环白屏） */
   const registerAnchor = React.useCallback((id, element, data) => {
     if (!id || !element || !data) return;
+    const prev = anchorsRef.current.get(id);
+    if (prev && prev.element === element && prev.data === data) return;
     anchorsRef.current.set(id, { element, data });
     setLayoutTick((t) => t + 1);
   }, []);
@@ -58,6 +61,7 @@ export function AnnotationProvider({ pageKey, frameRef: frameRefProp, children }
     isAnnotationMode,
     toggleAnnotationMode,
     pageKey,
+    overlayActive: !!overlayActive,
     activeAnnotationId,
     setActiveAnnotationId,
     anchorsRef,
@@ -66,7 +70,7 @@ export function AnnotationProvider({ pageKey, frameRef: frameRefProp, children }
     unregisterAnchor,
     requestLayout,
     frameRef,
-  }), [isAnnotationMode, pageKey, activeAnnotationId, layoutTick, toggleAnnotationMode, registerAnchor, unregisterAnchor, requestLayout]);
+  }), [isAnnotationMode, pageKey, overlayActive, activeAnnotationId, layoutTick, toggleAnnotationMode, registerAnchor, unregisterAnchor, requestLayout, frameRef]);
 
   return (
     <AnnotationContext.Provider value={value}>

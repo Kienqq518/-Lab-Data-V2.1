@@ -381,11 +381,12 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const methodHint = !hasAssignment
     ? '请先为当前子项指派设备后再采集'
     : ({
-        auto: '设备直连 · 上位机算毕整批写库，点下方「一键采集」整批回填并上传，不可手输',
+        auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输（下方「一键采集」仅原型演示）',
         ocr: caps.ocrReady ? '拍照识别 · 逐条拍摄仪器读数屏自动识别，识别结果可校正' : '识别规则未通过验证，已回退手工录入',
         ble: '蓝牙数显卡尺 · 逐相连接同步读数，也可手动输入',
         manual: '读数由检测员手工录入',
-        external: '外部程序采集 · 数据由工业平板代采写库，可查看已采数据或补录',
+        external: '外部程序代采写库（含串口通路）· App 生产无采集按钮，可查看已采或手输补录',
+        serial: '外部程序·串口通路 · 工业平板程序代采写库；下方「一键采集」仅原型演示',
       }[method] || '缺少采集方式，请先维护设备采集配置');
   const allCurrentSubFilled = activeCells.length > 0 && activeCells.every((cell) => cell.status !== 'idle');
 
@@ -473,13 +474,15 @@ function CollectStructured({ ctx, onBack, onDone }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{methodHint}</div>
             {caps.canBatch && !allCurrentSubFilled && !flowLocked && !fieldMissing && (
-              <Card padding="18px">
-                <div style={{ textAlign: 'center' }}>
-                  {busy === 'all-' + activeSub.id
-                    ? <div style={{ color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'external' ? '正在拉取平板程序已采数据…' : '正在从数据库整批取值…'}</div></div>
-                    : <Button size="lg" onClick={() => captureSub(activeSub)}>{method === 'external' ? '查看已采数据' : '一键采集'}</Button>}
-                </div>
-              </Card>
+              <AnnotatedWrapper id="demoOneClickCapture" layout="block">
+                <Card padding="18px">
+                  <div style={{ textAlign: 'center' }}>
+                    {busy === 'all-' + activeSub.id
+                      ? <div style={{ color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'external' || method === 'serial' ? '正在拉取平板程序已采数据…' : '正在从数据库整批取值…'}</div></div>
+                      : <Button size="lg" onClick={() => captureSub(activeSub)}>{method === 'external' ? '查看已采数据' : '一键采集'}</Button>}
+                  </div>
+                </Card>
+              </AnnotatedWrapper>
             )}
           </div>
         </AnnotatedWrapper>
