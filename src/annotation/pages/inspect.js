@@ -27,7 +27,7 @@ export const inspectAnnotations = {
   methodFilter: {
     title: '采集方式筛选',
     requirementLogic: '按设备 L1 可按采集方式（设备直连/拍照识别/蓝牙/串口/手工录入）筛选设备列表，便于现场按仪器类型查找。计数含当前搜索条件下的设备数。',
-    displayRule: '横向滑动 Chip，展示方式名与括号内台数；选中高亮对应 CollectBadge 色系。',
+    displayRule: '横向滑动 Chip（无「采集类型」文字标签），展示方式名与括号内台数；选中高亮对应 CollectBadge 色系。',
     interactionLogic: '单选切换；再次点击已选中项可取消筛选回到「全部」。与工位筛选、关键词搜索叠加生效。',
   },
   deviceCard: {
@@ -56,8 +56,8 @@ export const inspectAnnotations = {
   },
   deviceSummary: {
     title: '设备摘要（L2 按设备）',
-    requirementLogic: '从 L1 点设备后进入 L2，顶部确认当前检测对象（设备身份与采集方式），后续任务列表均围绕该设备过滤。',
-    displayRule: 'Card 展示设备名、编号·型号、CollectBadge。',
+    requirementLogic: '从 L1 点设备后进入 L2，顶部确认当前检测对象（设备身份、所属工位与采集方式），后续任务列表均围绕该设备过滤。',
+    displayRule: 'Card 展示设备名、编号·型号、所属工位（绑定工位名或「未绑定工位」）、CollectBadge。',
     interactionLogic: '只读；AppBar 返回回 L1 设备列表。',
   },
   deviceTaskList: {

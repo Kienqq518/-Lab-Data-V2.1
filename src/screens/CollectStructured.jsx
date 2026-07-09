@@ -613,6 +613,7 @@ function DeviceMeta({ subName, device }) {
   const itemStyle = { display: 'flex', gap: 8, fontSize: 'var(--fs-sm)', minWidth: 0 };
   const labelStyle = { color: 'var(--text-secondary)', flex: 'none' };
   const valueStyle = { color: 'var(--text-title)', fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
+  const stationText = device ? MOCK.stationLabel(device.station) : '—';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 14px' }}>
@@ -633,6 +634,12 @@ function DeviceMeta({ subName, device }) {
         <div style={itemStyle}>
           <span style={labelStyle}>设备型号</span>
           <span title={device ? device.model : '—'} style={valueStyle}>{device ? device.model : '—'}</span>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 14px' }}>
+        <div style={itemStyle}>
+          <span style={labelStyle}>所属工位</span>
+          <span title={stationText} style={valueStyle}>{stationText}</span>
         </div>
       </div>
     </div>

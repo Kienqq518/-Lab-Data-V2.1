@@ -413,7 +413,12 @@ import { AnnotatedWrapper } from '../annotation/index.js';
               )}
             </div>
           }>
-            <Grid items={[['检测设备', dev.name || '—'], ['设备编号', dev.code || '—'], ['设备型号', dev.model || '—']]} />
+            <Grid items={[
+              ['检测设备', dev.name || '—'],
+              ['设备编号', dev.code || '—'],
+              ['设备型号', dev.model || '—'],
+              ['所属工位', M.stationLabel(dev.station)],
+            ]} />
             {isExternal && (
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--collect-ble,#0a8a96)', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4 M12 18v4 M2 12h4 M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>

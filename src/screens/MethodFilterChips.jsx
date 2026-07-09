@@ -15,8 +15,7 @@ export const DEVICE_METHOD_FILTERS = [
  */
 export function MethodFilterChips({ value, onChange, counts = {} }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>采集类型</span>
+    <div style={{ flexShrink: 0 }}>
       <div style={{
         display: 'flex',
         gap: 8,

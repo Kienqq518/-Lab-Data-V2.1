@@ -20,7 +20,10 @@ function stableHash(seed) {
 
 export function resolveEnvMock(seed, options = {}) {
   const hash = stableHash(seed);
-  // 设备直连（auto）统一走安全管家；其余按试验项稳定随机选用两种模式
+  // 展示逻辑对齐 Web「设备配置 → 安全管家配置」：
+  // 若该设备试验项绑定了安全管家温湿度节点 → 安全管家（随上位机试验数据回传，只读）；
+  // 否则 → 独立传感器（RS-WS-WIFI-6 等，协议见《数据采集与其他传感器（温湿度等）通讯协议V1.0》）。
+  // demo：设备直连（auto）统一走安全管家；其余按试验项稳定随机选用两种模式。
   const isGuardEnv = options.forceGuard ? true : hash % 2 === 0;
   const node = GUARD_NODE_POOL[hash % GUARD_NODE_POOL.length];
   return {

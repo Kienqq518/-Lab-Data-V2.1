@@ -114,7 +114,12 @@ function CollectLite({ ctx, onBack, onDone }) {
             )}
           </div>
         }>
-          <Grid items={[['检测设备', dev.name || '—'], ['设备编号', dev.code || '—'], ['设备型号', dev.model || '—']]} />
+          <Grid items={[
+            ['检测设备', dev.name || '—'],
+            ['设备编号', dev.code || '—'],
+            ['设备型号', dev.model || '—'],
+            ['所属工位', M.stationLabel(dev.station)],
+          ]} />
           {dev.visual && (
             <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               目测 · 不连接设备，参数与结论由检测员手工录入（采集方式同手工录入）

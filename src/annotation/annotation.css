@@ -36,7 +36,7 @@
 .annotation-rail__body {
   position: relative;
   min-height: calc(1280px - 52px);
-  padding-bottom: 80px;
+  padding-bottom: 160px;
 }
 
 .annotation-rail__item {
@@ -106,8 +106,10 @@
 
 .annotated-wrapper--flex {
   display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 .annotated-wrapper--anchor-only {

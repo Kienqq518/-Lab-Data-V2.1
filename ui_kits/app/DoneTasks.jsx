@@ -67,7 +67,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               移动端仅保留近一段时间的已检任务便于复核{earlier > 0 ? `，更早还有 ${earlier} 个任务未在「${cfg.label}」范围内` : ''}。
-              更早的历史数据请前往 <span style={{ color: 'var(--brand-action)', fontWeight: 600 }}>Web 端「我的任务 · 已完成」</span>查询。
+              更早的历史数据请前往 <span style={{ color: 'var(--brand-action)', fontWeight: 600 }}>Web 端 LIMS 系统</span>查询。
             </div>
           </div>
         </div>

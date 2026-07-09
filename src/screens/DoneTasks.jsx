@@ -164,51 +164,55 @@ function DoneTasks({ onBack, onCollect }) {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', minHeight: 0 }}>
       <AppBar title="已检任务" onBack={onBack} />
 
-      <AnnotatedWrapper id="doneSection" layout="flex">
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%' }}>
-      <div style={{ padding: 'var(--gap-page)', paddingBottom: 10, display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {RANGES.map((r) => {
-            const on = r.value === range;
-            return (
-              <button key={r.value} onClick={() => setRange(r.value)} style={{
-                flex: 1, padding: '9px 0', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: on ? 600 : 400,
-                border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                background: on ? 'var(--surface-selected)' : 'var(--white)',
-                color: on ? 'var(--brand-action)' : 'var(--text-body)',
-              }}>{r.label}</button>
-            );
-          })}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-          <span>{from.toISOString().slice(0, 10)} 至 {NOW.toISOString().slice(0, 10)}</span>
-          <span>共 <span style={{ color: 'var(--brand-action)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{list.length}</span> 个已检任务</span>
-        </div>
-      </div>
-
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 var(--gap-page) var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
-        {list.map((t) => <DoneCard key={t.code} t={t} onClick={() => openTask(t)} />)}
-
-        {list.length === 0 && (
-          <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-placeholder)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
-            <div style={{ fontSize: 'var(--fs-base)' }}>该时间范围内暂无已检任务</div>
+      <AnnotatedWrapper id="doneRangeTabs" layout="block">
+        <div style={{ padding: 'var(--gap-page)', paddingBottom: 10, display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {RANGES.map((r) => {
+              const on = r.value === range;
+              return (
+                <button key={r.value} onClick={() => setRange(r.value)} style={{
+                  flex: 1, padding: '9px 0', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: on ? 600 : 400,
+                  border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
+                  background: on ? 'var(--surface-selected)' : 'var(--white)',
+                  color: on ? 'var(--brand-action)' : 'var(--text-body)',
+                }}>{r.label}</button>
+              );
+            })}
           </div>
-        )}
-
-        <div style={{ marginTop: 6, padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--white)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            移动端仅保留近一段时间的已检任务便于复核{earlier > 0 ? `，更早还有 ${earlier} 个任务未在「${cfg.label}」范围内` : ''}。
-            更早的历史数据请前往 <span style={{ color: 'var(--brand-action)', fontWeight: 600 }}>Web 端「我的任务 · 已完成」</span>查询。
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+            <span>{from.toISOString().slice(0, 10)} 至 {NOW.toISOString().slice(0, 10)}</span>
+            <span>共 <span style={{ color: 'var(--brand-action)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{list.length}</span> 个已检任务</span>
           </div>
         </div>
-      </div>
-      </div>
       </AnnotatedWrapper>
+
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', WebkitOverflowScrolling: 'touch', padding: '0 var(--gap-page) var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
+        <AnnotatedWrapper id="doneTaskList" layout="block">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
+            {list.map((t) => <DoneCard key={t.code} t={t} onClick={() => openTask(t)} />)}
+
+            {list.length === 0 && (
+              <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-placeholder)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                <div style={{ fontSize: 'var(--fs-base)' }}>该时间范围内暂无已检任务</div>
+              </div>
+            )}
+          </div>
+        </AnnotatedWrapper>
+
+        <AnnotatedWrapper id="doneHistoryHint" layout="block">
+          <div style={{ marginTop: 6, padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--white)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              移动端仅保留近一段时间的已检任务便于复核{earlier > 0 ? `，更早还有 ${earlier} 个任务未在「${cfg.label}」范围内` : ''}。
+              更早的历史数据请前往 <span style={{ color: 'var(--brand-action)', fontWeight: 600 }}>Web 端 LIMS 系统</span>查询。
+            </div>
+          </div>
+        </AnnotatedWrapper>
+      </div>
     </div>
   );
 }

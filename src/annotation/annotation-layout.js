@@ -1,5 +1,5 @@
-/** 单侧批注轨道展开宽度 */
-export const RAIL_WIDTH = 440;
+/** 单侧批注轨道展开宽度（加宽以保证 L4 底部长批注卡片完整展露） */
+export const RAIL_WIDTH = 560;
 
 /** 批注关闭时轨道占位宽度（仅放开关） */
 export const RAIL_WIDTH_COLLAPSED = 52;
