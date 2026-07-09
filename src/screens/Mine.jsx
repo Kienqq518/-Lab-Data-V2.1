@@ -3,6 +3,7 @@ import { AppBar, Button, Card, Input, SectionTitle } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import logoMark from '../../assets/logo-mark.png';
 import { getApiBaseUrl, setApiBaseUrl } from '../api-config.js';
+import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 我的 — 用户信息 / 消息通知 / 设置 / 帮助与反馈
    采用「我的」Tab 内部页面栈：main → 各详情页（AppBar 返回）。 */
@@ -426,16 +427,18 @@ import { getApiBaseUrl, setApiBaseUrl } from '../api-config.js';
             }} />
           </div>
 
-          <div>
-            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>图片（选填）</div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {[0, 1, 2].map((k) => (
-                <div key={k} style={{ width: 72, height: 72, borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--surface-sunken,#f5f6f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-placeholder)' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14 M5 12h14"/></svg>
-                </div>
-              ))}
+          <AnnotatedWrapper id="feedbackImages" layout="block">
+            <div>
+              <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>图片（选填）</div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {[0, 1, 2].map((k) => (
+                  <div key={k} style={{ width: 72, height: 72, borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--surface-sunken,#f5f6f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-placeholder)' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14 M5 12h14"/></svg>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </AnnotatedWrapper>
 
           <div>
             <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>联系方式（选填）</div>

@@ -4,6 +4,7 @@ import { focusAnnotations } from './pages/focus.js';
 import { collectAnnotations } from './pages/collect.js';
 import { notifyAnnotations } from './pages/notify.js';
 import { doneAnnotations } from './pages/done.js';
+import { meAnnotations } from './pages/me.js';
 
 /** 按页面 key 聚合批注配置 */
 const REGISTRY = {
@@ -14,6 +15,7 @@ const REGISTRY = {
   collect: collectAnnotations,
   done: doneAnnotations,
   notify: notifyAnnotations,
+  me: meAnnotations,
   'focus-pending': focusAnnotations,
   'focus-testing': focusAnnotations,
   'focus-overdue': focusAnnotations,
