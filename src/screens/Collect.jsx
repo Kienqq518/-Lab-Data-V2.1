@@ -446,6 +446,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
 
           {/* 试验数据 —— N 组并列字段卡 */}
           <AnnotatedWrapper id="testDataEntry" layout="block">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '2px 2px -2px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
@@ -471,6 +472,8 @@ import { AnnotatedWrapper } from '../annotation/index.js';
               </div>
             </Card>
           )}
+          </div>
+          </AnnotatedWrapper>
 
           {/* 试验数据主从：左=第几次+状态，右=该次数据 */}
           <Card padding="0">
@@ -651,8 +654,9 @@ import { AnnotatedWrapper } from '../annotation/index.js';
             </div>
           </Card>
 
-          {/* 汇总字段：N 次全部完成后整体计算一次 */}
+          {/* 结论区：与试验数据录入拆分锚点，保证批注可见 */}
           {summaryFields.length > 0 && (
+            <AnnotatedWrapper id="conclusionArea" layout="block">
             <Card padding="0">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
@@ -692,10 +696,8 @@ import { AnnotatedWrapper } from '../annotation/index.js';
                 </div>
               </div>
             </Card>
+            </AnnotatedWrapper>
           )}
-
-          <div style={{ height: 8 }} />
-          </AnnotatedWrapper>
         </div>
 
         {/* 演示：一键切换 LIMS 流程节点状态（仅用于 demo 对比） */}
