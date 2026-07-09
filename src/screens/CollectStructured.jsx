@@ -988,10 +988,6 @@ function ConclusionCard({ sub, cells }) {
             </React.Fragment>
           );
         })}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          <InfoIcon />
-          <span>{sub.phased ? '含相别试验：相同相别的数据合并判定，每个相别全部次数上传后即可回显结论；' : ''}物资版原则上按判定方式控制手输（系统判定不可改 / 人工判定可改），本原型暂时允许手输</span>
-        </div>
       </div>
     </div>
   );

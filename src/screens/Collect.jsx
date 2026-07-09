@@ -695,10 +695,6 @@ import { AnnotatedWrapper } from '../annotation/index.js';
                       onChange={() => {}} />
                   );
                 })}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
-                  <span>{isCable ? '含相别试验：相同相别的数据合并判定，每个相别全部次数上传后即可回显结论；' : ''}物资版原则上按判定方式控制手输（系统判定不可改 / 人工判定可改），本原型暂时允许手输</span>
-                </div>
               </div>
             </Card>
             </AnnotatedWrapper>
