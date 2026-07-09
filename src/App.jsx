@@ -88,26 +88,42 @@ function StationSheet({ stationId, onSelect, onClear, onClose }) {
   );
 }
 
-/** 舞台缩放容器：随批注模式动态预留双侧轨道宽度 */
+/** 舞台缩放容器：随批注模式动态预留双侧轨道宽度，并按缩放后尺寸居中 */
 function PrototypeStage({ frameRef, children }) {
   const { isAnnotationMode } = useAnnotation();
+  const stageWidth = isAnnotationMode ? STAGE_WIDTH_ANNOTATED : STAGE_WIDTH_COLLAPSED;
   const [liveScale, setLiveScale] = React.useState(1);
 
   React.useEffect(() => {
     const fit = () => {
-      const stageWidth = isAnnotationMode ? STAGE_WIDTH_ANNOTATED : STAGE_WIDTH_COLLAPSED;
       setLiveScale(Math.min(window.innerWidth / stageWidth, window.innerHeight / 1280));
     };
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
-  }, [isAnnotationMode]);
+  }, [stageWidth]);
 
+  // 外层按「缩放后」宽高占位，避免 transform:scale 后仍按未缩放尺寸布局导致整体偏右
   return (
-    <div className="ds-stage" style={{ transform: `scale(${liveScale})` }}>
-      <AnnotationSideRails frameRef={frameRef}>
-        {children}
-      </AnnotationSideRails>
+    <div
+      className="ds-stage-slot"
+      style={{
+        width: stageWidth * liveScale,
+        height: 1280 * liveScale,
+      }}
+    >
+      <div
+        className="ds-stage"
+        style={{
+          width: stageWidth,
+          transform: `scale(${liveScale})`,
+          transformOrigin: 'top left',
+        }}
+      >
+        <AnnotationSideRails frameRef={frameRef}>
+          {children}
+        </AnnotationSideRails>
+      </div>
     </div>
   );
 }

@@ -28,11 +28,18 @@ textarea {
   background: #d9dee6;
 }
 
+.ds-stage-slot {
+  position: relative;
+  flex: none;
+  overflow: visible;
+}
+
 .ds-stage {
   width: auto;
   height: 1280px;
-  position: relative;
-  transform-origin: center center;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .ds-frame {
