@@ -61,8 +61,8 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
   const [taskSort, setTaskSort] = React.useState(restore?.taskSort || cfg.defaultSort);
   const [scanOpen, setScanOpen] = React.useState(false);
 
-  /** L2 任务列表（按维度过滤 + 关键词 + 排序） */
-  const allTasks = M.tasks.filter(cfg.taskFilter);
+  /** L2 任务列表（按维度过滤 + 排除已检归档 + 关键词 + 排序） */
+  const allTasks = M.tasks.filter(M.isActiveTask).filter(cfg.taskFilter);
   const ql = q.trim().toLowerCase();
   const filtered = M.sortTaskList(allTasks.filter((t) => !ql
     || t.code.toLowerCase().includes(ql)

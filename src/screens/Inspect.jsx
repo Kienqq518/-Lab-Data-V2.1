@@ -47,7 +47,7 @@ import { filterL3View } from './l3-search-filter.js';
       || (t.sampleName && t.sampleName.toLowerCase().includes(ql))
       || (t.client && t.client.toLowerCase().includes(ql));
     const fDevices = devices.filter(matchDevice).filter(matchMethod);
-    const fTasks = M.sortTaskList(M.tasks.filter(matchTask), taskSort);
+    const fTasks = M.sortTaskList(M.tasks.filter(matchTask).filter(M.isActiveTask), taskSort);
     const fOff = M.offDevices.filter(matchDevice).filter(matchMethod);
     const methodCounts = countDevicesByMethod([...devices, ...M.offDevices].filter(matchDevice));
 
@@ -122,7 +122,7 @@ import { filterL3View } from './l3-search-filter.js';
     // 某设备涉及的委托任务（任务下属样品含该设备的试验项）
     function tasksForDevice(dev) {
       if (!dev) return [];
-      return M.tasks.filter((t) => M.taskSamplesForDevice(t, dev).length > 0);
+      return M.tasks.filter(M.isActiveTask).filter((t) => M.taskSamplesForDevice(t, dev).length > 0);
     }
 
     /** 按设备模式：分段切换同行右上角的内联工位选择 */

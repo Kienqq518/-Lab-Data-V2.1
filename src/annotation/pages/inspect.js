@@ -50,7 +50,7 @@ export const inspectAnnotations = {
   },
   taskList: {
     title: '委托任务列表（L1 按任务）',
-    requirementLogic: '按任务模式下的 L2 入口：展示全部可检委托任务，含逾期、待检、检测中状态。支持排序与关键词过滤。',
+    requirementLogic: '按任务模式下的 L2 入口：展示全部进行中委托任务（待检、检测中、逾期），不含 status=done 已检归档任务（已检任务统一从首页「快捷入口 → 已检任务」进入）。支持排序与关键词过滤。',
     displayRule: 'TaskCard 展示任务编号、样品名、委托单位、下发时间、检测时效、StatusTag。逾期任务时效字段红色。',
     interactionLogic: '点击进 L3；搜索框扫码可直达 L3。试验项逾期时卡片或 L3 试验项展示 overdueTag：已逾期·未检测 / 已逾期·检测中 / 逾期完成。',
   },
@@ -62,7 +62,7 @@ export const inspectAnnotations = {
   },
   deviceTaskList: {
     title: '设备相关任务（L2 按设备）',
-    requirementLogic: '仅展示下属样品/试验项涉及当前设备的委托任务；排序与 L1 按任务一致。',
+    requirementLogic: '仅展示下属样品/试验项涉及当前设备的进行中委托任务（排除 status=done 已检归档）；排序与 L1 按任务一致。',
     displayRule: '标题「委托任务（N）」+ TaskCard 列表。',
     interactionLogic: '点击进 L3，样品栏与试验项按设备过滤。',
   },

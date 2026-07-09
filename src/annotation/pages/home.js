@@ -28,7 +28,7 @@ export const homeAnnotations = {
     title: '快捷入口（整块）',
     requirementLogic: '按委托任务维度统计三类工作量：① 待检：任务下所有试验项均未开始（含 status=overdue 但尚未有任何试验项进入检测中的任务）；② 检测中：任务或下属试验项存在 testing 状态；③ 已检：任务 status=done 且存在 doneAt（任务完成时间，表示该委托任务已全部检毕并落库的时间戳）。',
     displayRule: '三张 Quick 卡横向等分：待检（黄）、检测中（蓝）、已检（绿）；每张展示图标、数字、标签。数字为 0 时仍展示。',
-    interactionLogic: '待检 → pending 聚焦页 L2（列表含已逾期但未开检的任务，支持扫码进 L3）；检测中 → testing 聚焦页 L2（列表含已逾期但仍在检的任务）；已检 → 打开「已检任务」overlay（近 30 天已完成任务复核列表，只读进 L4）。',
+    interactionLogic: '待检 → pending 聚焦页 L2（列表含已逾期但未开检的任务，不含 status=done 已检归档，支持扫码进 L3）；检测中 → testing 聚焦页 L2（列表含已逾期但仍在检的任务，不含已检归档）；已检 → 打开「已检任务」overlay（近 30 天已完成任务复核列表，只读进 L4）。',
   },
   inspectorStats: {
     title: '个人检测统计',

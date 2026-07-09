@@ -14,7 +14,7 @@ export const focusAnnotations = {
   },
   focusL2List: {
     title: '聚焦任务列表（L2）',
-    requirementLogic: '按入口维度过滤：待检（含已逾期但未开检）/ 检测中（含已逾期仍在检）/ 逾期（status=overdue）/ 临期（3 日内到期且未完成未逾期，任务状态可为未检测或检测中）/ 退回复测（含退回试验项）。从首页「逾期任务」「3 日内到期」进入时默认排序均为检测时效最紧急在前。',
+    requirementLogic: '按入口维度过滤：待检（含已逾期但未开检）/ 检测中（含已逾期仍在检）/ 逾期（status=overdue）/ 临期（3 日内到期且未完成未逾期，任务状态可为未检测或检测中）/ 退回复测（含退回试验项）。均排除 status=done 已检归档任务（已检任务统一从首页「快捷入口 → 已检任务」进入）。从首页「逾期任务」「3 日内到期」进入时默认排序均为检测时效最紧急在前。',
     displayRule: 'TaskCard 列表；退回复测 L2 统一展示 StatusTag「检测中」；临期列表同时出现「未检测」「检测中」状态卡。空态展示各维度文案。',
     interactionLogic: '点击进 L3；待检/检测中列表不排除已逾期任务（mock：isPendingTask/isTestingTask 对 overdue 状态仍返回 true）。',
   },

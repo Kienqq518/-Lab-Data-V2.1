@@ -459,6 +459,10 @@
   function taskTests(task) {
     return taskSamples(task).flatMap((s) => s.tests || []);
   }
+  /** 进行中任务（未完成检测，不含已检归档任务） */
+  function isActiveTask(task) {
+    return task.status !== 'done';
+  }
   function isPendingTask(task) {
     if (task.status === 'done') return false;
     const tests = taskTests(task);
@@ -714,4 +718,4 @@
     { q: '检测时效是如何计算的？', a: '检测时效随委托任务下发，不可在移动端修改。临近或超过时效的任务会在首页「工作概览」中以逾期 / 临期维度提醒。' },
   ];
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
