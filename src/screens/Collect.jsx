@@ -343,12 +343,12 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     }
 
     const methodHint = {
-      auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输（下方「一键采集」仅原型演示）',
+      auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输',
       ocr: ocrReady ? '逐条拍摄仪器读数屏自动识别，完成一次即可上传，无需等全部完成' : '该试验项识别规则未通过验证，已回退手工录入',
       ble: '蓝牙数显卡尺 · 逐条连接同步读数，也可手动输入',
       manual: '手工逐条录入数据',
       external: '外部程序代采写库（工业平板）· App 无采集按钮，可查看已采或手输补录',
-      serial: '外部程序·串口通路：工业平板串口程序代采写库 · App 生产无采集按钮；下方「一键采集」仅原型演示，异常可手输兜底',
+      serial: '外部程序·串口通路：工业平板串口程序代采写库 · App 生产无采集按钮，异常可手输兜底',
     }[method];
 
     const verifiedField = measureFields[measureFields.length - 1];

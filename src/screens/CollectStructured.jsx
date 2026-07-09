@@ -381,12 +381,12 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const methodHint = !hasAssignment
     ? '请先为当前子项指派设备后再采集'
     : ({
-        auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输（下方「一键采集」仅原型演示）',
+        auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输',
         ocr: caps.ocrReady ? '拍照识别 · 逐条拍摄仪器读数屏自动识别，识别结果可校正' : '识别规则未通过验证，已回退手工录入',
         ble: '蓝牙数显卡尺 · 逐相连接同步读数，也可手动输入',
         manual: '读数由检测员手工录入',
         external: '外部程序代采写库（含串口通路）· App 生产无采集按钮，可查看已采或手输补录',
-        serial: '外部程序·串口通路 · 工业平板程序代采写库；下方「一键采集」仅原型演示',
+        serial: '外部程序·串口通路 · 工业平板程序代采写库',
       }[method] || '缺少采集方式，请先维护设备采集配置');
   const allCurrentSubFilled = activeCells.length > 0 && activeCells.every((cell) => cell.status !== 'idle');
 
@@ -528,7 +528,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       flowReturned={flowReturned}
                       currentDevice={activeDevice}
                       deviceCatalog={deviceCatalog}
-                      hint={methodHint}
                       onCollect={() => collectOne(activeSub, activeCell)}
                       onReRecognize={() => reRecognizeCell(activeSub, activeCell)}
                       ocrUnlocked={!!editCells[activeCell.key]}
@@ -847,7 +846,7 @@ function CheckBox({ on }) {
   );
 }
 
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, hint, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
@@ -872,14 +871,15 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
       {busyCell
         ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'ocr' ? '正在识别读数…' : '正在连接设备…'}</div></div>
         : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {hint && !filled && <InlineHint text={hint} />}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 34, padding: '7px 10px', borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken,#f5f6f8)', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', minWidth: 0 }}>
-              <CollectDot method={traceMethod} on />
-              <span style={{ flex: 'none' }}>{filled ? '采集于' : '待采设备'}</span>
-              {filled && <span style={{ flex: 'none', color: methodColor(traceMethod), fontWeight: 600 }}>{methodLabel(traceMethod)}</span>}
-              <span style={{ color: 'var(--text-title)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traceDevice.name}</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{traceDevice.code}</span>
-            </div>
+            <AnnotatedWrapper id="cellDeviceTrace" layout="block">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 34, padding: '7px 10px', borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken,#f5f6f8)', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', minWidth: 0 }}>
+                <CollectDot method={traceMethod} on />
+                <span style={{ flex: 'none' }}>{filled ? '采集于' : '待采设备'}</span>
+                {filled && <span style={{ flex: 'none', color: methodColor(traceMethod), fontWeight: 600 }}>{methodLabel(traceMethod)}</span>}
+                <span style={{ color: 'var(--text-title)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traceDevice.name}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{traceDevice.code}</span>
+              </div>
+            </AnnotatedWrapper>
             {sub.fields.map((field) => {
               if (field.multi) {
                 return <MultiField key={field.key} field={field} values={cell.vals[field.key]} readOnly={!canEdit}
@@ -1088,18 +1088,6 @@ function AttachmentList({ cell, method, flowLocked, onAdd, onRemove }) {
           </button>
         )}
       </div>
-    </div>
-  );
-}
-
-function InlineHint({ text }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 6, padding: '0 2px',
-      fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.55,
-    }}>
-      <InfoIcon />
-      <span>{text}</span>
     </div>
   );
 }
