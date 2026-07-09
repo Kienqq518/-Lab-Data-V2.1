@@ -519,6 +519,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
             <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 16, display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto' }}>
               {activeCell && (
+                <AnnotatedWrapper id="testParams" layout="block">
                 <CellEditor
                   sub={activeSub}
                   cell={activeCell}
@@ -540,6 +541,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
                   onAddAttach={addAttach}
                   onRemoveAttach={removeAttach}
                 />
+                </AnnotatedWrapper>
               )}
             </div>
           </div>
@@ -988,7 +990,7 @@ function ConclusionCard({ sub, cells }) {
         })}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
           <InfoIcon />
-          <span>{sub.phased ? '含相别试验：相同相别的数据合并判定，每个相别全部次数上传后即可回显结论；' : ''}结论不在本端录入，由 LIMS 按计算与结果判定配置自动回显</span>
+          <span>{sub.phased ? '含相别试验：相同相别的数据合并判定，每个相别全部次数上传后即可回显结论；' : ''}物资版原则上按判定方式控制手输（系统判定不可改 / 人工判定可改），本原型暂时允许手输</span>
         </div>
       </div>
     </div>

@@ -509,6 +509,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
 
               {/* 右：当前次数据 */}
               <div style={{ flex: 1, minWidth: 0, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <AnnotatedWrapper id="testParams" layout="block">
                 {(() => {
                   const i = activeTime;
                   const t = times[i] || { status: 'idle', vals: {} };
@@ -651,6 +652,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
                     </React.Fragment>
                   );
                 })()}
+                </AnnotatedWrapper>
               </div>
             </div>
           </Card>
@@ -666,6 +668,8 @@ import { AnnotatedWrapper } from '../annotation/index.js';
               <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {summaryFields.map((f) => {
                   const isConcl = f.key === 'jl';
+                  // 物资版原型：结论暂时允许手输（正式应按判定方式：系统判定只读 / 人工判定可改）
+                  const conclReadOnly = flowLocked;
                   if (isConcl && isCable) {
                     const conclPhases = [...new Set(times.map((_, i) => phaseOf(i)))];
                     return conclPhases.map((ph) => {
@@ -674,10 +678,10 @@ import { AnnotatedWrapper } from '../annotation/index.js';
                       const fail = jl === '不合格';
                       return (
                         <React.Fragment key={f.key + ph}>
-                          <FieldRow label={`结论（${ph}相）`} readOnly
+                          <FieldRow label={`结论（${ph}相）`} readOnly={conclReadOnly}
                             value={jl} placeholder={`${ph}相全部次数上传后回显`} onChange={() => {}} />
                           {fail && (
-                            <FieldRow label="不合格原因" readOnly
+                            <FieldRow label="不合格原因" readOnly={conclReadOnly}
                               value={PHASE_FAIL_REASON[ph] || ''} onChange={() => {}} />
                           )}
                         </React.Fragment>
@@ -685,7 +689,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
                     });
                   }
                   return (
-                    <FieldRow key={f.key} label={f.label} unit={f.unit} readOnly
+                    <FieldRow key={f.key} label={f.label} unit={f.unit} readOnly={isConcl ? conclReadOnly : true}
                       value={isConcl ? (allUploaded ? (summary.vals[f.key] || '合格') : '') : (summary.vals[f.key] || '')}
                       placeholder={isConcl ? `全部 ${N} 次结果上传后回显` : `完成全部 ${N} 次后计算`}
                       onChange={() => {}} />
@@ -693,7 +697,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
                 })}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
-                  <span>{isCable ? '含相别试验：相同相别的数据合并判定，每个相别全部次数上传后即可回显结论；' : ''}结论不在本端录入，由 LIMS 按计算与结果判定配置自动回显</span>
+                  <span>{isCable ? '含相别试验：相同相别的数据合并判定，每个相别全部次数上传后即可回显结论；' : ''}物资版原则上按判定方式控制手输（系统判定不可改 / 人工判定可改），本原型暂时允许手输</span>
                 </div>
               </div>
             </Card>

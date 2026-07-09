@@ -4,6 +4,7 @@ import { MOCK as M } from '../mock.js';
 import { EnvInfoSection, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { resolveInspectStampState } from './collect-model.js';
+import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 轻量 LIMS 试验项 L4：参数平铺展示，结论由检测员手工录入 */
 
@@ -145,6 +146,7 @@ function CollectLite({ ctx, onBack, onDone }) {
           Grid={Grid}
         />
 
+        <AnnotatedWrapper id="testParams" layout="block">
         <Card padding="0">
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--divider)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>试验参数</span>
@@ -155,14 +157,19 @@ function CollectLite({ ctx, onBack, onDone }) {
               f.options
                 ? <SelectField key={f.key} field={f} value={vals[f.key] || ''} readOnly={readOnly || uploaded || uploading}
                     onChange={(v) => setField(f.key, v)} />
-                : <FieldRow key={f.key} label={f.label} unit={f.unit} required={f.required !== false}
+                : <FieldRow key={f.key} label={f.label} unit={f.unit} required={false}
                     value={vals[f.key] || ''} readOnly={readOnly || uploaded || uploading}
                     placeholder="请输入"
                     onChange={(e) => setField(f.key, e.target.value)} />
             ))}
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              轻量版：展示全部试验参数；暂未配置是否必填，暂不做必填约束
+            </div>
           </div>
         </Card>
+        </AnnotatedWrapper>
 
+        <AnnotatedWrapper id="conclusionArea" layout="block">
         <Card padding="0">
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--divider)', fontSize: 'var(--fs-base)', fontWeight: 600 }}>结论</div>
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -175,10 +182,11 @@ function CollectLite({ ctx, onBack, onDone }) {
                 onChange={(e) => setField('bhgyy', e.target.value)} />
             )}
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              轻量 LIMS：参数平铺录入，结论由检测员手工判定，不依赖系统自动回显。
+              轻量版 LIMS+数采：结论可手输，由检测员手工判定
             </div>
           </div>
         </Card>
+        </AnnotatedWrapper>
       </div>
 
       {!isReview && (
@@ -194,6 +202,7 @@ function CollectLite({ ctx, onBack, onDone }) {
         </div>
       )}
 
+      <AnnotatedWrapper id="uploadActions" layout="block">
       <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
         {isReview
           ? <Button block onClick={onBack}>返回</Button>
@@ -203,6 +212,7 @@ function CollectLite({ ctx, onBack, onDone }) {
           ? <Button block onClick={onDone}>完成并退出</Button>
           : <Button block disabled={uploading} onClick={upload}>{uploading ? '上传中…' : '上传结果'}</Button>}
       </div>
+      </AnnotatedWrapper>
 
       {devSwitchOpen && (
         <DeviceSwitchDrawer

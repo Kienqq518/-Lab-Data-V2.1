@@ -72,12 +72,18 @@ function AnnotationRailColumn({ side, showToggle, items, frameRef }) {
   }, [isAnnotationMode, items, buildRawItems, measurePass]);
 
   const width = isAnnotationMode ? RAIL_WIDTH : RAIL_WIDTH_COLLAPSED;
+  const bodyMinHeight = React.useMemo(() => {
+    if (!positions.length) return 'calc(1280px - 52px)';
+    const last = positions[positions.length - 1];
+    const bottom = (last.top || 0) + (last.measuredHeight || 240) + 80;
+    return Math.max(1280 - 52, bottom);
+  }, [positions]);
 
   return (
     <aside
       ref={railRef}
       className={`annotation-rail annotation-rail--${side}${isAnnotationMode ? ' annotation-rail--on' : ''}`}
-      style={{ width }}
+      style={{ width, minHeight: isAnnotationMode ? bodyMinHeight + 52 : 1280 }}
     >
       {showToggle && (
         <div className="annotation-rail__header">
@@ -85,7 +91,7 @@ function AnnotationRailColumn({ side, showToggle, items, frameRef }) {
         </div>
       )}
       {isAnnotationMode && (
-        <div className="annotation-rail__body">
+        <div className="annotation-rail__body" style={{ minHeight: bodyMinHeight, paddingBottom: 80 }}>
           {positions.map((item) => {
             const highlighted = activeAnnotationId === item.id;
             const dimmed = !!activeAnnotationId && activeAnnotationId !== item.id;

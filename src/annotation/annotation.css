@@ -14,6 +14,8 @@
   position: relative;
   background: transparent;
   transition: width 0.2s ease;
+  /* 允许底部被错开的长批注完整露出 */
+  overflow: visible;
 }
 
 .annotation-rail--left.annotation-rail--on {
@@ -38,7 +40,8 @@
 .annotation-rail__body {
   position: relative;
   min-height: calc(1280px - 52px);
-  padding-bottom: 280px;
+  /* 底部「上传与底栏」等长批注被纵向错开后需足够留白，避免卡片内容被裁切 */
+  padding-bottom: 520px;
 }
 
 .annotation-rail__item {
