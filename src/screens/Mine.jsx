@@ -147,23 +147,25 @@ import { AnnotatedWrapper } from '../annotation/index.js';
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="设置" onBack={onBack} />
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <SectionTitle style={{ marginBottom: 10 }}>IP</SectionTitle>
-            <Card>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Input
-                  value={apiBaseUrl}
-                  onChange={(e) => setApiBaseUrlInput(e.target.value)}
-                  placeholder="请设置"
-                  style={{ flex: 1 }}
-                />
-                <Button variant="secondary" onClick={saveApiBaseUrl} style={{ flex: 'none', minWidth: 72, height: 44, padding: '0 16px' }}>设置</Button>
-              </div>
-              <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                配置当前连接的数采 Web 端环境
-              </div>
-            </Card>
-          </div>
+          <AnnotatedWrapper id="settingsIp" layout="block">
+            <div>
+              <SectionTitle style={{ marginBottom: 10 }}>IP</SectionTitle>
+              <Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Input
+                    value={apiBaseUrl}
+                    onChange={(e) => setApiBaseUrlInput(e.target.value)}
+                    placeholder="请设置"
+                    style={{ flex: 1 }}
+                  />
+                  <Button variant="secondary" onClick={saveApiBaseUrl} style={{ flex: 'none', minWidth: 72, height: 44, padding: '0 16px' }}>设置</Button>
+                </div>
+                <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  配置当前连接的数采 Web 端环境
+                </div>
+              </Card>
+            </div>
+          </AnnotatedWrapper>
 
           <div>
             <SectionTitle style={{ marginBottom: 10 }}>消息推送</SectionTitle>
@@ -314,6 +316,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="修改密码" onBack={onBack} />
+        <AnnotatedWrapper id="changePassword" layout="block">
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>原密码</label>
@@ -347,6 +350,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
 
           <Button block size="lg" onClick={submit} style={{ marginTop: 4 }}>确认修改</Button>
         </div>
+        </AnnotatedWrapper>
       </div>
     );
   }
