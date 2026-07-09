@@ -122,6 +122,12 @@
   outline: 1.5px dashed rgba(124, 58, 237, 0.55);
   outline-offset: 2px;
   border-radius: var(--radius-md);
+  /* 批注虚线框不拦截点击，保证多子项 L4 内按钮/切换仍可交互 */
+  pointer-events: none;
+}
+
+.annotated-wrapper--on > * {
+  pointer-events: auto;
 }
 
 .annotated-wrapper--on.annotated-wrapper--active {

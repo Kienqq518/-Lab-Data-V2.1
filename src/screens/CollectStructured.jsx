@@ -18,10 +18,12 @@ import {
   updateCell,
 } from './collect-model.js';
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
+import { AnnotatedWrapper } from '../annotation/index.js';
 
-/* 采集详情（L4·复合试验项）
+/* 采集详情（L4·复合试验项 · 物资版 LIMS+数采）
    试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
-   每条采集记录保存采集时使用的设备，避免后续换设备影响历史读数。 */
+   每条采集记录保存采集时使用的设备，避免后续换设备影响历史读数。
+   轻量版 LIMS+数采无多试验子项，不进入本页。 */
 
 const FIXED = { jg: '紧压绞合圆形', jsdbffs: '两层金属带间隙绕包' };
 const BASE = { gs: 8, zj: 8.00, tdhd: 10.00, tk1: 13, dg1: 14, tk2: 15, dg2: 14, tk3: 13, dg3: 14, tk4: 15, dg4: 14, tk5: 13, dg5: 14, kzkd: 3.0, jdbs: 2, gdjx1: 1.2, gdjx2: 1.3, gdjx3: 1.1, gdjx4: 1.4, gdjx5: 1.2 };
@@ -393,49 +395,59 @@ function CollectStructured({ ctx, onBack, onDone }) {
       {inspectState && <Stamp state={inspectState} />}
 
       <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
-        <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
-        <Section title="基础信息" icon="info">
-          <Grid items={[
-            ['任务编号', ctx.task?.code || MOCK.taskCodeFromSample(ctx.sample)],
-            ['样品编号', ctx.sample.code],
-            ['样品名称', ctx.sample.name],
-            ['试验名称', ctx.item.name],
-            ['试验次数', `${mainTimes} 次`],
-          ]} />
-          <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
-            含 {subs.length} 个试验子项 · 采集单元 {summary.total} 个 · 试验次数随任务下发，不可修改
-          </div>
-        </Section>
+        <AnnotatedWrapper id="flowBanner" layout="block">
+          <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
+        </AnnotatedWrapper>
+        <AnnotatedWrapper id="structuredMode" layout="block">
+          <AnnotatedWrapper id="basicInfo" layout="block">
+            <Section title="基础信息" icon="info">
+              <Grid items={[
+                ['任务编号', ctx.task?.code || MOCK.taskCodeFromSample(ctx.sample)],
+                ['样品编号', ctx.sample.code],
+                ['样品名称', ctx.sample.name],
+                ['试验名称', ctx.item.name],
+                ['试验次数', `${mainTimes} 次`],
+              ]} />
+              <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
+                含 {subs.length} 个试验子项 · 采集单元 {summary.total} 个 · 试验次数随任务下发，不可修改 · 物资版多子项
+              </div>
+            </Section>
+          </AnnotatedWrapper>
+        </AnnotatedWrapper>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Section title="设备信息" icon="cpu" compact extra={<CollectBadge method={method || 'manual'} size="sm" />}>
-          <DevicePool
-            devices={availableDevices}
-            activeDevice={activeDevice}
-            hasAssignment={hasAssignment}
-            deviceHasData={deviceHasData}
-            flowLocked={flowLocked}
-            onAssign={assignDevice}
-            onRemove={removePoolDevice}
-            onOpenDrawer={() => setDeviceDrawerOpen(true)}
-          />
-          {deviceError && (
-            <div style={{ margin: '0 0 6px', fontSize: 'var(--fs-xs)', color: deviceError.includes('保留') || deviceError.includes('请先') ? 'var(--status-pending-fg,#97640f)' : 'var(--danger,#e23b3b)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              {deviceError.includes('保留') || deviceError.includes('请先') ? <InfoIcon /> : <AlertCircleIcon />}
-              <span>{deviceError}</span>
-            </div>
-          )}
-          <DeviceMeta subName={activeSub.name} device={hasAssignment ? activeDevice : null} />
-        </Section>
+        <AnnotatedWrapper id="structuredDeviceInfo" layout="block">
+          <Section title="设备信息" icon="cpu" compact extra={<CollectBadge method={method || 'manual'} size="sm" />}>
+            <DevicePool
+              devices={availableDevices}
+              activeDevice={activeDevice}
+              hasAssignment={hasAssignment}
+              deviceHasData={deviceHasData}
+              flowLocked={flowLocked}
+              onAssign={assignDevice}
+              onRemove={removePoolDevice}
+              onOpenDrawer={() => setDeviceDrawerOpen(true)}
+            />
+            {deviceError && (
+              <div style={{ margin: '0 0 6px', fontSize: 'var(--fs-xs)', color: deviceError.includes('保留') || deviceError.includes('请先') ? 'var(--status-pending-fg,#97640f)' : 'var(--danger,#e23b3b)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                {deviceError.includes('保留') || deviceError.includes('请先') ? <InfoIcon /> : <AlertCircleIcon />}
+                <span>{deviceError}</span>
+              </div>
+            )}
+            <DeviceMeta subName={activeSub.name} device={hasAssignment ? activeDevice : null} />
+          </Section>
+        </AnnotatedWrapper>
 
-        <EnvInfoSection
-          envMock={envMock}
-          env={env}
-          onRefresh={() => setEnv({ wd: (20 + Math.random() * 3).toFixed(1), sd: (28 + Math.random() * 8).toFixed(1) })}
-          Section={Section}
-          Grid={Grid}
-        />
+        <AnnotatedWrapper id="envInfo" layout="block">
+          <EnvInfoSection
+            envMock={envMock}
+            env={env}
+            onRefresh={() => setEnv({ wd: (20 + Math.random() * 3).toFixed(1), sd: (28 + Math.random() * 8).toFixed(1) })}
+            Section={Section}
+            Grid={Grid}
+          />
+        </AnnotatedWrapper>
 
         {(deviceMissing || methodMissing || fieldMissing) && (
           <ConfigError
@@ -444,26 +456,33 @@ function CollectStructured({ ctx, onBack, onDone }) {
           />
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <GridIcon />
-              <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>试验数据</span>
+        <AnnotatedWrapper id="structuredSubItems" layout="block">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <GridIcon />
+                <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>试验数据</span>
+              </div>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>已上传 {summary.uploaded}/{summary.total}</span>
             </div>
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>已上传 {summary.uploaded}/{summary.total}</span>
+            <SubItemSwitches subs={subs} activeSub={activeSub} summary={summary} onSelect={(id) => { setActiveSubId(id); setDeviceError(''); }} />
           </div>
-          <SubItemSwitches subs={subs} activeSub={activeSub} summary={summary} onSelect={(id) => { setActiveSubId(id); setDeviceError(''); }} />
-        </div>
+        </AnnotatedWrapper>
 
-        {caps.canBatch && !allCurrentSubFilled && !flowLocked && !fieldMissing && (
-          <Card padding="18px">
-            <div style={{ textAlign: 'center' }}>
-              {busy === 'all-' + activeSub.id
-                ? <div style={{ color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'external' ? '正在拉取平板程序已采数据…' : '正在从数据库整批取值…'}</div></div>
-                : <Button size="lg" onClick={() => captureSub(activeSub)}>{method === 'external' ? '查看已采数据' : '一键采集'}</Button>}
-            </div>
-          </Card>
-        )}
+        <AnnotatedWrapper id="structuredTestData" layout="block">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{methodHint}</div>
+            {caps.canBatch && !allCurrentSubFilled && !flowLocked && !fieldMissing && (
+              <Card padding="18px">
+                <div style={{ textAlign: 'center' }}>
+                  {busy === 'all-' + activeSub.id
+                    ? <div style={{ color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'external' ? '正在拉取平板程序已采数据…' : '正在从数据库整批取值…'}</div></div>
+                    : <Button size="lg" onClick={() => captureSub(activeSub)}>{method === 'external' ? '查看已采数据' : '一键采集'}</Button>}
+                </div>
+              </Card>
+            )}
+          </div>
+        </AnnotatedWrapper>
 
         <div style={{ flex: '1 1 720px', minHeight: 720, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--white)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
@@ -522,7 +541,9 @@ function CollectStructured({ ctx, onBack, onDone }) {
             </div>
           </div>
 
-          <ConclusionCard sub={activeSub} cells={activeCells} />
+          <AnnotatedWrapper id="conclusionArea" layout="block">
+            <ConclusionCard sub={activeSub} cells={activeCells} />
+          </AnnotatedWrapper>
         </div>
 
         <div style={{ height: 8, flex: 'none' }} />
@@ -537,16 +558,18 @@ function CollectStructured({ ctx, onBack, onDone }) {
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
-        {!flowLocked && <Button variant="secondary" block onClick={reset}>重置全部</Button>}
-        <Button block disabled={flowLocked ? false : (!summary.allUploaded && (summary.pendingUpload === 0 || busy === 'upload-all'))}
-          onClick={flowLocked ? onBack : (summary.allUploaded ? onDone : uploadAll)}>
-          {flowLocked ? '返回（数据已锁定）'
-            : busy === 'upload-all' ? '上传中…'
-            : summary.allUploaded ? '完成并退出'
-            : `上传全部（${summary.pendingUpload}/${summary.total}）`}
-        </Button>
-      </div>
+      <AnnotatedWrapper id="uploadActions" layout="block">
+        <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
+          {!flowLocked && <Button variant="secondary" block onClick={reset}>重置全部</Button>}
+          <Button block disabled={flowLocked ? false : (!summary.allUploaded && (summary.pendingUpload === 0 || busy === 'upload-all'))}
+            onClick={flowLocked ? onBack : (summary.allUploaded ? onDone : uploadAll)}>
+            {flowLocked ? '返回（数据已锁定）'
+              : busy === 'upload-all' ? '上传中…'
+              : summary.allUploaded ? '完成并退出'
+              : `上传全部（${summary.pendingUpload}/${summary.total}）`}
+          </Button>
+        </div>
+      </AnnotatedWrapper>
 
       {deviceDrawerOpen && (
         <DeviceDrawer
@@ -708,79 +731,96 @@ function DeviceDrawer({ devices, pooledDeviceIds, defaultStation, deviceHasData,
         maxHeight: '84%', display: 'flex', flexDirection: 'column',
       }}>
         <div style={{ width: 44, height: 4, borderRadius: 'var(--radius-pill)', background: 'var(--border-strong,#cfd6e2)', margin: '10px auto 6px' }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 16px 12px', borderBottom: '1px solid var(--divider)' }}>
+        <AnnotatedWrapper id="structuredDeviceDrawer" layout="block">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 16px 12px', borderBottom: '1px solid var(--divider)' }}>
+            <div>
+              <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>切换设备</div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 3 }}>按工位筛选实验室设备，可多选加入设备池（物资版多子项）</div>
+            </div>
+            <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>已选 {checked.size} 台</span>
+          </div>
+        </AnnotatedWrapper>
+        <AnnotatedWrapper id="structuredDeviceFilter" layout="block">
           <div>
-            <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>切换设备</div>
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 3 }}>按工位筛选实验室设备，可多选加入设备池</div>
-          </div>
-          <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>已选 {checked.size} 台</span>
-        </div>
-        <div style={{ padding: '0 16px 10px' }}>
-          <SearchBar value={q} onChange={(event) => setQ(event.target.value)} placeholder="请输入设备名称、编号搜索" />
-        </div>
-        <div style={{ padding: '0 16px 10px', borderBottom: '1px solid var(--divider)' }}>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)', marginBottom: 8 }}>选择工位</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => setStation(null)} style={{
-              minHeight: 32, padding: '5px 10px', borderRadius: 'var(--radius-pill)',
-              border: '1px solid ' + (!station ? 'var(--brand-action)' : 'var(--border-default)'),
-              background: !station ? 'var(--surface-selected)' : 'var(--white)', color: !station ? 'var(--brand-action)' : 'var(--text-title)',
-              fontSize: 'var(--fs-sm)', fontWeight: !station ? 700 : 600, cursor: 'pointer',
-            }}>全部</button>
-            {STATION_OPTIONS.map((item) => {
-              const on = station === item.value;
-              return (
-                <button key={item.value} onClick={() => setStation(on ? null : item.value)} style={{
+            <div style={{ padding: '0 16px 10px' }}>
+              <SearchBar value={q} onChange={(event) => setQ(event.target.value)} placeholder="请输入设备名称、编号搜索" />
+            </div>
+            <div style={{ padding: '0 16px 10px', borderBottom: '1px solid var(--divider)' }}>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)', marginBottom: 8 }}>选择工位</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <button onClick={() => setStation(null)} style={{
                   minHeight: 32, padding: '5px 10px', borderRadius: 'var(--radius-pill)',
-                  border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                  background: on ? 'var(--surface-selected)' : 'var(--white)', color: on ? 'var(--brand-action)' : 'var(--text-title)',
-                  fontSize: 'var(--fs-sm)', fontWeight: on ? 700 : 600, cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                }}>
-                  <PinIcon on={on} />
-                  <span>{item.label}</span>
-                  <span style={{ fontSize: 10, color: on ? 'var(--brand-action)' : 'var(--text-tertiary,#9aa3b2)', fontVariantNumeric: 'tabular-nums' }}>{stationCounts[item.value] || 0}</span>
-                </button>
-              );
-            })}
+                  border: '1px solid ' + (!station ? 'var(--brand-action)' : 'var(--border-default)'),
+                  background: !station ? 'var(--surface-selected)' : 'var(--white)', color: !station ? 'var(--brand-action)' : 'var(--text-title)',
+                  fontSize: 'var(--fs-sm)', fontWeight: !station ? 700 : 600, cursor: 'pointer',
+                }}>全部</button>
+                {STATION_OPTIONS.map((item) => {
+                  const on = station === item.value;
+                  return (
+                    <button key={item.value} onClick={() => setStation(on ? null : item.value)} style={{
+                      minHeight: 32, padding: '5px 10px', borderRadius: 'var(--radius-pill)',
+                      border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
+                      background: on ? 'var(--surface-selected)' : 'var(--white)', color: on ? 'var(--brand-action)' : 'var(--text-title)',
+                      fontSize: 'var(--fs-sm)', fontWeight: on ? 700 : 600, cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}>
+                      <PinIcon on={on} />
+                      <span>{item.label}</span>
+                      <span style={{ fontSize: 10, color: on ? 'var(--brand-action)' : 'var(--text-tertiary,#9aa3b2)', fontVariantNumeric: 'tabular-nums' }}>{stationCounts[item.value] || 0}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
-        <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {visibleDevices.length ? visibleDevices.map((device) => {
-            const on = checked.has(device.id);
-            const locked = deviceHasData(device.id);
-            const blocked = notConfigured(device);
-            const disabled = locked || blocked;
-            return (
-              <button key={device.id} onClick={() => toggle(device)} disabled={disabled} style={{
-                width: '100%', minHeight: 58, padding: '10px 12px', borderRadius: 'var(--radius-md)',
-                border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                background: on ? 'var(--surface-selected)' : blocked ? 'var(--surface-sunken,#f5f6f8)' : 'var(--white)', cursor: disabled ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, textAlign: 'left', opacity: disabled ? 0.6 : 1,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  {blocked
-                    ? <span style={{ width: 20, height: 20, flex: 'none', borderRadius: 6, border: '1.5px dashed var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-placeholder)' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18 M6 6l12 12"/></svg></span>
-                    : <CheckBox on={on} />}
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 650, color: on ? 'var(--brand-action)' : 'var(--text-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
-                      <CollectBadge method={device.method} size="sm" />
-                    </div>
-                    <div style={{ marginTop: 3, fontSize: 'var(--fs-xs)', color: blocked ? 'var(--status-pending-fg,#97640f)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {blocked ? '未配置采集关系 · 请先在数采「设备采集配置」维护' : `${device.code} · ${device.model}${locked ? ' · 已采数据' : ''}`}
+        </AnnotatedWrapper>
+        <AnnotatedWrapper id="structuredDeviceList" layout="flex">
+          <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
+            {visibleDevices.length ? visibleDevices.map((device) => {
+              const on = checked.has(device.id);
+              const locked = deviceHasData(device.id);
+              const blocked = notConfigured(device);
+              const disabled = locked || blocked;
+              const stationText = MOCK.stationLabel(device.station);
+              return (
+                <button key={device.id} onClick={() => toggle(device)} disabled={disabled} style={{
+                  width: '100%', minHeight: 58, padding: '10px 12px', borderRadius: 'var(--radius-md)',
+                  border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
+                  background: on ? 'var(--surface-selected)' : blocked ? 'var(--surface-sunken,#f5f6f8)' : 'var(--white)', cursor: disabled ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, textAlign: 'left', opacity: disabled ? 0.6 : 1,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    {blocked
+                      ? <span style={{ width: 20, height: 20, flex: 'none', borderRadius: 6, border: '1.5px dashed var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-placeholder)' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18 M6 6l12 12"/></svg></span>
+                      : <CheckBox on={on} />}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 650, color: on ? 'var(--brand-action)' : 'var(--text-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
+                        <CollectBadge method={device.method} size="sm" />
+                      </div>
+                      <div style={{ marginTop: 3, fontSize: 'var(--fs-xs)', color: blocked ? 'var(--status-pending-fg,#97640f)' : locked ? 'var(--status-pending-fg,#97640f)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {blocked ? '未配置采集关系 · 请先在数采「设备采集配置」维护'
+                          : locked ? '已有采集数据 · 不可移出设备池'
+                          : `${device.code} · ${device.model}`}
+                      </div>
+                      {!blocked && (
+                        <div style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                          {stationText}
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              </button>
-            );
-          }) : (
-            <div style={{ minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
-              当前筛选下暂无可选设备
-            </div>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 12, padding: '12px 16px 16px', borderTop: '1px solid var(--divider)' }}>
+                </button>
+              );
+            }) : (
+              <div style={{ minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+                当前筛选下暂无可选设备
+              </div>
+            )}
+          </div>
+        </AnnotatedWrapper>
+        <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--divider)', display: 'flex', gap: 10 }}>
           <Button variant="secondary" block onClick={onClose}>取消</Button>
           <Button block onClick={() => onConfirm(Array.from(checked))}>确定（{checked.size}）</Button>
         </div>
