@@ -181,7 +181,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
             <Card padding="0">
               <Row icon="trash" label="清除缓存" note="12.6 MB" onClick={() => onToast('缓存已清除（演示）')} />
               <Row icon="shield" label="隐私政策" onClick={onPrivacy} />
-              <Row icon="info" label="关于我们" note="Lab Data v2.1.0" onClick={onAbout} />
+              <Row icon="info" label="关于我们" note="Lab Data v2.0.0" onClick={onAbout} />
               <Row icon="refresh" label="检查更新" note="已是最新" onClick={() => onToast('当前已是最新版本')} last />
             </Card>
           </div>
@@ -231,7 +231,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
           <div style={{ width: 96, height: 96, borderRadius: 22, background: 'var(--white)', boxShadow: 'var(--shadow-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img src={logoMark} alt="数蚕 Lab Data" style={{ width: 64, height: 64, objectFit: 'contain' }} />
           </div>
-          <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>数蚕 Lab Data v2.1.0</div>
+          <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>数蚕 Lab Data v2.0.0</div>
           <div style={{ textAlign: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
             <div>Copyright©2024-2026</div>
             <div>杭州数蚕科技有限公司 All rights reserved</div>
