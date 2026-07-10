@@ -1,3 +1,5 @@
+[English README](./README.en.md)
+
 # 🪄 Prototype Annotation Mode (原型交互式批注模式) · 通用 Skill / Prompt
 
 > **为你的 AI 原型无缝注入灵魂：让聊天记录里的“需求上下文”变为可视化的交互式 PRD。**
@@ -123,7 +125,8 @@ npx skills add Kienqq518/prototype-annotation-mode
 
 ```
 prototype-annotation-mode/
-├── README.md                          # 本文件
+├── README.md                          # 中文说明（本文件）
+├── README.en.md                       # English README
 ├── LICENSE                            # MIT
 ├── prototype-annotation-mode.md       # 可复制的完整 Prompt（与 SKILL.md 同步）
 ├── assets/                            # Demo 截图 / GIF
