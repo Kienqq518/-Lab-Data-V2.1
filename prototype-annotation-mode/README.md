@@ -33,11 +33,7 @@
 
 ## 🖼️ 演示 / 效果 (Demo)
 
-将截图或录屏 GIF 放入 `assets/` 目录后，取消下方注释即可在 README 中展示：
-
-```markdown
 ![Demo](./assets/demo.gif)
-```
 
 > 建议录制：关闭批注 → 开启批注 → Hover 卡片与 UI 双向高亮 → 打开 Overlay 验证批注隔离。
 

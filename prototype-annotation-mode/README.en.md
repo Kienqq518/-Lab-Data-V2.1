@@ -34,11 +34,7 @@ Once annotation mode is on, the prototype becomes a **living, interactive produc
 
 ## 🖼️ Demo
 
-Add a screenshot or GIF under `assets/`, then uncomment in this README:
-
-```markdown
 ![Demo](./assets/demo.gif)
-```
 
 > Suggested recording: toggle off → toggle on → hover card ↔ UI → open overlay to verify annotation isolation.
 
