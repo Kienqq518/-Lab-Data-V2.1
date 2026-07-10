@@ -8,9 +8,9 @@ export const doneAnnotations = {
   },
   doneTaskList: {
     title: '已检任务列表',
-    requirementLogic: '展示当前时间范围内已完成的委托任务，供复核。任务下样品 status=done 的进入 L3 只读复核，再进 L4 查看历史上传数据，不可修改已锁定数据。',
+    requirementLogic: '展示当前时间范围内已完成的委托任务，供复核。任务下样品 status=done 的进入 L3 复核，再进 L4 查看历史上传数据。L4 默认以复核为主；<b>特定情况下仍可编辑</b>——当 LIMS 流程节点仍在「试验检测」、尚未进入「组内审核」及以后锁定节点时，允许修改并重新上传；流程锁定后只读。',
     displayRule: '任务列表按 doneAt 降序；任务卡展示编号、样品名、委托单位、完成时间、样品/试验项数；逾期完成的任务带「逾期完成」标记。空态提示「该时间范围内暂无已检任务」。',
-    interactionLogic: '点击任务进 L3 样品+试验项主从布局；点击试验项进 L4 Collect 只读模式（reviewMode）。返回逐级回退至本列表。列表区域可纵向滚动，确保近 90 天/本年等长列表能加载完全并滚到列表末尾。',
+    interactionLogic: '点击任务进 L3 样品+试验项主从布局；点击试验项进 L4（reviewMode）。流程未锁定时字段可编辑并支持重新上传；流程锁定后底栏仅「返回（数据已锁定）」。返回逐级回退至本列表。',
   },
   doneHistoryHint: {
     title: '历史数据提示',

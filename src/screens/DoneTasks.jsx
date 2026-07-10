@@ -4,7 +4,7 @@ import { MOCK as M } from '../mock.js';
 import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 已检任务（首页「已检任务」入口）
-   L1 任务列表 → L3 样品+试验项（主从）→ L4 采集详情（只读复核） */
+   L2 已检归档任务列表 → L3 复核 → L4 查看/编辑（流程未锁定时可改） */
 
 const NOW = new Date('2026-06-26T18:00:00');
 

@@ -35,7 +35,6 @@ function CollectLite({ ctx, onBack, onDone }) {
   const flow = demoFlow ? DEMO_FLOWS[demoFlow] : (ctx.flow || ctx.item?.flow || { node: '试验检测' });
   const flowLocked = FLOW_LOCK_AFTER.includes(flow.node);
   const flowReturned = !flowLocked && !!flow.returned;
-  const readOnly = isReview || flowLocked;
 
   const [returnTouched, setReturnTouched] = React.useState(false);
   const [vals, setVals] = React.useState(() => {
@@ -45,6 +44,8 @@ function CollectLite({ ctx, onBack, onDone }) {
   });
   const [uploaded, setUploaded] = React.useState(isReview);
   const [uploading, setUploading] = React.useState(false);
+  /** 已检任务 L4：流程未锁定（仍在试验检测或未进组内审核）时可编辑；进入组内审核及以后只读 */
+  const fieldsReadOnly = flowLocked || (uploaded && !flowReturned && !(isReview && !flowLocked));
   const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
   const envMock = React.useMemo(
     () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`, { forceGuard: method === 'auto' }),
@@ -66,7 +67,7 @@ function CollectLite({ ctx, onBack, onDone }) {
   }
 
   function setField(key, value) {
-    if (readOnly || uploading) return;
+    if (fieldsReadOnly || uploading) return;
     touchReturn();
     setVals((prev) => ({ ...prev, [key]: value }));
   }
@@ -155,10 +156,10 @@ function CollectLite({ ctx, onBack, onDone }) {
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {measureFields.map((f) => (
               f.options
-                ? <SelectField key={f.key} field={f} value={vals[f.key] || ''} readOnly={readOnly || uploaded || uploading}
+                ? <SelectField key={f.key} field={f} value={vals[f.key] || ''} readOnly={fieldsReadOnly || uploading}
                     onChange={(v) => setField(f.key, v)} />
                 : <FieldRow key={f.key} label={f.label} unit={f.unit} required={false}
-                    value={vals[f.key] || ''} readOnly={readOnly || uploaded || uploading}
+                    value={vals[f.key] || ''} readOnly={fieldsReadOnly || uploading}
                     placeholder="请输入"
                     onChange={(e) => setField(f.key, e.target.value)} />
             ))}
@@ -174,10 +175,10 @@ function CollectLite({ ctx, onBack, onDone }) {
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--divider)', fontSize: 'var(--fs-base)', fontWeight: 600 }}>结论</div>
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <SelectField field={{ label: '结论', key: 'jl', options: CONCLUSION_OPTIONS, required: true }}
-              value={vals.jl || ''} readOnly={readOnly || uploaded || uploading}
+              value={vals.jl || ''} readOnly={fieldsReadOnly || uploading}
               onChange={(v) => setField('jl', v)} />
             {fail && (
-              <FieldRow label="不合格原因" value={vals.bhgyy || ''} readOnly={readOnly || uploaded || uploading}
+              <FieldRow label="不合格原因" value={vals.bhgyy || ''} readOnly={fieldsReadOnly || uploading}
                 placeholder="请输入不合格原因"
                 onChange={(e) => setField('bhgyy', e.target.value)} />
             )}
@@ -204,10 +205,10 @@ function CollectLite({ ctx, onBack, onDone }) {
 
       <AnnotatedWrapper id="uploadActions" layout="block">
       <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
-        {isReview
-          ? <Button block onClick={onBack}>返回</Button>
-          : flowLocked
+        {flowLocked
           ? <Button block onClick={onBack}>返回（数据已锁定）</Button>
+          : isReview && !flowLocked
+          ? <Button block disabled={uploading} onClick={upload}>{uploading ? '上传中…' : (uploaded ? '重新上传' : '上传结果')}</Button>
           : uploaded
           ? <Button block onClick={onDone}>完成并退出</Button>
           : <Button block disabled={uploading} onClick={upload}>{uploading ? '上传中…' : '上传结果'}</Button>}
