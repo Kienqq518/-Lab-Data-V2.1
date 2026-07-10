@@ -1,4 +1,4 @@
-# 🪄 Prototype Annotation Mode (原型交互式批注模式) · AI Agent Prompt
+# 🪄 Prototype Annotation Mode (原型交互式批注模式) · 通用 Skill / Prompt
 
 > **为你的 AI 原型无缝注入灵魂：让聊天记录里的“需求上下文”变为可视化的交互式 PRD。**
 
