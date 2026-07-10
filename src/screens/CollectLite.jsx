@@ -16,9 +16,13 @@ const DEMO_FLOWS = {
   locked: { node: '组内审核' },
 };
 
+/** 轻量版：wd/sd 不在试验参数区展示，由环境信息区环境室温/环境湿度回填 */
+const ENV_SYNC_KEYS = new Set(['wd', 'sd']);
+
 function CollectLite({ ctx, onBack, onDone }) {
   const fields = ctx.item?.fields || [];
-  const measureFields = fields.filter((f) => f.key !== 'jl' && f.key !== 'bhgyy');
+  const hasEnvSyncFields = fields.some((f) => ENV_SYNC_KEYS.has(f.key));
+  const measureFields = fields.filter((f) => f.key !== 'jl' && f.key !== 'bhgyy' && !ENV_SYNC_KEYS.has(f.key));
   const isReview = !!(ctx.reviewMode || ctx.status === 'done');
   const demoVals = ctx.item?.doneVals || {};
   const N = ctx.item?.count ?? 1;
@@ -37,20 +41,37 @@ function CollectLite({ ctx, onBack, onDone }) {
   const flowReturned = !flowLocked && !!flow.returned;
 
   const [returnTouched, setReturnTouched] = React.useState(false);
+  const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
   const [vals, setVals] = React.useState(() => {
     const init = {};
     fields.forEach((f) => { init[f.key] = demoVals[f.key] ?? ''; });
+    // 有 wd/sd 时优先用环境信息初值回填（复核态保留 doneVals）
+    if (!isReview) {
+      if (fields.some((f) => f.key === 'wd')) init.wd = '21.0';
+      if (fields.some((f) => f.key === 'sd')) init.sd = '30.7';
+    }
     return init;
   });
   const [uploaded, setUploaded] = React.useState(isReview);
   const [uploading, setUploading] = React.useState(false);
   /** 已检任务 L4：流程未锁定（仍在试验检测或未进组内审核）时可编辑；进入组内审核及以后只读 */
   const fieldsReadOnly = flowLocked || (uploaded && !flowReturned && !(isReview && !flowLocked));
-  const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
   const envMock = React.useMemo(
     () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`, { forceGuard: method === 'auto' }),
     [ctx.sample?.code, ctx.item?.name, method],
   );
+
+  /** 环境信息刷新时，同步回填试验参数中的 wd/sd */
+  React.useEffect(() => {
+    if (!hasEnvSyncFields || fieldsReadOnly) return;
+    setVals((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (fields.some((f) => f.key === 'wd') && next.wd !== env.wd) { next.wd = env.wd; changed = true; }
+      if (fields.some((f) => f.key === 'sd') && next.sd !== env.sd) { next.sd = env.sd; changed = true; }
+      return changed ? next : prev;
+    });
+  }, [env.wd, env.sd, hasEnvSyncFields, fieldsReadOnly, fields]);
 
   const filledCount = fields.some((f) => String(vals[f.key] || '').trim() !== '') ? 1 : 0;
   const inspectState = resolveInspectStampState({
@@ -164,7 +185,9 @@ function CollectLite({ ctx, onBack, onDone }) {
                     onChange={(e) => setField(f.key, e.target.value)} />
             ))}
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              轻量版：展示全部试验参数；暂未配置是否必填，暂不做必填约束
+              {hasEnvSyncFields
+                ? '轻量版：室温/湿度由上方「环境信息」自动写入，本区不重复展示；暂未配置是否必填，暂不做必填约束'
+                : '轻量版：展示全部试验参数；暂未配置是否必填，暂不做必填约束'}
             </div>
           </div>
         </Card>
