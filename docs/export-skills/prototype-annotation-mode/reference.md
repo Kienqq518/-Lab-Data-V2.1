@@ -1,70 +1,93 @@
-# 批注模式参考
+# 批注模式 · 实现参考（通用）
 
-## 源码入口
+## 推荐目录结构
 
-| 文件 | 职责 |
-|------|------|
-| `src/App.jsx` | `resolveAnnotationPageKey()`、`AnnotationProvider`、`overlay-screen` |
-| `src/annotation/registry.js` | pageKey → 配置模块映射 |
-| `src/annotation/pages/*.js` | 批注文案源 |
-| `src/annotation/annotation.css` | 轨道、虚线框、高亮、tooltip 样式 |
-
-## pageKey 解析（App.jsx）
-
-```js
-overlay === 'notify'  → notify
-overlay === 'focus'   → focus-{kind}  // pending|testing|overdue|dueSoon|returned
-overlay === 'collect' → collect
-overlay === 'done'    → done
-tab === 'home'        → home
-tab === 'inspect'     → inspect-l1
-tab === 'me'          → me
+```
+src/annotation/                    # 或 packages/annotation/
+├── AnnotationProvider.tsx         # Context：开关、锚点表、overlay 标志
+├── AnnotationToggle.tsx           # 批注开关
+├── AnnotationSideRails.tsx        # 左右轨道 + 定位逻辑
+├── AnnotatedWrapper.tsx           # 锚点包装
+├── AnnotationCard.tsx             # 三段式卡片（或 Tooltip）
+├── annotation-layout.ts           # 轨道宽度、舞台宽度常量
+├── annotation.css                 # 虚线、高亮、轨道样式
+├── registry.ts                    # pageKey → 配置模块
+└── pages/                         # 按 pageKey 拆分
+    ├── [page-home].ts
+    ├── [page-list].ts
+    └── [page-detail].ts
 ```
 
-嵌套覆盖（`AnnotationPageKeyProvider`）：
+## pageKey 命名约定
 
-| 页面 | Provider pageKey |
-|------|------------------|
-| Inspect L2 按设备 | `inspect-l2-device` |
-| Inspect L3 | `inspect-l3` |
-| TaskFocus L2 | `focus-{kind}` |
-| TaskFocus L3 | `focus-l3` |
+| 模式 | 示例 | 说明 |
+|------|------|------|
+| Tab 根页 | `tab-[name]` | 底部/顶部导航一级 |
+| 全屏 Overlay | `overlay-[name]` | 模态、向导、独立流程 |
+| 钻取层级 | `[feature]-l[N]` | L1 列表 → L2 详情 → L3 编辑 |
+| 聚焦/筛选页 | `focus-[dimension]` | 按状态/标签过滤的子集 |
 
-## 批注配置文件
-
-| 文件 | 覆盖范围 |
-|------|----------|
-| `pages/home.js` | 首页：概览、快捷入口、统计、通知铃铛 |
-| `pages/inspect.js` | 检测模块 L1/L2/L3 |
-| `pages/focus.js` | 聚焦页 L2/L3（各维度共用） |
-| `pages/collect.js` | L4 Collect / CollectLite / CollectStructured |
-| `pages/done.js` | 已检任务 overlay |
-| `pages/notify.js` | 通知中心 |
-| `pages/me.js` | 我的及子页 |
+嵌套页用 `PageKeyProvider` 覆盖父级 pageKey。
 
 ## AnnotatedWrapper 参数
 
-| 参数 | 说明 |
-|------|------|
-| `id` | 锚点 ID，对应配置 key |
-| `layout` | `block` \| `inline` |
-| `pageKey` | 可选，覆盖当前 Provider pageKey |
-| `anchorOnly` | 仅锚点虚线，不改变子元素布局 |
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `id` | `string` | 锚点 ID，对应配置 key |
+| `layout` | `'block' \| 'inline'` | 块级 / 行内锚点 |
+| `pageKey` | `string?` | 覆盖当前 Provider 的 pageKey |
+| `anchorOnly` | `boolean?` | 仅虚线锚点，不改变子布局 |
 
-## 批注卡片渲染
+## 锚点注册逻辑（伪代码）
 
-`AnnotationTooltip.jsx` 固定三段标签：
+```ts
+function shouldRegister(el, { overlayActive }) {
+  if (!overlayActive) return true;
+  return el.closest('.overlay-screen') != null;
+}
+```
 
-- 🎯 需求逻辑 → `requirementLogic`
-- 🎨 展示规则 → `displayRule`
-- 👆 交互逻辑 → `interactionLogic`
+## 轨道定位要点
 
-## 与飞书评审文档的关系
+1. 收集所有已注册锚点的 `getBoundingClientRect()` 相对舞台
+2. 卡片 `top` 与锚点垂直居中或顶对齐
+3. 左右分配：索引偶数 → 左轨，奇数 → 右轨（或按锚点 `placement`）
+4. 碰撞检测：相邻卡片最小间距，必要时纵向错开
+5. `railContentHeight = max(设备框高, 最底卡片 bottom + padding)`
 
-飞书文档（如「数采 App 原型重构」）面向产品/研发评审；**原型批注是现场对照源**。业务规则变更时：
+## 持久化
 
-1. 先改原型行为（如 L2 过滤、字段隐藏）
-2. 同步 `pages/*.js` 批注
-3. 按需更新飞书文档对应章节
+```ts
+const STORAGE_KEY = '[appId]_annotation_mode'; // 每项目替换 appId
+localStorage.setItem(STORAGE_KEY, enabled ? '1' : '0');
+```
 
-两者应表述一致，但批注更贴近 UI 锚点粒度。
+## 与外部评审文档的关系
+
+| 载体 | 粒度 | 用途 |
+|------|------|------|
+| 原型批注（本规范） | UI 锚点级 | 评审时 hover 对照 |
+| PRD / 飞书 / Wiki | 章节级 | 背景、范围、非 UI 规则 |
+
+二者表述应一致；以**原型批注**为现场演示源，文档为补充阅读。
+
+## 技术栈适配提示
+
+| 栈 | 建议 |
+|----|------|
+| React | Context + `useLayoutEffect` 注册锚点 |
+| Vue | `provide/inject` + `ref` 锚点 |
+| 纯 HTML 原型 | `data-annotation-id` + 单页 JS 定位 |
+
+核心不变：**开关、双轨、三段卡片、双向高亮、overlay 隔离**。
+
+## 新项目启动检查清单
+
+```
+[ ] 定义 [应用名称] 与设备框尺寸
+[ ] 实现 AnnotationProvider + Toggle + SideRails + Wrapper + Card
+[ ] 建立 registry 与 pages/ 配置目录
+[ ] 为 [页面列表] 每个主要区域写三段批注
+[ ] overlay 场景验证无底层泄漏
+[ ] 评审前全文案与 UI 行为走查一遍
+```
