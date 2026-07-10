@@ -1,4 +1,4 @@
-# 🪄 Cursor Skill: Prototype Annotation Mode (原型交互式批注模式)
+# 🪄 Prototype Annotation Mode (原型交互式批注模式) · AI Agent Prompt
 
 > **为你的 AI 原型无缝注入灵魂：让聊天记录里的“需求上下文”变为可视化的交互式 PRD。**
 
@@ -43,9 +43,19 @@
 
 ## 📦 如何安装 / 使用 (Usage)
 
-本仓库是一个 **Cursor Agent Skill**（指令规范 + 实现参考），不是 npm 包。安装后，AI 会在你已有原型上按规范注入批注模式。
+本仓库是一份**跨平台通用的 AI Agent 指令规范**（Prompt + 实现参考），不是 npm 包。
 
-### 方式一：安装到 Cursor 个人 Skills（推荐）
+它不绑定任何特定 IDE 或模型——**Cursor、Claude Code、Windsurf、GitHub Copilot Chat、ChatGPT、通义灵码** 等，只要能读取长文本 Prompt 的 AI 编程助手，都可以使用。把规范交给 AI 后，它会在你已有原型上按标准注入批注模式。
+
+### 方式一：直接粘贴 Prompt（通用 · 推荐）
+
+打开根目录 [`prototype-annotation-mode.md`](./prototype-annotation-mode.md)，将全文复制到 AI 对话中，并补充一句：
+
+> 「请严格按此规范，为我的 HTML/React 原型实现批注模式，并从我们之前的对话中提取需求逻辑。」
+
+适用于所有平台，**无需安装**。
+
+### 方式二：安装为 Cursor Skill
 
 将整个 skill 目录复制到 Cursor 用户级 skills 路径：
 
@@ -65,28 +75,37 @@ cp -R prototype-annotation-mode/skills/prototype-annotation-mode ~/.cursor/skill
 
 重启 Cursor 或重新打开项目后，在对话中直接说：
 
-> 「请使用 **prototype-annotation-mode** skill，为当前 HTML/React 原型注入批注模式，并从我们之前的对话中提取需求逻辑。」
+> 「请使用 **prototype-annotation-mode** skill，为当前 HTML/React 原型注入批注模式。」
 
-### 方式二：安装到项目级 Skills
+**项目级共享**：复制到 `.cursor/skills/` 并提交到仓库，团队成员拉取后即可使用。
 
-若希望团队共享，可复制到项目内：
+也可在 Cursor 中执行 `/create-skill`，将 `SKILL.md` 内容粘贴为 skill 正文，命名为 `prototype-annotation-mode`。
+
+### 方式三：安装为 Claude Code Skill
 
 ```bash
-mkdir -p .cursor/skills
-cp -R /path/to/prototype-annotation-mode/skills/prototype-annotation-mode .cursor/skills/
+git clone https://github.com/Kienqq518/prototype-annotation-mode.git
+mkdir -p ~/.claude/skills
+cp -R prototype-annotation-mode/skills/prototype-annotation-mode ~/.claude/skills/
 ```
 
-提交 `.cursor/skills/` 到仓库，团队成员拉取后即可使用。
+或使用 Claude Code 的 skills 安装命令（若已配置）：
 
-### 方式三：直接粘贴 Prompt（无需安装）
+```bash
+npx skills add Kienqq518/prototype-annotation-mode
+```
 
-打开根目录 [`prototype-annotation-mode.md`](./prototype-annotation-mode.md)，将全文复制到对话中，并补充一句：
+### 方式四：写入项目规则文件
 
-> 「请严格按此规范，为我的原型实现批注模式。」
+将 `prototype-annotation-mode.md` 全文或摘要放入项目根目录的以下文件之一，让 AI 在该项目中自动遵循：
 
-### 方式四：通过 `/create-skill` 导入
+| 工具 | 常见规则文件 |
+|------|-------------|
+| Cursor | `.cursorrules` 或 `.cursor/rules/*.md` |
+| Windsurf | `.windsurfrules` |
+| 通用 | `AGENTS.md` / `CLAUDE.md` |
 
-在 Cursor 中执行 `/create-skill`，将 `prototype-annotation-mode.md` 或 `skills/prototype-annotation-mode/SKILL.md` 的内容粘贴为 skill 正文，命名为 `prototype-annotation-mode`。
+也可在对话开始时用 `@prototype-annotation-mode.md` 引用该文件（若你的工具支持 `@` 文件上下文）。
 
 ### 典型工作流
 
@@ -112,7 +131,7 @@ prototype-annotation-mode/
 │   └── ExamplePage.tsx                # 伪代码骨架示例
 └── skills/
     └── prototype-annotation-mode/
-        ├── SKILL.md                   # Cursor Skill 入口（Agent 自动读取）
+        ├── SKILL.md                   # Agent Skill 入口（Cursor / Claude Code 等自动读取）
         └── reference.md               # 实现参考：目录、pageKey、定位算法
 ```
 
