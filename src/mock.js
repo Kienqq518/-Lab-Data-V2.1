@@ -644,6 +644,27 @@
     return sample?.code ? sample.code.replace(/-\d+$/, '') : '—';
   }
 
+  /** 样品型号规格（LIMS 下发，L4 基础信息展示） */
+  const SAMPLE_SPEC_BY_NAME = {
+    '交联聚乙烯绝缘钢带铠装聚氯乙烯护套电力电缆': 'ZC-YJV22-8.7/10kV 3×185',
+    '8.7/10kV-3芯 电力电缆': 'ZC-YJLHV22-8.7/10kV 3×185',
+    '8.7/10kV-1芯 电力电缆': 'ZC-YJLHV22-8.7/10kV 1×240',
+    '0.6/1kV-4芯 电力电缆': 'ZC-YJV-0.6/1kV 4×95',
+    '低烟无卤阻燃聚烯烃护套电力电缆': 'WDZ-YJY-0.6/1kV 3×70',
+    '交联聚乙烯绝缘电力电缆': 'ZC-YJV-0.6/1kV 3×150',
+    '钢带铠装聚氯乙烯护套电力电缆': 'ZC-YJV22-0.6/1kV 4×120',
+    '架空绝缘电缆': 'JKLYJ-10 1×70',
+    '控制电缆': 'ZC-KVV-0.6/1kV 4×2.5',
+    '实壁类塑料电缆导管 带承口 PVC-C': 'DN110',
+    '绝缘操作杆': '10kV 4m',
+  };
+
+  function sampleSpec(sample) {
+    if (!sample) return '—';
+    if (sample.spec) return sample.spec;
+    return SAMPLE_SPEC_BY_NAME[sample.name] || '—';
+  }
+
   /** 逾期任务列表 */
   function overdueTasks() {
     return tasks.filter(isOverdueTask);
@@ -718,4 +739,4 @@
     { q: '检测时效是如何计算的？', a: '检测时效随委托任务下发，不可在移动端修改。临近或超过时效的任务会在首页「工作概览」中以逾期 / 临期维度提醒。' },
   ];
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, sampleSpec, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };

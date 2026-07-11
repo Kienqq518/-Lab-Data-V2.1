@@ -406,6 +406,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
                 ['任务编号', ctx.task?.code || MOCK.taskCodeFromSample(ctx.sample)],
                 ['样品编号', ctx.sample.code],
                 ['样品名称', ctx.sample.name],
+                ['型号规格', MOCK.sampleSpec(ctx.sample)],
                 ['试验名称', ctx.item.name],
                 ['试验次数', `${mainTimes} 次`],
               ]} />
