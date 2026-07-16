@@ -323,6 +323,10 @@
             <label style="font-size:13px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 设备名称</label>
             <div style="height:38px; border:1px solid #e5e8ee; border-radius:7px; display:flex; align-items:center; padding:0 12px; font-size:13.5px; color:#1a2233; background:#f7f9fc;">{{ editName }}</div>
           </div>
+          <div style="display:flex; flex-direction:column; gap:7px;">
+            <label style="font-size:13px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 设备型号</label>
+            <div style="height:38px; border:1px solid #e5e8ee; border-radius:7px; display:flex; align-items:center; padding:0 12px; font-size:13.5px; color:#1a2233; background:#f7f9fc;">{{ editModel }}</div>
+          </div>
           <div style="display:flex; gap:14px;">
             <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
               <label style="font-size:13px; color:#5b6677;">设备编号</label>
@@ -670,7 +674,7 @@ class Component extends DCLogic {
       openNewDevice: () => { if (isDirect) return; this.setState({ drawerOpen: true, devEditIdx: null, methodSel: 'direct', external: false }); },
       drawerOpen: s.drawerOpen,
       drawerTitle: s.devEditIdx == null ? '新增设备' : '编辑设备',
-      editName: er ? er.name : '—', editCode: er ? er.code : '—', editArea: er ? er.area : '—',
+      editName: er ? er.name : '—', editModel: er ? er.model : '—', editCode: er ? er.code : '—', editArea: er ? er.area : '—',
       methodOptions,
       showExternal: s.methodSel === 'serial',
       extSwBg: s.external ? '#0fb5c4' : '#cdd3dc',
