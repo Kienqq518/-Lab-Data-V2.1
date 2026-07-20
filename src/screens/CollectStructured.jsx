@@ -122,8 +122,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
     return guardStartForManual();
   }
 
-  const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
-
   /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
   function touchReturn() {
     if (flowReturned) setReturnTouched(true);
@@ -144,6 +142,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const hasAssignment = !!activeAssigned;
   const activeDevice = activeAssigned || normalizeDevice(null);
   const method = hasAssignment ? (activeDevice.method || 'manual') : null;
+  const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
   const caps = getMethodCapabilities(method, ctx.ocrVerified !== false);
   const mainTimes = Math.max(1, ...subs.map((sub) => Object.values(cells).filter((cell) => cell.subItemId === sub.id).length));
 
