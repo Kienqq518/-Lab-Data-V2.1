@@ -38,29 +38,77 @@
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
 }
 
-.web-annotation-rail {
+/* 锚点打点层 */
+.web-annotation-markers {
   position: fixed;
-  top: 54px;
-  bottom: 0;
-  width: 300px;
-  z-index: 900;
+  inset: 0;
+  z-index: 950;
   pointer-events: none;
-  overflow: visible;
 }
 
-.web-annotation-rail--left { left: 220px; padding-right: 8px; }
-.web-annotation-rail--right { right: 0; padding-left: 8px; }
+.web-annotation-marker {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
 
-.web-annotation-rail__body {
+.web-annotation-marker:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.55);
+}
+
+.web-annotation-marker--active {
+  background: #5b21b6;
+  transform: scale(1.1);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.22), 0 4px 16px rgba(124, 58, 237, 0.5);
+}
+
+.web-annotation-marker__core {
   position: relative;
-  min-height: 100%;
-  padding-bottom: 120px;
+  z-index: 1;
 }
 
-.web-annotation-rail__item {
+.web-annotation-marker__pulse {
   position: absolute;
-  left: 8px;
-  right: 8px;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(124, 58, 237, 0.45);
+  animation: web-annotation-pulse 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+.web-annotation-marker--active .web-annotation-marker__pulse {
+  animation: none;
+  border-color: rgba(124, 58, 237, 0.65);
+}
+
+@keyframes web-annotation-pulse {
+  0% { transform: scale(0.85); opacity: 0.85; }
+  70% { transform: scale(1.35); opacity: 0; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+/* 点击后加载的批注卡片 */
+.web-annotation-card-host {
+  position: fixed;
+  z-index: 960;
+  max-height: calc(100vh - 68px);
+  overflow: auto;
   pointer-events: auto;
 }
 
@@ -73,27 +121,42 @@
   font-size: 12.5px;
   line-height: 1.65;
   color: #3c465c;
-  transition: opacity 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-  cursor: default;
 }
 
-.web-annotation-card--highlight {
-  border-color: #7c3aed;
-  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.22);
-  transform: scale(1.01);
-}
-
-.web-annotation-card--dimmed {
-  opacity: 0.42;
+.web-annotation-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e5e8ee;
 }
 
 .web-annotation-card__title {
   font-size: 14px;
   font-weight: 700;
   color: #1a2233;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #e5e8ee;
+  line-height: 1.4;
+}
+
+.web-annotation-card__close {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: #f3f5f8;
+  color: #5b6677;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.web-annotation-card__close:hover {
+  background: #e8ecf2;
+  color: #1a2233;
 }
 
 .web-annotation-card__section { margin-top: 8px; }
@@ -116,7 +179,7 @@
 }
 
 .web-annotated-anchor.web-annotated-anchor--on {
-  outline: 1.5px dashed rgba(124, 58, 237, 0.55);
+  outline: 1.5px dashed rgba(124, 58, 237, 0.4);
   outline-offset: 2px;
   border-radius: 6px;
 }
