@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { MOCK } from '../mock.js';
 
-/** 样品标签二维码 payload：编码原编号，与扫码入口一致 */
+/** 样品标签二维码 payload：编码标准 ID，供上位机扫描定位 */
 export function sampleLabelPayload(sample) {
   return MOCK.resolveSampleCode(sample).qrPayload;
 }

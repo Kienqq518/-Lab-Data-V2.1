@@ -2,7 +2,8 @@
  * 样品编号转换规则库
  *
  * 对接第三方 LIMS 时，原编号可能含汉字、特殊符号或超长字符串，影响上位机兼容性。
- * 后端维护转换规则，生成标准化 ID 用于系统交互；App 展示「转换后编号（原编号）」。
+ * 后端维护转换规则，生成标准化 ID 用于系统交互；App 展示「转换后编号（原编号）」；
+ * 样品标签二维码编码标准 ID，供上位机扫描定位（上位机仅识别标准编码）。
  * 开关由数采 Web「系统设置 · 系统参数」控制，App 只读消费。
  */
 
@@ -144,7 +145,7 @@ export function convertSampleCode(originalCode, config = DEFAULT_CONVERSION_CONF
 
 /**
  * 解析样品编号
- * @returns {{ originalCode, standardCode, systemId, displayCode, converted, qrPayload }}
+ * @returns {{ originalCode, standardCode, systemId, displayCode, converted, qrPayload }} qrPayload 为标准 ID，供上位机扫描
  */
 export function resolveSampleCode(sample, config) {
   const cfg = config ?? { ...DEFAULT_CONVERSION_CONFIG, enabled: isConversionEnabled() };
@@ -171,7 +172,7 @@ export function resolveSampleCode(sample, config) {
     systemId: standardCode,
     displayCode: converted ? `${standardCode}（${originalCode}）` : originalCode,
     converted,
-    qrPayload: originalCode,
+    qrPayload: standardCode,
   };
 }
 
