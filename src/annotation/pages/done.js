@@ -1,4 +1,6 @@
 /** 已检任务 overlay 批注配置（拆为 tab / 列表 / 底部提示三块） */
+import { sampleLabelQrModalAnnotation } from './sample-label-qr.js';
+
 export const doneAnnotations = {
   doneRangeTabs: {
     title: '时间范围切换',
@@ -18,4 +20,5 @@ export const doneAnnotations = {
     displayRule: '列表底部虚线提示卡：说明当前范围外更早任务数量（若有），并引导「更早的历史数据请前往 Web 端 LIMS 系统查询。」',
     interactionLogic: '只读提示，无跳转；随时间范围切换更新「范围外更早任务」计数文案。',
   },
+  ...sampleLabelQrModalAnnotation,
 };

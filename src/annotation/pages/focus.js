@@ -1,4 +1,6 @@
 /** 聚焦页批注配置（L2/L3，各维度共用） */
+import { sampleLabelQrModalAnnotation } from './sample-label-qr.js';
+
 export const focusAnnotations = {
   focusL2Search: {
     title: '聚焦页搜索（L2）',
@@ -48,4 +50,5 @@ export const focusAnnotations = {
     displayRule: '同 TaskCard 字段；StatusTag 强制 testing 色。',
     interactionLogic: '进入 L3 后仅展示含退回项的样品与试验项。',
   },
+  ...sampleLabelQrModalAnnotation,
 };
