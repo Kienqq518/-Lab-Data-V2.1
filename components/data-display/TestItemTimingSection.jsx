@@ -88,7 +88,6 @@ export function TestItemTimingSection({
   canRecordStart,
   recording,
   confirmOverwrite,
-  toast,
   requireStartBeforeCollect = false,
   isAutoDirect = false,
   onRecordStartClick,
@@ -137,16 +136,6 @@ export function TestItemTimingSection({
           onConfirm={onConfirmOverwrite}
           onCancel={onCancelOverwrite}
         />
-      )}
-      {toast && (
-        <div style={{
-          position: 'fixed', left: '50%', bottom: 88, transform: 'translateX(-50%)',
-          zIndex: 300, padding: '10px 16px', borderRadius: 'var(--radius-pill)',
-          background: 'rgba(15,23,42,0.88)', color: '#fff', fontSize: 'var(--fs-sm)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)', pointerEvents: 'none',
-        }}>
-          {toast}
-        </div>
       )}
     </React.Fragment>
   );

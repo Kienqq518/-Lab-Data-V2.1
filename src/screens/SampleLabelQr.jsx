@@ -153,11 +153,16 @@ export function SampleLabelQrIcon({ sample, size = 18 }) {
   );
 }
 
-/** L4 基础信息区的「查看样品标签二维码」入口；placement=headerEnd 时置于 Section 标题栏右下角 */
+/** L4 基础信息区的「查看样品标签二维码」入口
+ *  - placement=footerEnd：卡片内容区右下角（基础信息 Section 底部）
+ *  - placement=headerEnd：标题栏 extra（已弃用，保留兼容）
+ */
 export function SampleLabelQrLink({ sample, placement = 'inline' }) {
   const [open, setOpen] = React.useState(false);
   if (!sample?.code) return null;
+  const isFooterEnd = placement === 'footerEnd';
   const isHeaderEnd = placement === 'headerEnd';
+  const isCompact = isFooterEnd || isHeaderEnd;
   return (
     <React.Fragment>
       <button
@@ -165,14 +170,14 @@ export function SampleLabelQrLink({ sample, placement = 'inline' }) {
         aria-label="查看样品标签二维码"
         onClick={() => setOpen(true)}
         style={{
-          marginTop: isHeaderEnd ? 0 : 10,
-          display: 'inline-flex', alignItems: 'center', gap: isHeaderEnd ? 4 : 6,
+          marginTop: isFooterEnd ? 0 : isHeaderEnd ? 0 : 10,
+          display: 'inline-flex', alignItems: 'center', gap: isCompact ? 4 : 6,
           border: 'none', background: 'transparent', cursor: 'pointer', padding: 0,
-          color: 'var(--brand-action)', fontSize: isHeaderEnd ? 'var(--fs-xs)' : 'var(--fs-sm)',
+          color: 'var(--brand-action)', fontSize: isCompact ? 'var(--fs-xs)' : 'var(--fs-sm)',
           fontWeight: 600, flex: 'none', whiteSpace: 'nowrap',
         }}
       >
-        <QrGlyph size={isHeaderEnd ? 14 : 16} />
+        <QrGlyph size={isCompact ? 14 : 16} />
         查看样品标签二维码
       </button>
       {open && <SampleLabelQrModal sample={sample} onClose={() => setOpen(false)} />}

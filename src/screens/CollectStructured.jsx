@@ -22,6 +22,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 import { useTestItemTiming } from './useTestItemTiming.js';
 import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
+import { TimingToast } from '../../components/data-display/TimingToast.jsx';
 
 /* 采集详情（L4·复合试验项 · 物资版 LIMS+数采）
    试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
@@ -120,6 +121,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
     if (m !== 'manual' && m !== 'ble') return true;
     return guardStartForManual();
   }
+
+  const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
 
   /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
   function touchReturn() {
@@ -438,7 +441,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         </AnnotatedWrapper>
         <AnnotatedWrapper id="structuredMode" layout="block">
           <AnnotatedWrapper id="basicInfo" layout="block">
-            <Section title="基础信息" icon="info" headerExtraAtBottom extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
+            <Section title="基础信息" icon="info">
               <Grid items={[
                 ['任务编号', ctx.task?.code || MOCK.taskCodeFromSample(ctx.sample)],
                 ['样品编号', ctx.sample.code],
@@ -449,6 +452,9 @@ function CollectStructured({ ctx, onBack, onDone }) {
               ]} />
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
                 含 {subs.length} 个试验子项 · 采集单元 {summary.total} 个 · 物资版多子项
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                <SampleLabelQrLink sample={ctx.sample} placement="footerEnd" />
               </div>
             </Section>
           </AnnotatedWrapper>
@@ -494,7 +500,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
           canRecordStart={timingCtl.canRecordStart}
           recording={timingCtl.recording}
           confirmOverwrite={timingCtl.confirmOverwrite}
-          toast={timingCtl.toast}
           requireStartBeforeCollect={timingCtl.requireStartBeforeCollect}
           isAutoDirect={timingCtl.isAutoDirect}
           onRecordStartClick={timingCtl.handleRecordStartClick}
@@ -581,6 +586,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       flowReturned={flowReturned}
                       currentDevice={activeDevice}
                       deviceCatalog={deviceCatalog}
+                      handInputBlocked={handInputBlocked}
+                      onHandInputBlocked={guardStartForManual}
                       onCollect={() => collectOne(activeSub, activeCell)}
                       onReRecognize={() => reRecognizeCell(activeSub, activeCell)}
                       ocrUnlocked={!!editCells[activeCell.key]}
@@ -636,6 +643,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
           onConfirm={confirmDeviceDrawer}
         />
       )}
+      <TimingToast message={timingCtl.toast} />
     </div>
   );
 }
@@ -896,14 +904,14 @@ function CheckBox({ on }) {
   );
 }
 
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, handInputBlocked = false, onHandInputBlocked, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
   const ocrField = method === 'ocr' && caps.ocrReady;
   const ocrLocked = ocrField && filled && !ocrUnlocked && !flowLocked && (cell.status !== 'uploaded' || flowReturned);
   const readOnly = flowLocked || caps.isReadOnlySource || (cell.status === 'uploaded' && !flowReturned);
-  const canEdit = !readOnly && caps.canEdit && !ocrLocked;
+  const canEdit = !readOnly && caps.canEdit && !ocrLocked && !handInputBlocked;
   const recordDevice = deviceCatalog.find((device) => device.id === cell.deviceId);
   const traceDevice = recordDevice || (filled && cell.deviceId ? { name: cell.deviceId, code: '—', method: cell.source || method } : currentDevice);
   const traceMethod = filled ? (traceDevice.method || cell.source || method) : method;
@@ -937,10 +945,12 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
               }
               if (field.options || field.key === 'jg') {
                 return <SelectField key={field.key} field={field} value={cell.vals[field.key] || ''} readOnly={!canEdit}
+                  onReadOnlyInteract={handInputBlocked ? onHandInputBlocked : undefined}
                   onChange={(value) => onChange(cell.key, field, value)} />;
               }
               return <FieldRow key={field.key} label={field.label} unit={field.unit} required={field.required !== false}
                 value={cell.vals[field.key] || ''} placeholder={filled ? '' : '待采集'} readOnly={!canEdit}
+                onReadOnlyInteract={handInputBlocked ? onHandInputBlocked : undefined}
                 onChange={(event) => onChange(cell.key, field, event.target.value)} />;
             })}
 
@@ -986,14 +996,16 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
   );
 }
 
-function SelectField({ field, value, readOnly, onChange }) {
+function SelectField({ field, value, readOnly, onReadOnlyInteract, onChange }) {
   const options = field.options || CONDUCTOR_STRUCTURE_OPTIONS;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
       <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)', display: 'flex', gap: 2 }}>
         {field.required !== false && <span style={{ color: 'var(--danger)' }}>*</span>}<span>{field.label}{field.unit ? `（${field.unit}）` : ''}</span>
       </label>
-      <select value={value} disabled={readOnly} onChange={(event) => onChange(event.target.value)}
+      <select value={value} disabled={readOnly}
+        onMouseDown={readOnly && onReadOnlyInteract ? (e) => { e.preventDefault(); onReadOnlyInteract(); } : undefined}
+        onChange={(event) => onChange(event.target.value)}
         style={{
           flex: 1, height: 44, padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
           background: readOnly ? 'var(--surface-sunken,#f5f6f8)' : 'var(--white)', fontSize: 'var(--fs-base)', color: value ? 'var(--text-title)' : 'var(--text-placeholder)',
@@ -1146,31 +1158,21 @@ function FlowBanner({ flow, locked, returned }) {
   );
 }
 
-function Section({ title, icon, extra, compact = false, headerExtraAtBottom = false, children }) {
+function Section({ title, icon, extra, compact = false, children }) {
   const paths = {
     info: 'M12 16v-4 M12 8h.01 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
     cpu: 'M4 4h16v16H4z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3',
     thermometer: 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z',
   };
-  const titleRow = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: headerExtraAtBottom ? undefined : 1 }}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d={paths[icon] || paths.info} /></svg>
-      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, minWidth: 0, overflow: 'hidden' }}>{title}</div>
-    </div>
-  );
   return (
     <Card padding="0">
-      {headerExtraAtBottom ? (
-        <div style={{ padding: compact ? '7px 16px 8px' : '12px 16px 10px', borderBottom: '1px solid var(--divider)' }}>
-          {titleRow}
-          {extra && <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>{extra}</div>}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '7px 16px' : '12px 16px', borderBottom: '1px solid var(--divider)', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d={paths[icon] || paths.info} /></svg>
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, minWidth: 0, overflow: 'hidden' }}>{title}</div>
         </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '7px 16px' : '12px 16px', borderBottom: '1px solid var(--divider)', gap: 12 }}>
-          {titleRow}
-          {extra}
-        </div>
-      )}
+        {extra}
+      </div>
       <div style={{ padding: compact ? '8px 16px 10px' : 16 }}>{children}</div>
     </Card>
   );

@@ -7,7 +7,7 @@ import { Input } from '../forms/Input.jsx';
  */
 export function FieldRow({
   label, value, onChange, unit, placeholder = '数值', required = false,
-  readOnly = false, style,
+  readOnly = false, onReadOnlyInteract, style,
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, ...style }}>
@@ -20,6 +20,7 @@ export function FieldRow({
       <Input
         value={value} onChange={onChange} placeholder={placeholder}
         readOnly={readOnly} style={{ flex: 1 }}
+        onFocus={readOnly && onReadOnlyInteract ? (e) => { e.target.blur(); onReadOnlyInteract(); } : undefined}
       />
     </div>
   );

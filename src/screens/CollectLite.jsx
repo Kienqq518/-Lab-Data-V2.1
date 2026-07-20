@@ -8,6 +8,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 import { useTestItemTiming } from './useTestItemTiming.js';
 import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
+import { TimingToast } from '../../components/data-display/TimingToast.jsx';
 
 /* 轻量 LIMS 试验项 L4：参数平铺展示，数采仅采集实测值 */
 
@@ -56,8 +57,15 @@ function CollectLite({ ctx, onBack, onDone }) {
   });
   const [uploaded, setUploaded] = React.useState(isReview);
   const [uploading, setUploading] = React.useState(false);
+  const filledCount = fields.some((f) => String(vals[f.key] || '').trim() !== '') ? 1 : 0;
+  const uploadedCount = uploaded ? 1 : 0;
+  const allUploaded = uploaded;
+  const isAutoDirect = method === 'auto';
+  const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
+  const { guardStartForUpload, guardStartForManual, requireStartBeforeCollect } = timingCtl;
+  const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
   /** 已检任务 L4：流程未锁定（仍在试验检测或未进组内审核）时可编辑；进入组内审核及以后只读 */
-  const fieldsReadOnly = flowLocked || (uploaded && !flowReturned && !(isReview && !flowLocked));
+  const fieldsReadOnly = flowLocked || handInputBlocked || (uploaded && !flowReturned && !(isReview && !flowLocked));
   const envMock = React.useMemo(
     () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`, { forceGuard: method === 'auto' }),
     [ctx.sample?.code, ctx.item?.name, method],
@@ -75,17 +83,11 @@ function CollectLite({ ctx, onBack, onDone }) {
     });
   }, [env.wd, env.sd, hasEnvSyncFields, fieldsReadOnly, fields]);
 
-  const filledCount = fields.some((f) => String(vals[f.key] || '').trim() !== '') ? 1 : 0;
-  const uploadedCount = uploaded ? 1 : 0;
-  const allUploaded = uploaded;
-  const isAutoDirect = method === 'auto';
-  const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
-  const { guardStartForUpload, guardStartForManual, requireStartBeforeCollect } = timingCtl;
-
   function guardHandInputRequired() {
     if (method !== 'manual' && method !== 'ble') return true;
     return guardStartForManual();
   }
+
   const inspectState = resolveInspectStampState({
     flowReturned,
     returnTouched,
@@ -124,7 +126,7 @@ function CollectLite({ ctx, onBack, onDone }) {
         <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', paddingTop: flowLocked || flowReturned ? 0 : 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Section title="基础信息" icon="info" headerExtraAtBottom extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
+        <Section title="基础信息" icon="info">
           <Grid items={[
             ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
             ['样品编号', ctx.sample?.code || '—'],
@@ -139,6 +141,9 @@ function CollectLite({ ctx, onBack, onDone }) {
               {M.overdueTagLabel[ctx.item.overdueTag]}
             </div>
           )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+            <SampleLabelQrLink sample={ctx.sample} placement="footerEnd" />
+          </div>
         </Section>
 
         <Section title="设备信息" icon="cpu" extra={
@@ -186,7 +191,6 @@ function CollectLite({ ctx, onBack, onDone }) {
           canRecordStart={timingCtl.canRecordStart}
           recording={timingCtl.recording}
           confirmOverwrite={timingCtl.confirmOverwrite}
-          toast={timingCtl.toast}
           requireStartBeforeCollect={timingCtl.requireStartBeforeCollect}
           isAutoDirect={timingCtl.isAutoDirect}
           onRecordStartClick={timingCtl.handleRecordStartClick}
@@ -205,9 +209,11 @@ function CollectLite({ ctx, onBack, onDone }) {
             {measureFields.map((f) => (
               f.options
                 ? <SelectField key={f.key} field={f} value={vals[f.key] || ''} readOnly={fieldsReadOnly || uploading}
+                    onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
                     onChange={(v) => setField(f.key, v)} />
                 : <FieldRow key={f.key} label={f.label} unit={f.unit} required={false}
                     value={vals[f.key] || ''} readOnly={fieldsReadOnly || uploading}
+                    onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
                     placeholder="请输入"
                     onChange={(e) => setField(f.key, e.target.value)} />
             ))}
@@ -255,6 +261,7 @@ function CollectLite({ ctx, onBack, onDone }) {
           isBlocked={(d) => M.isDeviceBlockedForTest(ctx.item?.name, d)}
         />
       )}
+      <TimingToast message={timingCtl.toast} />
     </div>
   );
 }
@@ -281,31 +288,21 @@ function Stamp({ state }) {
   );
 }
 
-function Section({ title, icon, extra, headerExtraAtBottom = false, children }) {
+function Section({ title, icon, extra, children }) {
   const paths = {
     info: 'M12 16v-4 M12 8h.01 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
     cpu: 'M4 4h16v16H4z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3',
     thermometer: 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z',
   };
-  const titleRow = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
-      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
-    </div>
-  );
   return (
     <Card padding="0">
-      {headerExtraAtBottom ? (
-        <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid var(--divider)' }}>
-          {titleRow}
-          {extra && <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>{extra}</div>}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
         </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
-          {titleRow}
-          {extra}
-        </div>
-      )}
+        {extra}
+      </div>
       <div style={{ padding: 16 }}>{children}</div>
     </Card>
   );
@@ -354,14 +351,16 @@ function FlowBanner({ flow, locked, returned }) {
   );
 }
 
-function SelectField({ field, value, readOnly, onChange }) {
+function SelectField({ field, value, readOnly, onReadOnlyInteract, onChange }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
       <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)', display: 'flex', gap: 2 }}>
         {field.required !== false && <span style={{ color: 'var(--danger)' }}>*</span>}
         <span>{field.label}{field.unit ? `（${field.unit}）` : ''}</span>
       </label>
-      <select value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)}
+      <select value={value} disabled={readOnly}
+        onMouseDown={readOnly && onReadOnlyInteract ? (e) => { e.preventDefault(); onReadOnlyInteract(); } : undefined}
+        onChange={(e) => onChange(e.target.value)}
         style={{
           flex: 1, height: 44, padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
           background: readOnly ? 'var(--surface-sunken,#f5f6f8)' : 'var(--white)', fontSize: 'var(--fs-base)',

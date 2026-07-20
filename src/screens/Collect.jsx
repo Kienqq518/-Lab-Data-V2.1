@@ -6,6 +6,7 @@ import { CollectLite } from './CollectLite.jsx';
 import { isCompositeItem, isFlowReturned, resolveInspectStampState } from './collect-model.js';
 import { useTestItemTiming } from './useTestItemTiming.js';
 import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
+import { TimingToast } from '../../components/data-display/TimingToast.jsx';
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
@@ -199,6 +200,15 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       return guardStartForManual();
     }
 
+    const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
+
+    function isFieldReadOnly({ ocrField, locked, serialUploaded = false }) {
+      if (flowLocked || handInputBlocked) return true;
+      if (serialUploaded) return true;
+      if (ocrField) return locked;
+      return !editable;
+    }
+
     // L4 检测状态印章：退回复测未修改前不展示；修改后按未检测/检测中/已检测规则展示
     const inspectState = resolveInspectStampState({
       flowReturned,
@@ -385,7 +395,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
           </AnnotatedWrapper>
           {/* 基础信息（滚动时固定） */}
           <AnnotatedWrapper id="basicInfo" layout="block">
-          <Section title="基础信息" icon="info" headerExtraAtBottom extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
+          <Section title="基础信息" icon="info">
             <Grid items={[
               ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
               ['样品编号', ctx.sample.code], ['样品名称', ctx.sample.name],
@@ -398,6 +408,9 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                 {M.overdueTagLabel[ctx.item.overdueTag]}
               </div>
             )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+              <SampleLabelQrLink sample={ctx.sample} placement="footerEnd" />
+            </div>
           </Section>
           </AnnotatedWrapper>
         </div>
@@ -451,7 +464,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
             canRecordStart={timingCtl.canRecordStart}
             recording={timingCtl.recording}
             confirmOverwrite={timingCtl.confirmOverwrite}
-            toast={timingCtl.toast}
             requireStartBeforeCollect={timingCtl.requireStartBeforeCollect}
             isAutoDirect={timingCtl.isAutoDirect}
             onRecordStartClick={timingCtl.handleRecordStartClick}
@@ -563,10 +575,12 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                             {fieldsForSyzjz(t.vals.syzjz).map((f) => (
                               f.options
                                 ? <SelectField key={f.key} field={f} value={t.vals[f.key] || ''}
-                                    readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
+                                    readOnly={isFieldReadOnly({ ocrField, locked, serialUploaded: isSerial && t.uploaded })}
+                                    onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
                                     onChange={(v) => setField(i, f.key, v)} />
                                 : <FieldRow key={f.key} label={f.label} unit={f.unit} required
-                                    value={t.vals[f.key] || ''} readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
+                                    value={t.vals[f.key] || ''} readOnly={isFieldReadOnly({ ocrField, locked, serialUploaded: isSerial && t.uploaded })}
+                                    onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
                                     onChange={(e) => setField(i, f.key, e.target.value)} />
                             ))}
                             {method === 'auto' && (
@@ -653,11 +667,13 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                             {fieldsForSyzjz(t.vals.syzjz).map((f) => (
                               f.options
                                 ? <SelectField key={f.key} field={f} value={t.vals[f.key] || ''}
-                                    readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
+                                    readOnly={isFieldReadOnly({ ocrField, locked, serialUploaded: isSerial && t.uploaded })}
+                                    onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
                                     onChange={(v) => setField(i, f.key, v)} />
                                 : <FieldRow key={f.key} label={f.label} unit={f.unit} required
                                     value={t.vals[f.key] || ''} placeholder="待采集"
-                                    readOnly={flowLocked || (ocrField ? locked : !editable) || (isSerial && t.uploaded)}
+                                    readOnly={isFieldReadOnly({ ocrField, locked, serialUploaded: isSerial && t.uploaded })}
+                                    onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
                                     onChange={(e) => setField(i, f.key, e.target.value)} />
                             ))}
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
@@ -759,6 +775,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
             </div>
           </div>
         )}
+        <TimingToast message={timingCtl.toast} />
       </div>
     );
   }
@@ -771,31 +788,21 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-pending,#e8a93a)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4 M12 16h.01"/></svg>;
   }
 
-  function Section({ title, icon, extra, headerExtraAtBottom = false, children }) {
+  function Section({ title, icon, extra, children }) {
     const paths = {
       info: 'M12 16v-4 M12 8h.01 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
       cpu: 'M4 4h16v16H4z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3',
       thermometer: 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z',
     };
-    const titleRow = (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
-        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
-      </div>
-    );
     return (
       <Card padding="0">
-        {headerExtraAtBottom ? (
-          <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid var(--divider)' }}>
-            {titleRow}
-            {extra && <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>{extra}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
+            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
           </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
-            {titleRow}
-            {extra}
-          </div>
-        )}
+          {extra}
+        </div>
         <div style={{ padding: 16 }}>{children}</div>
       </Card>
     );
@@ -895,14 +902,16 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     );
   }
 
-  function SelectField({ field, value, readOnly, onChange }) {
+  function SelectField({ field, value, readOnly, onReadOnlyInteract, onChange }) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)', display: 'flex', gap: 2 }}>
           {field.required !== false && <span style={{ color: 'var(--danger)' }}>*</span>}
           <span>{field.label}{field.unit ? `（${field.unit}）` : ''}</span>
         </label>
-        <select value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)}
+        <select value={value} disabled={readOnly}
+          onMouseDown={readOnly && onReadOnlyInteract ? (e) => { e.preventDefault(); onReadOnlyInteract(); } : undefined}
+          onChange={(e) => onChange(e.target.value)}
           style={{
             flex: 1, height: 44, padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
             background: readOnly ? 'var(--surface-sunken,#f5f6f8)' : 'var(--white)', fontSize: 'var(--fs-base)',
