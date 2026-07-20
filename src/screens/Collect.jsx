@@ -4,6 +4,8 @@ import { MOCK as M } from '../mock.js';
 import { CollectStructured } from './CollectStructured.jsx';
 import { CollectLite } from './CollectLite.jsx';
 import { isCompositeItem, isFlowReturned, resolveInspectStampState } from './collect-model.js';
+import { useTestItemTiming } from './useTestItemTiming.js';
+import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
@@ -202,6 +204,9 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     const uploadedCount = times.filter((t) => t.uploaded).length;
     const allUploaded = N > 0 && uploadedCount === N;
 
+    const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked });
+    const { guardStartRequired, clearEndedOnReset } = timingCtl;
+
     // L4 检测状态印章：退回复测未修改前不展示；修改后按未检测/检测中/已检测规则展示
     const inspectState = resolveInspectStampState({
       flowReturned,
@@ -213,6 +218,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 
     // 设备直采：上位机整批写库，一键取值，全部时次 + 汇总一次性回填（只读）
     function captureAll() {
+      if (!guardStartRequired()) return;
       touchReturn();
       setBusy('all');
       setTimeout(() => {
@@ -223,6 +229,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 蓝牙/图采：逐条采集第 i 次
     function captureTime(i) {
+      if (!guardStartRequired()) return;
       touchReturn();
       setBusy(i);
       setTimeout(() => {
@@ -236,6 +243,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 外部程序：从平板程序已推数据中拉取（只读查看）
     function pullExternal() {
+      if (!guardStartRequired()) return;
       setBusy('all');
       setTimeout(() => {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: false }));
@@ -244,6 +252,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 串口（电子天平）：工业平板串口程序已采写库，本端一键读取整批展示，直接为已上传状态（不在本端采集/上传）
     function collectSerial() {
+      if (!guardStartRequired()) return;
       setBusy('all');
       setTimeout(() => {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
@@ -252,11 +261,13 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       }, 1000);
     }
     function manualTime(i) {
+      if (!guardStartRequired()) return;
       touchReturn();
       setTimes((prev) => { const next = prev.slice(); const v = {}; measureFields.forEach((f) => { v[f.key] = ''; }); next[i] = { status: 'filled', vals: v, uploaded: false }; return next; });
     }
     function setField(i, key, value) {
       if (flowLocked) return; // 流程已锁定，禁止修改
+      if (!guardStartRequired()) return;
       touchReturn();
       setTimes((prev) => {
         const next = prev.slice();
@@ -272,6 +283,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 拍照识别/相册：取景页内识别，完成后回填该次并关闭
     function doShoot() {
+      if (!guardStartRequired()) return;
       const i = shootIdx;
       touchReturn();
       setShotPhase('recognizing');
@@ -289,6 +301,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     // 拍照识别·重新识别：用「上一次拍的同一张照片」重新做识别提取数据（区别于清除图片重新拍照上传）
     function reRecognize(i) {
       if (!(attachments[i] || []).length) return;
+      if (!guardStartRequired()) return;
       touchReturn();
       setBusy(i);
       setTimeout(() => {
@@ -303,6 +316,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       }, 950);
     }
     function upload() {
+      if (!guardStartRequired()) return;
       touchReturn();
       setPhase('uploading');
       setTimeout(() => {
@@ -312,6 +326,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 拍照识别/蓝牙：逐条采集完一次即可单独上传该次
     function uploadTime(i) {
+      if (!guardStartRequired()) return;
       touchReturn();
       setBusy('up' + i);
       setTimeout(() => {
@@ -319,7 +334,11 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
         setBusy(null);
       }, 800);
     }
-    function reset() { touchReturn(); setTimes(initTimes()); setSummary({ status: 'idle', vals: {} }); setPhase('idle'); }
+    function reset() {
+      touchReturn();
+      clearEndedOnReset();
+      setTimes(initTimes()); setSummary({ status: 'idle', vals: {} }); setPhase('idle');
+    }
     function resetTime(i) {
       if (flowLocked) return;
       touchReturn();
@@ -399,6 +418,16 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
               </div>
             )}
             <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>试验次数随任务下发 · 不可修改</div>
+            <TestItemTimingSection
+              timing={timingCtl.timing}
+              canRecordStart={timingCtl.canRecordStart}
+              recording={timingCtl.recording}
+              confirmOverwrite={timingCtl.confirmOverwrite}
+              toast={timingCtl.toast}
+              onRecordStartClick={timingCtl.handleRecordStartClick}
+              onConfirmOverwrite={timingCtl.recordStart}
+              onCancelOverwrite={timingCtl.cancelOverwrite}
+            />
             <SampleLabelQrLink sample={ctx.sample} />
           </Section>
           </AnnotatedWrapper>

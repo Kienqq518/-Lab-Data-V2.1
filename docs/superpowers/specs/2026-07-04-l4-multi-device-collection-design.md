@@ -324,6 +324,32 @@ GET /api/mobile/collect-context?taskId=...&sampleId=...&testItemId=...
 5. 字段模板、单位、是否必填、多点测量数量。
 6. 已采集/已上传历史数据。
 7. 附件与 OCR 参照图信息。
+8. 试验项级检测起止时间 `timing`（`startedAt` / `endedAt` / `startedBy`）。
+
+```json
+{
+  "timing": {
+    "startedAt": "2026-07-20T14:30:05+08:00",
+    "endedAt": null,
+    "startedBy": "operator-001"
+  }
+}
+```
+
+### 10.1.1 记录试验开始时间
+
+```http
+POST /api/mobile/collect/test-timing/start
+```
+
+请求体：`taskId`、`sampleId`、`testItemId`；可选 `startedAt`（默认服务端时间）。
+
+- 无已上传数据时允许首次写入或覆盖 `startedAt`。
+- 已有上传数据时拒绝覆盖（409）。
+
+### 10.1.2 记录试验结束时间
+
+推荐在 `POST /api/mobile/collect/upload` 处理最后一次单元上传时，若该试验项全部 uploaded，服务端自动写入 `endedAt`。客户端无需提供结束时间按钮。
 
 ### 10.2 拉取设备数据
 

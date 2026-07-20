@@ -197,3 +197,20 @@ export function markCellFailed(cells, key) {
     status: 'failed',
   }));
 }
+
+/** 试验项级检测起止时间（区别于单元级 collectedAt / uploadedAt） */
+export function nowISO() {
+  return new Date().toISOString();
+}
+
+export function formatTestTiming(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+export function shouldRecordEnd({ allUploaded, timing }) {
+  return !!(allUploaded && timing?.startedAt && !timing?.endedAt);
+}

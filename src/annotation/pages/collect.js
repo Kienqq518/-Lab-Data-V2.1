@@ -18,6 +18,12 @@ export const collectAnnotations = {
     displayRule: 'Section+Grid：任务编号、样品编号/名称、型号规格、试验名称、试验次数（及检测时效）；复合页底部灰字补充「含 N 个试验子项 · 采集单元 M 个 · 试验次数随任务下发，不可修改」。',
     interactionLogic: '只读；随 ctx / 设备采集配置同步带入，不因检测员在 App 内操作而改写次数。',
   },
+  testItemTiming: {
+    title: '试验开始/结束时间',
+    requirementLogic: '试验项级检测起止时间（区别于单次采集的 collectedAt/uploadedAt）。开始时间：检测员手动点击「记录开始时间」；未记录前禁止一切采集与上传。在尚未上传任何数据前可多次点击覆盖开始时间（需确认）；一旦存在已上传数据则隐藏按钮；「重置全部」清空全部采集数据（含已上传）后按钮重现，startedAt 保留，可通过覆盖确认修改。结束时间：该试验项最后一条数据上传成功时自动写入，无手动按钮。三种 L4（标准/多子项/轻量版）行为一致。退回复测清空 endedAt；流程锁定后只读。',
+    displayRule: '基础信息区 Grid 增加「试验开始时间」「试验结束时间」；无开始时间且可记录时展示「记录开始时间」按钮。',
+    interactionLogic: '点击记录开始 → mock/API 写入 startedAt；全部 uploaded 后自动写入 endedAt；覆盖开始时间弹确认框。',
+  },
   deviceInfo: {
     title: '设备信息区（单试验项）',
     requirementLogic: '展示当前采集绑定设备及其所属工位。单设备试验项若后台配置多台候选设备，可切换但仅限候选池且受「设备采集配置」约束（无采集关系的 auto 设备不可选）。',

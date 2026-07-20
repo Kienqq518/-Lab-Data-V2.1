@@ -20,6 +20,8 @@ import {
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
+import { useTestItemTiming } from './useTestItemTiming.js';
+import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
 
 /* 采集详情（L4·复合试验项 · 物资版 LIMS+数采）
    试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
@@ -100,6 +102,12 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const flowLocked = isFlowLocked(flow);
   const flowReturned = isFlowReturned(flow);
   const summary = summarizeCells(cells);
+  const timingCtl = useTestItemTiming(ctx, {
+    uploadedCount: summary.uploaded,
+    allUploaded: summary.allUploaded,
+    flowLocked,
+  });
+  const { guardStartRequired, clearEndedOnReset } = timingCtl;
 
   /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
   function touchReturn() {
@@ -174,6 +182,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
   function captureSub(sub) {
     const device = deviceForSub(sub);
     if (!sub || flowLocked || !device) return;
+    if (!guardStartRequired()) return;
     touchReturn();
     const source = device.method || 'manual';
     setBusy('all-' + sub.id);
@@ -195,6 +204,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
   function collectOne(sub, cell) {
     const device = deviceForSub(sub);
     if (!sub || !cell || flowLocked || !device) return;
+    if (!guardStartRequired()) return;
     touchReturn();
     const source = device.method || 'manual';
     setBusy('c-' + cell.key);
@@ -216,6 +226,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function setField(cellKey, field, value, idx) {
     if (flowLocked) return;
+    if (!guardStartRequired()) return;
     touchReturn();
     const cell = cells[cellKey];
     if (!cell || (cell.status === 'uploaded' && !flowReturned)) return;
@@ -243,6 +254,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function uploadCell(cellKey) {
     if (flowLocked) return;
+    if (!guardStartRequired()) return;
     touchReturn();
     setBusy('up-' + cellKey);
     setTimeout(() => {
@@ -253,6 +265,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function uploadAll() {
     if (flowLocked) return;
+    if (!guardStartRequired()) return;
     touchReturn();
     setBusy('upload-all');
     setTimeout(() => {
@@ -270,9 +283,19 @@ function CollectStructured({ ctx, onBack, onDone }) {
   function reset() {
     if (flowLocked) return;
     touchReturn();
+    clearEndedOnReset();
     setCells((prev) => Object.fromEntries(Object.values(prev).map((cell) => [
       cell.key,
-      cell.status === 'uploaded' ? cell : { ...cell, status: 'idle', vals: {}, attachments: [], uploadedAt: null, collectedAt: null, deviceId: null, source: null },
+      {
+        ...cell,
+        status: 'idle',
+        vals: {},
+        attachments: [],
+        uploadedAt: null,
+        collectedAt: null,
+        deviceId: null,
+        source: null,
+      },
     ])));
   }
 
@@ -414,6 +437,16 @@ function CollectStructured({ ctx, onBack, onDone }) {
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
                 含 {subs.length} 个试验子项 · 采集单元 {summary.total} 个 · 试验次数随任务下发，不可修改 · 物资版多子项
               </div>
+              <TestItemTimingSection
+                timing={timingCtl.timing}
+                canRecordStart={timingCtl.canRecordStart}
+                recording={timingCtl.recording}
+                confirmOverwrite={timingCtl.confirmOverwrite}
+                toast={timingCtl.toast}
+                onRecordStartClick={timingCtl.handleRecordStartClick}
+                onConfirmOverwrite={timingCtl.recordStart}
+                onCancelOverwrite={timingCtl.cancelOverwrite}
+              />
               <SampleLabelQrLink sample={ctx.sample} />
             </Section>
           </AnnotatedWrapper>

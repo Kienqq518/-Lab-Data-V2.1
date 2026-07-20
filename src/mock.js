@@ -530,7 +530,7 @@
   function buildCollectCtx({ sample, item, task, stationId, extra = {} }) {
     const dev = resolveTestDevice(item);
     const tpl = dev ? (dev.items?.find((x) => x.name === item.name) || {}).tpl : undefined;
-    return {
+    const base = {
       sample,
       device: dev,
       item: { ...item, tpl },
@@ -541,6 +541,63 @@
       task,
       ...extra,
     };
+    return { ...base, timing: resolveTestItemTiming(base) };
+  }
+
+  const testItemTimingStore = {};
+
+  function timingStoreKey(ctx) {
+    const taskId = ctx.task?.code || ctx.task?.id || 'task';
+    const sampleId = ctx.sample?.code || ctx.sample?.id || 'sample';
+    const testItemId = ctx.item?.id || ctx.item?.name || 'item';
+    return `${taskId}__${sampleId}__${testItemId}`;
+  }
+
+  function resolveTestItemTiming(ctx) {
+    const key = timingStoreKey(ctx);
+    if (testItemTimingStore[key]) return { ...testItemTimingStore[key] };
+    if (ctx.timing) return { ...ctx.timing };
+    if (ctx.item?.timing) return { ...ctx.item.timing };
+    if (ctx.status === 'done' || ctx.reviewMode) {
+      return {
+        startedAt: '2026-06-24T09:15:00+08:00',
+        endedAt: '2026-06-24T10:42:30+08:00',
+        startedBy: 'demo-operator',
+      };
+    }
+    const flow = ctx.flow || ctx.item?.flow;
+    if (flow?.returned && ctx.status === 'testing') {
+      return {
+        startedAt: '2026-06-24T09:15:00+08:00',
+        startedBy: 'demo-operator',
+      };
+    }
+    return {};
+  }
+
+  function recordTestTimingStart(ctx, { overwrite = false } = {}) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const key = timingStoreKey(ctx);
+        const startedAt = new Date().toISOString();
+        const next = { startedAt, startedBy: 'demo-operator' };
+        testItemTimingStore[key] = next;
+        resolve({ ...next });
+      }, overwrite ? 350 : 400);
+    });
+  }
+
+  function recordTestTimingEnd(ctx, endedAt) {
+    const key = timingStoreKey(ctx);
+    const cur = testItemTimingStore[key] || {};
+    testItemTimingStore[key] = { ...cur, endedAt };
+  }
+
+  function clearTestTimingEnd(ctx) {
+    const key = timingStoreKey(ctx);
+    if (!testItemTimingStore[key]) return;
+    const { endedAt, ...rest } = testItemTimingStore[key];
+    testItemTimingStore[key] = rest;
   }
 
   /** 试验项是否由指定设备承担（含复合子项与设备能力表） */
@@ -739,4 +796,4 @@
     { q: '检测时效是如何计算的？', a: '检测时效随委托任务下发，不可在移动端修改。临近或超过时效的任务会在首页「工作概览」中以逾期 / 临期维度提醒。' },
   ];
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, sampleSpec, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, resolveTestItemTiming, recordTestTimingStart, recordTestTimingEnd, clearTestTimingEnd, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, sampleSpec, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
