@@ -102,12 +102,19 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const flowLocked = isFlowLocked(flow);
   const flowReturned = isFlowReturned(flow);
   const summary = summarizeCells(cells);
+  const isAutoDirect = subs.length > 0 && subs.every((sub) => {
+    const assigned = selectedDevices[sub.id];
+    const m = assigned?.method || sub.method || sub.device?.method || 'manual';
+    return m === 'auto';
+  });
   const timingCtl = useTestItemTiming(ctx, {
     uploadedCount: summary.uploaded,
     allUploaded: summary.allUploaded,
     flowLocked,
+    isAutoDirect,
   });
-  const { guardStartRequired, clearEndedOnReset } = timingCtl;
+  const { guardStartRequired, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
+  const uploadBlockedByTiming = requireStartBeforeCollect && summary.pendingUpload > 0;
 
   /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
   function touchReturn() {
@@ -421,7 +428,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
       <AppBar title="检测任务" onBack={onBack} />
       {inspectState && <Stamp state={inspectState} />}
 
-      <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
+      <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, ...(inspectState ? { paddingRight: 'calc(var(--gap-page) + 124px)' } : {}) }}>
         <AnnotatedWrapper id="flowBanner" layout="block">
           <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
         </AnnotatedWrapper>
@@ -484,6 +491,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
           recording={timingCtl.recording}
           confirmOverwrite={timingCtl.confirmOverwrite}
           toast={timingCtl.toast}
+          requireStartBeforeCollect={timingCtl.requireStartBeforeCollect}
+          isAutoDirect={timingCtl.isAutoDirect}
           onRecordStartClick={timingCtl.handleRecordStartClick}
           onConfirmOverwrite={timingCtl.recordStart}
           onCancelOverwrite={timingCtl.cancelOverwrite}
@@ -568,6 +577,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       flowReturned={flowReturned}
                       currentDevice={activeDevice}
                       deviceCatalog={deviceCatalog}
+                      requireStartBeforeCollect={requireStartBeforeCollect}
                       onCollect={() => collectOne(activeSub, activeCell)}
                       onReRecognize={() => reRecognizeCell(activeSub, activeCell)}
                       ocrUnlocked={!!editCells[activeCell.key]}
@@ -583,9 +593,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
                 </div>
               </div>
 
-              <AnnotatedWrapper id="conclusionArea" layout="block">
-                <ConclusionCard sub={activeSub} cells={activeCells} />
-              </AnnotatedWrapper>
             </div>
           </div>
         </AnnotatedWrapper>
@@ -605,7 +612,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
       <AnnotatedWrapper id="uploadActions" layout="block">
         <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
           {!flowLocked && <Button variant="secondary" block onClick={reset}>重置全部</Button>}
-          <Button block disabled={flowLocked ? false : (!summary.allUploaded && (summary.pendingUpload === 0 || busy === 'upload-all'))}
+          <Button block disabled={flowLocked ? false : (!summary.allUploaded && (summary.pendingUpload === 0 || busy === 'upload-all' || uploadBlockedByTiming))}
             onClick={flowLocked ? onBack : (summary.allUploaded ? onDone : uploadAll)}>
             {flowLocked ? '返回（数据已锁定）'
               : busy === 'upload-all' ? '上传中…'
@@ -886,7 +893,7 @@ function CheckBox({ on }) {
   );
 }
 
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, requireStartBeforeCollect = false, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
@@ -968,68 +975,11 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
                   ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}><LockIcon />数据已锁定</span>
                   : method === 'auto'
                   ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--status-done-fg,#1b8a5a)', display: 'flex', alignItems: 'center', gap: 5 }}><CheckIcon />本单元已上传</span>
-                  : <Button variant="secondary" onClick={() => onUpload(cell.key)} disabled={uploading}>{uploading ? '上传中…' : cell.status === 'failed' ? '重试上传' : '确认并上传'}</Button>}
+                  : <Button variant="secondary" onClick={() => onUpload(cell.key)} disabled={uploading || requireStartBeforeCollect}>{uploading ? '上传中…' : cell.status === 'failed' ? '重试上传' : '确认并上传'}</Button>}
               </div>
             )}
           </div>}
     </React.Fragment>
-  );
-}
-
-const PHASE_CONCL_META = {
-  '红': { ok: true },
-  '黄': { ok: false, reason: '绝缘厚度测量值超出标准限值' },
-  '绿': { ok: true },
-};
-
-function ConclusionCard({ sub, cells }) {
-  const rows = sub.phased
-    ? PHASES.map((phase) => ({ key: phase.value, label: `结论（${phase.value}相）`, cells: cells.filter((cell) => cell.phase === phase.value), color: phase.color }))
-    : [{ key: 'single', label: '结论', cells, color: null }];
-
-  function phaseConclusion(row) {
-    if (sub.id === 'struct-insulation-thickness' && row.key !== 'single') {
-      return PHASE_CONCL_META[row.key] || { ok: true };
-    }
-    return { ok: true };
-  }
-
-  return (
-    <div style={{ borderTop: '1px solid var(--divider)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
-        <TrendIcon />
-        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>结论</span>
-      </div>
-      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {rows.map((row) => {
-          const show = row.cells.length > 0 && row.cells.every((cell) => cell.status === 'uploaded');
-          const meta = phaseConclusion(row);
-          const ok = meta.ok;
-          const fail = show && !ok;
-          return (
-            <React.Fragment key={row.key}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {row.color && <span style={{ width: 9, height: 9, borderRadius: '50%', background: row.color, flex: 'none' }} />}
-                  <span>{row.label}</span>
-                </label>
-                <div style={{ flex: 1, height: 44, padding: '0 12px', display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', background: 'var(--surface-sunken,#f5f6f8)', fontSize: 'var(--fs-base)', color: show ? (ok ? 'var(--status-done-fg,#1b8a5a)' : 'var(--danger,#e23b3b)') : 'var(--text-placeholder)', fontWeight: show ? 600 : 400 }}>
-                  {show ? (ok ? '合格' : '不合格') : (sub.phased ? `${row.key}相全部次数上传后回显` : '全部上传后回显')}
-                </div>
-              </div>
-              {fail && meta.reason && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)' }}>不合格原因</label>
-                  <div style={{ flex: 1, minHeight: 44, padding: '10px 12px', display: 'flex', alignItems: 'center', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', background: 'var(--surface-sunken,#f5f6f8)', fontSize: 'var(--fs-base)', color: 'var(--text-body)', lineHeight: 1.45 }}>
-                    {meta.reason}
-                  </div>
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
@@ -1357,9 +1307,6 @@ function PinIcon({ on }) {
 }
 function GridIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z"/></svg>;
-}
-function TrendIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>;
 }
 function CheckIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;

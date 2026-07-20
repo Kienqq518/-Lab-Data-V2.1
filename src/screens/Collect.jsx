@@ -86,7 +86,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
 
     const measureFields = tpl.filter((f) => !SUMMARY_KEYS.has(f.key));
-    const summaryFields = tpl.filter((f) => SUMMARY_KEYS.has(f.key));
 
     // 图采是否就绪：采集方式=图采 且 识别规则验证状态=已通过
     const ocrReady = method === 'ocr' && ctx.ocrVerified !== false;
@@ -104,12 +103,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     const phaseOf = (i) => (isCable ? phaseList[Math.floor(i / perPhase)] : null);
     const phaseWithin = (i) => (isCable ? (i % perPhase) : i);
     const PHASE_C = { '红': 'var(--danger,#e23b3b)', '黄': 'var(--status-pending,#e8a93a)', '绿': 'var(--status-done,#1faa54)' };
-    const PHASE_CONCL = { '红': '合格', '黄': '不合格', '绿': '合格' };
-    const PHASE_FAIL_REASON = { '黄': '反向电阻读数偏差超标，超出标准限值' };
-    function phaseUploaded(ph) {
-      const idx = times.map((_, i) => i).filter((i) => phaseOf(i) === ph);
-      return idx.length > 0 && idx.every((i) => times[i].uploaded);
-    }
     // LIMS 流程门控：进入「组内审核」及以后 → 数据锁定不可改；退回到「试验检测」→ 可改并需重新上传
     const FLOW_LOCK_AFTER = ['组内审核', '数据审核', '报告编制', '报告审核', '报告签发', '报告处理', '收费审批', '报告发放', '任务归档', '任务完成'];
     const DEMO_FLOWS = {
@@ -125,7 +118,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 
     const initTimes = () => Array.from({ length: N }, () => ({ status: 'idle', vals: {}, uploaded: false }));
     const [times, setTimes] = React.useState(initTimes);
-    const [summary, setSummary] = React.useState({ status: 'idle', vals: {} });
     const [returnTouched, setReturnTouched] = React.useState(false);
     const [busy, setBusy] = React.useState(null);   // 'all' | time index | null
     const [phase, setPhase] = React.useState(ctx.status === 'done' ? 'done' : 'idle'); // idle|filled|uploading|done
@@ -155,17 +147,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       fields.forEach((f) => { v[f.key] = valAt(f.key, i, syzjzVal || BASE.syzjz); });
       return v;
     }
-    function computeSummary(allTimes) {
-      const v = {};
-      summaryFields.forEach((f) => {
-        if (f.key === 'jl') v[f.key] = '合格';
-        else { // 平均值
-          const nums = allTimes.map((t) => parseFloat(t.vals[measureFields[measureFields.length - 1]?.key])).filter((x) => !isNaN(x));
-          v[f.key] = nums.length ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : '';
-        }
-      });
-      return v;
-    }
 
     /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
     function touchReturn() {
@@ -176,12 +157,11 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       if (initialReturned) {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
         setTimes(ts);
-        setSummary({ status: 'done', vals: computeSummary(ts) });
         return;
       }
       if (ctx.status === 'done') {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
-        setTimes(ts); setSummary({ status: 'done', vals: computeSummary(ts) });
+        setTimes(ts);
         return;
       }
       const uploadedPhases = ctx.item?.uploadedPhases;
@@ -203,9 +183,11 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     const pendingUpload = times.filter((t) => t.status === 'filled' && !t.uploaded).length;
     const uploadedCount = times.filter((t) => t.uploaded).length;
     const allUploaded = N > 0 && uploadedCount === N;
+    const isAutoDirect = method === 'auto';
 
-    const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked });
-    const { guardStartRequired, clearEndedOnReset } = timingCtl;
+    const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
+    const { guardStartRequired, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
+    const uploadBlockedByTiming = requireStartBeforeCollect && pendingUpload > 0;
 
     // L4 检测状态印章：退回复测未修改前不展示；修改后按未检测/检测中/已检测规则展示
     const inspectState = resolveInspectStampState({
@@ -223,7 +205,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       setBusy('all');
       setTimeout(() => {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: false }));
-        setTimes(ts); setSummary({ status: 'done', vals: computeSummary(ts) });
+        setTimes(ts);
         setBusy(null); setPhase('filled');
       }, 1100);
     }
@@ -235,7 +217,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       setTimeout(() => {
         setTimes((prev) => {
           const next = prev.slice(); next[i] = { status: 'filled', vals: fillTime(i), uploaded: false };
-          if (next.every((t) => t.status === 'filled') && editable) setSummary({ status: 'done', vals: computeSummary(next) });
           return next;
         });
         setBusy(null);
@@ -247,7 +228,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       setBusy('all');
       setTimeout(() => {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: false }));
-        setTimes(ts); setSummary({ status: 'done', vals: computeSummary(ts) }); setBusy(null);
+        setTimes(ts); setBusy(null);
       }, 900);
     }
     // 串口（电子天平）：工业平板串口程序已采写库，本端一键读取整批展示，直接为已上传状态（不在本端采集/上传）
@@ -256,7 +237,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       setBusy('all');
       setTimeout(() => {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
-        setTimes(ts); setSummary({ status: 'done', vals: computeSummary(ts) });
+        setTimes(ts);
         setBusy(null); setPhase('filled');
       }, 1000);
     }
@@ -277,7 +258,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
           else { delete vals.mchui; delete vals.msich; }
         }
         next[i] = { ...next[i], vals, status: 'filled', uploaded: flowReturned ? false : next[i].uploaded };
-        if (next.every((t) => t.status === 'filled') && editable) setSummary({ status: 'done', vals: computeSummary(next) });
         return next;
       });
     }
@@ -290,7 +270,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       setTimeout(() => {
         setTimes((prev) => {
           const next = prev.slice(); next[i] = { status: 'filled', vals: fillTime(i), uploaded: false };
-          if (next.every((t) => t.status === 'filled') && editable) setSummary({ status: 'done', vals: computeSummary(next) });
           return next;
         });
         setShotPhase('idle'); setShootIdx(null); setActiveTime(i);
@@ -308,7 +287,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
         setTimes((prev) => {
           const next = prev.slice();
           next[i] = { ...next[i], status: 'filled', vals: fillTime(i), uploaded: false };
-          if (next.every((t) => t.status === 'filled') && editable) setSummary({ status: 'done', vals: computeSummary(next) });
           return next;
         });
         setEditTimes((p) => ({ ...p, [i]: false })); // 重新识别后回到锁定态
@@ -337,7 +315,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     function reset() {
       touchReturn();
       clearEndedOnReset();
-      setTimes(initTimes()); setSummary({ status: 'idle', vals: {} }); setPhase('idle');
+      setTimes(initTimes()); setPhase('idle');
     }
     function resetTime(i) {
       if (flowLocked) return;
@@ -345,8 +323,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       setTimes((prev) => {
         const next = prev.slice();
         next[i] = { status: 'idle', vals: {}, uploaded: false };
-        if (next.every((t) => t.status === 'filled')) setSummary({ status: 'done', vals: computeSummary(next) });
-        else setSummary({ status: 'idle', vals: {} });
         return next;
       });
       setAttachments((p) => {
@@ -398,7 +374,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
         <AppBar title="检测任务" onBack={onBack} />
         {inspectState && <Stamp state={inspectState} />}
-        <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
+        <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, ...(inspectState ? { paddingRight: 'calc(var(--gap-page) + 124px)' } : {}) }}>
           <AnnotatedWrapper id="flowBanner" layout="block">
           <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
           </AnnotatedWrapper>
@@ -471,6 +447,8 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
             recording={timingCtl.recording}
             confirmOverwrite={timingCtl.confirmOverwrite}
             toast={timingCtl.toast}
+            requireStartBeforeCollect={timingCtl.requireStartBeforeCollect}
+            isAutoDirect={timingCtl.isAutoDirect}
             onRecordStartClick={timingCtl.handleRecordStartClick}
             onConfirmOverwrite={timingCtl.recordStart}
             onCancelOverwrite={timingCtl.cancelOverwrite}
@@ -655,7 +633,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                                   </React.Fragment>
                                 : flowLocked
                                 ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>数据已锁定</span>
-                                : <Button variant="secondary" onClick={() => uploadTime(i)} disabled={busy === 'up' + i}>{busy === 'up' + i ? '上传中…' : '确认并上传本次'}</Button>}
+                                : <Button variant="secondary" onClick={() => uploadTime(i)} disabled={busy === 'up' + i || requireStartBeforeCollect}>{busy === 'up' + i ? '上传中…' : '确认并上传本次'}</Button>}
                             </div>
                           </div>
                         : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -689,49 +667,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
               </div>
             </div>
           </Card>
-
-          {/* 结论区：与试验数据录入拆分锚点，保证批注可见 */}
-          {summaryFields.length > 0 && (
-            <AnnotatedWrapper id="conclusionArea" layout="block">
-            <Card padding="0">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>结论</span>
-              </div>
-              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {summaryFields.map((f) => {
-                  const isConcl = f.key === 'jl';
-                  // 物资版原型：结论暂时允许手输（正式应按判定方式：系统判定只读 / 人工判定可改）
-                  const conclReadOnly = flowLocked;
-                  if (isConcl && isCable) {
-                    const conclPhases = [...new Set(times.map((_, i) => phaseOf(i)))];
-                    return conclPhases.map((ph) => {
-                      const show = phaseUploaded(ph);
-                      const jl = show ? (PHASE_CONCL[ph] || '合格') : '';
-                      const fail = jl === '不合格';
-                      return (
-                        <React.Fragment key={f.key + ph}>
-                          <FieldRow label={`结论（${ph}相）`} readOnly={conclReadOnly}
-                            value={jl} placeholder={`${ph}相全部次数上传后回显`} onChange={() => {}} />
-                          {fail && (
-                            <FieldRow label="不合格原因" readOnly={conclReadOnly}
-                              value={PHASE_FAIL_REASON[ph] || ''} onChange={() => {}} />
-                          )}
-                        </React.Fragment>
-                      );
-                    });
-                  }
-                  return (
-                    <FieldRow key={f.key} label={f.label} unit={f.unit} readOnly={isConcl ? conclReadOnly : true}
-                      value={isConcl ? (allUploaded ? (summary.vals[f.key] || '合格') : '') : (summary.vals[f.key] || '')}
-                      placeholder={isConcl ? `全部 ${N} 次结果上传后回显` : `完成全部 ${N} 次后计算`}
-                      onChange={() => {}} />
-                  );
-                })}
-              </div>
-            </Card>
-            </AnnotatedWrapper>
-          )}
         </div>
 
         {/* 演示：一键切换 LIMS 流程节点状态（仅用于 demo 对比） */}
@@ -751,7 +686,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
         <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
           {!flowLocked && <Button variant="secondary" block onClick={reset}>重置全部</Button>}
           <Button block
-            disabled={flowLocked ? false : ((allUploaded ? false : pendingUpload === 0) || phase === 'uploading')}
+            disabled={flowLocked ? false : ((allUploaded ? false : pendingUpload === 0) || phase === 'uploading' || uploadBlockedByTiming)}
             onClick={flowLocked ? onBack : (allUploaded ? onDone : upload)}>
             {flowLocked ? '返回（数据已锁定）'
               : phase === 'uploading' ? '上传中…'

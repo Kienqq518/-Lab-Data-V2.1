@@ -9,9 +9,8 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 import { useTestItemTiming } from './useTestItemTiming.js';
 import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
 
-/* 轻量 LIMS 试验项 L4：参数平铺展示，结论由检测员手工录入 */
+/* 轻量 LIMS 试验项 L4：参数平铺展示，数采仅采集实测值 */
 
-const CONCLUSION_OPTIONS = ['合格', '不合格'];
 const FLOW_LOCK_AFTER = ['组内审核', '数据审核', '报告编制', '报告审核', '报告签发', '报告处理', '收费审批', '报告发放', '任务归档', '任务完成'];
 const DEMO_FLOWS = {
   normal: { node: '试验检测' },
@@ -79,8 +78,10 @@ function CollectLite({ ctx, onBack, onDone }) {
   const filledCount = fields.some((f) => String(vals[f.key] || '').trim() !== '') ? 1 : 0;
   const uploadedCount = uploaded ? 1 : 0;
   const allUploaded = uploaded;
-  const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked });
-  const { guardStartRequired } = timingCtl;
+  const isAutoDirect = method === 'auto';
+  const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
+  const { guardStartRequired, requireStartBeforeCollect } = timingCtl;
+  const uploadBlockedByTiming = requireStartBeforeCollect && !uploaded;
   const inspectState = resolveInspectStampState({
     flowReturned,
     returnTouched,
@@ -111,16 +112,14 @@ function CollectLite({ ctx, onBack, onDone }) {
     }, 600);
   }
 
-  const fail = vals.jl === '不合格';
-
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
       <AppBar title={ctx.item?.name || '试验检测'} onBack={onBack} />
       {inspectState && <Stamp state={inspectState} />}
-      <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
+      <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, ...(inspectState ? { paddingRight: 'calc(var(--gap-page) + 124px)' } : {}) }}>
         <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
       </div>
-      <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', paddingTop: flowLocked || flowReturned ? 0 : 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', paddingTop: flowLocked || flowReturned ? 0 : 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14, ...(inspectState ? { paddingRight: 'calc(var(--gap-page) + 124px)' } : {}) }}>
         <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="header" />}>
           <Grid items={[
             ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
@@ -184,6 +183,8 @@ function CollectLite({ ctx, onBack, onDone }) {
           recording={timingCtl.recording}
           confirmOverwrite={timingCtl.confirmOverwrite}
           toast={timingCtl.toast}
+          requireStartBeforeCollect={timingCtl.requireStartBeforeCollect}
+          isAutoDirect={timingCtl.isAutoDirect}
           onRecordStartClick={timingCtl.handleRecordStartClick}
           onConfirmOverwrite={timingCtl.recordStart}
           onCancelOverwrite={timingCtl.cancelOverwrite}
@@ -214,25 +215,6 @@ function CollectLite({ ctx, onBack, onDone }) {
           </div>
         </Card>
         </AnnotatedWrapper>
-
-        <AnnotatedWrapper id="conclusionArea" layout="block">
-        <Card padding="0">
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--divider)', fontSize: 'var(--fs-base)', fontWeight: 600 }}>结论</div>
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <SelectField field={{ label: '结论', key: 'jl', options: CONCLUSION_OPTIONS, required: true }}
-              value={vals.jl || ''} readOnly={fieldsReadOnly || uploading}
-              onChange={(v) => setField('jl', v)} />
-            {fail && (
-              <FieldRow label="不合格原因" value={vals.bhgyy || ''} readOnly={fieldsReadOnly || uploading}
-                placeholder="请输入不合格原因"
-                onChange={(e) => setField('bhgyy', e.target.value)} />
-            )}
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              轻量版 LIMS+数采：结论可手输，由检测员手工判定
-            </div>
-          </div>
-        </Card>
-        </AnnotatedWrapper>
       </div>
 
       {!isReview && (
@@ -253,10 +235,10 @@ function CollectLite({ ctx, onBack, onDone }) {
         {flowLocked
           ? <Button block onClick={onBack}>返回（数据已锁定）</Button>
           : isReview && !flowLocked
-          ? <Button block disabled={uploading} onClick={upload}>{uploading ? '上传中…' : (uploaded ? '重新上传' : '上传结果')}</Button>
+          ? <Button block disabled={uploading || uploadBlockedByTiming} onClick={upload}>{uploading ? '上传中…' : (uploaded ? '重新上传' : '上传结果')}</Button>
           : uploaded
           ? <Button block onClick={onDone}>完成并退出</Button>
-          : <Button block disabled={uploading} onClick={upload}>{uploading ? '上传中…' : '上传结果'}</Button>}
+          : <Button block disabled={uploading || uploadBlockedByTiming} onClick={upload}>{uploading ? '上传中…' : '上传结果'}</Button>}
       </div>
       </AnnotatedWrapper>
 

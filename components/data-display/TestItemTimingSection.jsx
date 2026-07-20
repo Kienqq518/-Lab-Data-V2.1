@@ -89,6 +89,8 @@ export function TestItemTimingSection({
   recording,
   confirmOverwrite,
   toast,
+  requireStartBeforeCollect = false,
+  isAutoDirect = false,
   onRecordStartClick,
   onConfirmOverwrite,
   onCancelOverwrite,
@@ -96,20 +98,34 @@ export function TestItemTimingSection({
   return (
     <React.Fragment>
       <Card padding="0">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
-          <ClockIcon />
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>试验时间</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <ClockIcon />
+            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>试验时间</span>
+          </div>
+          {canRecordStart && (
+            <Button size="sm" variant="secondary" onClick={onRecordStartClick} disabled={recording} style={{ flex: 'none', height: 28, padding: '0 12px' }}>
+              {recording ? '记录中…' : '记录开始时间'}
+            </Button>
+          )}
         </div>
-        <div style={{ padding: 16 }}>
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <TimingGrid items={[
             ['试验开始时间', formatTestTiming(timing.startedAt)],
             ['试验结束时间', formatTestTiming(timing.endedAt)],
           ]} />
-          {canRecordStart && (
-            <div style={{ marginTop: 12 }}>
-              <Button size="sm" variant="secondary" onClick={onRecordStartClick} disabled={recording}>
-                {recording ? '记录中…' : '记录开始时间'}
-              </Button>
+          {requireStartBeforeCollect && (
+            <div style={{
+              padding: '10px 12px', borderRadius: 'var(--radius-md)',
+              background: 'var(--status-pending-bg, #fff8eb)', border: '1px solid var(--status-pending-border, #f0d9a8)',
+              fontSize: 'var(--fs-sm)', color: 'var(--status-pending-fg, #97640f)', lineHeight: 1.5,
+            }}>
+              上传数据前请先点击右上角「记录开始时间」，否则无法上传。
+            </div>
+          )}
+          {isAutoDirect && !canRecordStart && (
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              设备直连 · 试验开始时间由上位机回传，无需手动记录
             </div>
           )}
         </div>
