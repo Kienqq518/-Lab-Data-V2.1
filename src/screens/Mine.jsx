@@ -218,9 +218,6 @@ import { AnnotatedWrapper } from '../annotation/index.js';
                       );
                     })}
                   </div>
-                  <div style={{ marginTop: 12, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                    针对华为、小米等平板拍照方向不一致问题，固定角度后可提升图像识别准确率。配置仅保存在本机。
-                  </div>
                 </div>
               </Card>
             </div>
