@@ -10,7 +10,7 @@ import { Mine } from './screens/Mine.jsx';
 import { Notifications } from './screens/Notifications.jsx';
 import { TaskFocusScreen } from './screens/TaskFocusScreen.jsx';
 import { AnnotationProvider, AnnotationSideRails, useAnnotation } from './annotation/index.js';
-import { STAGE_WIDTH_ANNOTATED, STAGE_WIDTH_COLLAPSED } from './annotation/annotation-layout.js';
+import { getAnnotatedStageWidth, STAGE_WIDTH_COLLAPSED } from './annotation/annotation-layout.js';
 
 /** 解析当前批注页面 key（随 tab / overlay 变化） */
 function resolveAnnotationPageKey({ authed, tab, overlay, focusKind }) {
@@ -91,13 +91,16 @@ function StationSheet({ stationId, onSelect, onClear, onClose }) {
 /** 舞台缩放容器：随批注模式动态预留双侧轨道宽度，并按缩放后尺寸居中；批注开启时高度随轨道内容增长 */
 function PrototypeStage({ frameRef, children }) {
   const { isAnnotationMode, railContentHeight } = useAnnotation();
-  const stageWidth = isAnnotationMode ? STAGE_WIDTH_ANNOTATED : STAGE_WIDTH_COLLAPSED;
+  const [viewportWidth, setViewportWidth] = React.useState(() => window.innerWidth);
+  const stageWidth = isAnnotationMode ? getAnnotatedStageWidth(viewportWidth) : STAGE_WIDTH_COLLAPSED;
   const stageHeight = isAnnotationMode ? Math.max(1280, railContentHeight || 1280) : 1280;
   const [liveScale, setLiveScale] = React.useState(1);
 
   React.useEffect(() => {
     const fit = () => {
-      const byWidth = window.innerWidth / stageWidth;
+      setViewportWidth(window.innerWidth);
+      const nextStageWidth = isAnnotationMode ? getAnnotatedStageWidth(window.innerWidth) : STAGE_WIDTH_COLLAPSED;
+      const byWidth = window.innerWidth / nextStageWidth;
       // 批注开启且轨道变高时，按手机框高度(1280)适配缩放，舞台整体可纵向滚动查看底部卡片
       const fitHeight = isAnnotationMode ? Math.min(stageHeight, 1280) : stageHeight;
       const byHeight = window.innerHeight / fitHeight;
@@ -106,7 +109,7 @@ function PrototypeStage({ frameRef, children }) {
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
-  }, [stageWidth, stageHeight, isAnnotationMode]);
+  }, [stageHeight, isAnnotationMode]);
 
   // 外层按「缩放后」宽高占位，避免 transform:scale 后仍按未缩放尺寸布局导致整体偏右
   return (
@@ -131,6 +134,16 @@ function PrototypeStage({ frameRef, children }) {
         </AnnotationSideRails>
       </div>
     </div>
+  );
+}
+
+/** 视口容器：批注开启时撑满浏览器宽度 */
+function AppViewport({ children }) {
+  const { isAnnotationMode } = useAnnotation();
+  return (
+    <main className={`app-viewport${isAnnotationMode ? ' app-viewport--annotated' : ''}`}>
+      {children}
+    </main>
   );
 }
 
@@ -223,7 +236,7 @@ function App() {
 
   return (
     <AnnotationProvider pageKey={annotationPageKey} frameRef={frameRef} overlayActive={!!overlay}>
-    <main className="app-viewport">
+    <AppViewport>
       <PrototypeStage frameRef={frameRef}>
         <div className="ds-frame" ref={frameRef}>
           <StatusBar onBrand={!authed} />
@@ -280,7 +293,7 @@ function App() {
           </div>
         </div>
       </PrototypeStage>
-    </main>
+    </AppViewport>
     </AnnotationProvider>
   );
 }

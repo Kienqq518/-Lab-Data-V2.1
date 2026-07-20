@@ -31,6 +31,12 @@ textarea {
   box-sizing: border-box;
 }
 
+.app-viewport--annotated {
+  width: 100%;
+  padding: 24px 0;
+  box-sizing: border-box;
+}
+
 .ds-stage-slot {
   position: relative;
   flex: none;

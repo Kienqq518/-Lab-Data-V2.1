@@ -44,26 +44,33 @@ export function SampleLabelQrModal({ sample, onClose }) {
   const displayCode = MOCK.formatSampleCodeDisplay(sample);
 
   return createPortal(
-    <React.Fragment>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 250 }}>
       <div
         role="presentation"
         onClick={onClose}
         style={{
-          position: 'absolute', inset: 0, zIndex: 250,
+          position: 'absolute', inset: 0,
           background: 'rgba(15,23,42,0.52)', backdropFilter: 'blur(2px)',
         }}
       />
-      <AnnotatedWrapper id="sampleLabelQrModal" layout="block">
       <div
-        role="dialog"
-        aria-labelledby="sample-label-qr-title"
         style={{
-          position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-          zIndex: 260, width: 'min(300px, calc(100% - 40px))',
-          background: 'var(--white)', borderRadius: 'var(--radius-lg, 16px)',
-          boxShadow: '0 24px 56px rgba(15,23,42,0.28)', overflow: 'hidden',
+          position: 'absolute', inset: 0, zIndex: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
         }}
       >
+        <AnnotatedWrapper id="sampleLabelQrModal" layout="block">
+        <div
+          role="dialog"
+          aria-labelledby="sample-label-qr-title"
+          style={{
+            pointerEvents: 'auto',
+            zIndex: 260, width: 'min(300px, calc(100% - 40px))',
+            background: 'var(--white)', borderRadius: 'var(--radius-lg, 16px)',
+            boxShadow: '0 24px 56px rgba(15,23,42,0.28)', overflow: 'hidden',
+          }}
+        >
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '14px 16px', borderBottom: '1px solid var(--divider)',
@@ -128,9 +135,10 @@ export function SampleLabelQrModal({ sample, onClose }) {
             关闭
           </button>
         </div>
+        </div>
+        </AnnotatedWrapper>
       </div>
-      </AnnotatedWrapper>
-    </React.Fragment>,
+    </div>,
     root,
   );
 }
