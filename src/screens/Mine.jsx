@@ -3,6 +3,11 @@ import { AppBar, Button, Card, Input, SectionTitle } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import logoMark from '../../assets/logo-mark.png';
 import { getApiBaseUrl, setApiBaseUrl } from '../api-config.js';
+import {
+  CAMERA_ROTATION_OPTIONS,
+  getCameraOrientationConfig,
+  setCameraOrientationConfig,
+} from '../camera-orientation-config.js';
 import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 我的 — 用户信息 / 消息通知 / 设置 / 帮助与反馈
@@ -125,6 +130,13 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     const [overdue, setOverdue] = React.useState(true);
     const [returned, setReturned] = React.useState(true);
     const [apiBaseUrl, setApiBaseUrlInput] = React.useState(() => getApiBaseUrl());
+    const [cameraOrient, setCameraOrient] = React.useState(() => getCameraOrientationConfig());
+
+    function saveCameraOrient(patch) {
+      const saved = setCameraOrientationConfig(patch);
+      setCameraOrient(saved);
+      onToast('相机方向设置已保存');
+    }
 
     /** 保存数采 Web 端连接地址 */
     function saveApiBaseUrl() {
@@ -161,6 +173,54 @@ import { AnnotatedWrapper } from '../annotation/index.js';
                 </div>
                 <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   配置当前连接的数采 Web 端环境
+                </div>
+              </Card>
+            </div>
+          </AnnotatedWrapper>
+
+          <AnnotatedWrapper id="settingsCameraOrientation" layout="block">
+            <div>
+              <SectionTitle style={{ marginBottom: 10 }}>拍照识别</SectionTitle>
+              <Card padding="0">
+                <ToggleRow
+                  label="相机方向锁定"
+                  on={cameraOrient.enabled}
+                  onChange={(enabled) => saveCameraOrient({ enabled })}
+                />
+                <div style={{ padding: '4px 16px 14px', opacity: cameraOrient.enabled ? 1 : 0.45, pointerEvents: cameraOrient.enabled ? 'auto' : 'none' }}>
+                  <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 10 }}>旋转角度</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {CAMERA_ROTATION_OPTIONS.map((opt) => {
+                      const on = cameraOrient.rotation === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={!cameraOrient.enabled}
+                          onClick={() => saveCameraOrient({ rotation: opt.value })}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px',
+                            borderRadius: 'var(--radius-md)', cursor: cameraOrient.enabled ? 'pointer' : 'not-allowed',
+                            border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
+                            background: on ? 'var(--surface-selected)' : 'var(--white)',
+                            color: on ? 'var(--brand-action)' : 'var(--text-body)',
+                            fontSize: 'var(--fs-sm)', fontWeight: on ? 600 : 400, textAlign: 'left',
+                          }}
+                        >
+                          <span style={{
+                            width: 16, height: 16, borderRadius: '50%', flex: 'none',
+                            border: '2px solid ' + (on ? 'var(--brand-action)' : 'var(--border-strong)'),
+                            background: on ? 'var(--brand-action)' : 'transparent',
+                            boxShadow: on ? 'inset 0 0 0 3px var(--white)' : 'none',
+                          }} />
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: 12, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    针对华为、小米等平板拍照方向不一致问题，固定角度后可提升图像识别准确率。配置仅保存在本机。
+                  </div>
                 </div>
               </Card>
             </div>

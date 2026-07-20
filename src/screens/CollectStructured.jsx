@@ -26,6 +26,8 @@ import { TimingToast } from '../../components/data-display/TimingToast.jsx';
 import { OcrCaptureBar } from './OcrCaptureBar.jsx';
 import { OcrImagePreview } from './OcrImagePreview.jsx';
 import { OcrAttachmentThumb } from './OcrAttachmentThumb.jsx';
+import { getCameraOrientationConfig } from '../camera-orientation-config.js';
+import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
 import {
   clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
   mergeOcrFields, removeScenarioAttachment, sortAttachmentsByScenario, upsertScenarioAttachment,
@@ -292,7 +294,12 @@ function CollectStructured({ ctx, onBack, onDone }) {
     if (source === 'ocr' && (!hasPassedRule || !meta)) return;
     touchReturn();
     setBusy('c-' + cell.key);
-    setTimeout(() => {
+    const existingAttach = source === 'ocr' ? getAttachmentForScenario(cell.attachments, scenario) : null;
+    runOcrCapturePipeline({
+      file: null,
+      attachment: existingAttach,
+      mockDelayMs: source === 'ble' ? 1100 : 900,
+    }).then(() => {
       setCells((prev) => {
         const cur = prev[cell.key];
         const partial = source === 'ocr' ? fillScenarioValues(sub, cell, meta.fieldKeys) : fillValues(sub, cell);
@@ -304,6 +311,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
             attachments: upsertScenarioAttachment(c.attachments, scenario, {
               id: Date.now() + '_ocr',
               kind: 'photo',
+              orientationApplied: getCameraOrientationConfig().enabled,
             }),
           }));
         }
@@ -311,7 +319,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
       });
       if (source === 'ocr') setEditCells((prev) => ({ ...prev, [cell.key]: false }));
       setBusy(null);
-    }, source === 'ble' ? 1100 : 900);
+    });
   }
 
   function setField(cellKey, field, value, idx) {
@@ -392,13 +400,14 @@ function CollectStructured({ ctx, onBack, onDone }) {
   function reRecognizeCell(sub, cell) {
     const scenario = selectedScenarioFor(cell.key);
     const meta = scenarioMeta(scenario);
-    if (!sub || !cell || flowLocked || !meta || !getAttachmentForScenario(cell.attachments, scenario)) return;
+    const existingAttach = getAttachmentForScenario(cell.attachments, scenario);
+    if (!sub || !cell || flowLocked || !meta || !existingAttach) return;
     touchReturn();
     const device = deviceForSub(sub);
     if (!device) return;
     const source = device.method || 'manual';
     setBusy('c-' + cell.key);
-    setTimeout(() => {
+    runOcrCapturePipeline({ file: null, attachment: existingAttach, mockDelayMs: 950 }).then(() => {
       setCells((prev) => {
         const cur = prev[cell.key];
         const partial = fillScenarioValues(sub, cell, meta.fieldKeys);
@@ -406,7 +415,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
       });
       setEditCells((prev) => ({ ...prev, [cell.key]: false }));
       setBusy(null);
-    }, 950);
+    });
   }
 
   function resetCell(cellKey) {

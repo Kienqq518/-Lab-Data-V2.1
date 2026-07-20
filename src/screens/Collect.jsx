@@ -18,6 +18,8 @@ import {
   clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
   mergeOcrFields, removeScenarioAttachment, sortAttachmentsByScenario, upsertScenarioAttachment,
 } from './ocr-scenario.js';
+import { getCameraOrientationConfig } from '../camera-orientation-config.js';
+import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
 
 /* 采集详情（L4）— 基础/设备/环境 + 按「采集方式」自适应的 N 次字段录入 + 汇总 + 上传
    试验次数 N = 样段数量 × 试样数量 × 测试芯数（随 LIMS 任务下发，检测员不可改）。
@@ -145,6 +147,7 @@ import {
     const [previewAttach, setPreviewAttach] = React.useState(null);
     const [editTimes, setEditTimes] = React.useState({}); // 拍照识别：{ [次序]: true } 表示该次已解锁可编辑（默认锁定置灰防误触）
     const [phases, setPhases] = React.useState({}); // 电缆相别：{ [次序]: '红'|'黄'|'绿' }
+    const galleryInputRef = React.useRef(null);
 
     function addAttach(i, kind) {
       setAttachments((p) => ({ ...p, [i]: [...(p[i] || []), { id: Date.now() + '_' + Math.random().toString(36).slice(2, 6), kind }] }));
@@ -347,15 +350,16 @@ import {
         return next;
       });
     }
-    // 拍照识别/相册：取景页内识别，按场景回填部分字段
-    function doShoot() {
+    // 拍照识别/相册：取景页内识别，按场景回填部分字段；选图时走方向锁定预处理
+    async function doShoot(file) {
       const i = shootIdx;
       const scenario = shootScenario || selectedScenarioFor(i);
       const meta = scenarioMeta(scenario);
       if (!meta) return;
       touchReturn();
       setShotPhase('recognizing');
-      setTimeout(() => {
+      try {
+        const { prepared } = await runOcrCapturePipeline({ file: file || null, mockDelayMs: 1100 });
         const partial = fillScenarioFields(i, meta.fieldKeys);
         setTimes((prev) => {
           const next = prev.slice();
@@ -364,7 +368,6 @@ import {
           next[i] = { ...cur, status: 'filled', vals: merged, uploaded: false };
           return next;
         });
-        setShotPhase('idle');
         setShootIdx(null);
         setShootScenario(null);
         setActiveTime(i);
@@ -373,10 +376,20 @@ import {
           [i]: upsertScenarioAttachment(p[i], scenario, {
             id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
             kind: 'photo',
+            orientationApplied: prepared?.orientationApplied ?? getCameraOrientationConfig().enabled,
+            previewUrl: prepared?.objectUrl,
           }),
         }));
         setEditTimes((prev) => ({ ...prev, [i]: false }));
-      }, 1100);
+      } finally {
+        setShotPhase('idle');
+      }
+    }
+
+    function onGalleryPick(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (file) doShoot(file);
     }
     // 拍照识别·重新识别：用当前场景已有照片重新提取
     function reRecognize(i) {
@@ -873,13 +886,14 @@ import {
             </div>
 
             {/* 控制区 */}
+            <input ref={galleryInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onGalleryPick} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '22px 24px 30px' }}>
-              <button onClick={doShoot} disabled={shotPhase === 'recognizing'} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: shotPhase === 'recognizing' ? 0.4 : 1 }}>
+              <button type="button" onClick={() => galleryInputRef.current?.click()} disabled={shotPhase === 'recognizing'} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: shotPhase === 'recognizing' ? 0.4 : 1 }}>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                 <span style={{ fontSize: 'var(--fs-sm)' }}>从相册选择</span>
               </button>
 
-              <button onClick={doShoot} disabled={shotPhase === 'recognizing'} style={{ width: 72, height: 72, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.9)', background: 'var(--brand-action)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: shotPhase === 'recognizing' ? 0.4 : 1 }}>
+              <button type="button" onClick={() => doShoot(null)} disabled={shotPhase === 'recognizing'} style={{ width: 72, height: 72, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.9)', background: 'var(--brand-action)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: shotPhase === 'recognizing' ? 0.4 : 1 }}>
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
               </button>
 
