@@ -9,8 +9,12 @@ export function FieldRow({
   label, value, onChange, unit, placeholder = '数值', required = false,
   readOnly = false, onReadOnlyInteract, style,
 }) {
+  const blocked = readOnly && !!onReadOnlyInteract;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, ...style }}>
+    <div
+      style={{ display: 'flex', alignItems: 'center', gap: 14, ...style }}
+      onClick={blocked ? (e) => { e.preventDefault(); onReadOnlyInteract(); } : undefined}
+    >
       <label style={{
         width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)',
         display: 'flex', gap: 2,
@@ -19,8 +23,8 @@ export function FieldRow({
       </label>
       <Input
         value={value} onChange={onChange} placeholder={placeholder}
-        readOnly={readOnly} style={{ flex: 1 }}
-        onFocus={readOnly && onReadOnlyInteract ? (e) => { e.target.blur(); onReadOnlyInteract(); } : undefined}
+        readOnly={readOnly} style={{ flex: 1, pointerEvents: blocked ? 'none' : undefined }}
+        onFocus={blocked ? (e) => { e.target.blur(); onReadOnlyInteract(); } : undefined}
       />
     </div>
   );

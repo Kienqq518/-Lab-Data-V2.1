@@ -19,7 +19,7 @@ export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked,
 
   React.useEffect(() => {
     if (!toast) return undefined;
-    const timer = setTimeout(() => setToast(null), 2200);
+    const timer = setTimeout(() => setToast(null), 2600);
     return () => clearTimeout(timer);
   }, [toast]);
 

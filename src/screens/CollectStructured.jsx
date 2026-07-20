@@ -998,13 +998,17 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
 
 function SelectField({ field, value, readOnly, onReadOnlyInteract, onChange }) {
   const options = field.options || CONDUCTOR_STRUCTURE_OPTIONS;
+  const blocked = readOnly && !!onReadOnlyInteract;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+    <div
+      style={{ display: 'flex', alignItems: 'center', gap: 14 }}
+      onClick={blocked ? (e) => { e.preventDefault(); onReadOnlyInteract(); } : undefined}
+    >
       <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)', display: 'flex', gap: 2 }}>
         {field.required !== false && <span style={{ color: 'var(--danger)' }}>*</span>}<span>{field.label}{field.unit ? `（${field.unit}）` : ''}</span>
       </label>
-      <select value={value} disabled={readOnly}
-        onMouseDown={readOnly && onReadOnlyInteract ? (e) => { e.preventDefault(); onReadOnlyInteract(); } : undefined}
+      <select value={value} disabled={readOnly} tabIndex={blocked ? -1 : undefined}
+        onMouseDown={blocked ? (e) => { e.preventDefault(); onReadOnlyInteract(); } : undefined}
         onChange={(event) => onChange(event.target.value)}
         style={{
           flex: 1, height: 44, padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
