@@ -185,6 +185,19 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const hasAssignment = !!activeAssigned;
   const activeDevice = activeAssigned || normalizeDevice(null);
   const method = hasAssignment ? (activeDevice.method || 'manual') : null;
+  const activeSubPoolDevices = React.useMemo(() => {
+    if (!activeSub) return [];
+    const ids = new Set([
+      resolveSubDevice(activeSub)?.id,
+      activeSub.device?.id,
+      ...(activeSub.candidateDevices || []).map((device) => device?.id),
+    ].filter(Boolean));
+    return sortDevicePool([...ids].map((id) => {
+      if (selectedDevices[activeSub.id]?.id === id) return selectedDevices[activeSub.id];
+      return configuredDevices.find((device) => device.id === id)
+        || availableDevices.find((device) => device.id === id);
+    }).filter(Boolean));
+  }, [activeSub, activeSubId, selectedDevices, configuredDevices, availableDevices]);
   const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
   const ocrScenarios = React.useMemo(
     () => MOCK.resolveOcrScenarios(ctx.item, activeAssigned),
@@ -205,9 +218,9 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function selectSub(subId) {
     const sub = subs.find((s) => s.id === subId);
+    if (!sub) return;
     setActiveSubId(subId);
     setDeviceError('');
-    if (!sub) return;
     setSelectedDevices((prev) => {
       if (prev[subId]) return prev;
       const seeded = configuredDeviceForSub(sub);
@@ -618,10 +631,10 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <AnnotatedWrapper id="structuredDeviceInfo" layout="block">
-          <Section title="设备信息" icon="cpu" compact extra={<CollectBadge method={method || 'manual'} size="sm" />}>
+          <Section title="设备信息" icon="cpu" compact extra={<CollectBadge key={activeSubId} method={method || 'manual'} size="sm" />}>
             <DevicePool
               key={activeSubId}
-              devices={availableDevices}
+              devices={activeSubPoolDevices}
               activeDevice={activeDevice}
               hasAssignment={hasAssignment}
               deviceHasData={deviceHasData}
@@ -818,44 +831,40 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
 function DevicePool({ devices, activeDevice, hasAssignment, deviceHasData, flowLocked, onAssign, onRemove, onOpenDrawer }) {
   return (
-    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-      <div style={{ flex: '1 1 300px', minWidth: 0 }}>
-        {devices.length ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {devices.map((device) => {
-              const on = hasAssignment && device.id === activeDevice.id;
-              const locked = deviceHasData(device.id);
-              return (
-                <div key={device.id} style={{
-                  display: 'inline-flex', alignItems: 'center', minHeight: 28, borderRadius: 'var(--radius-pill)',
-                  border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                  background: on ? 'var(--surface-selected)' : 'var(--white)',
-                  overflow: 'hidden',
-                }}>
-                  <button onClick={() => onAssign(device)} disabled={flowLocked} title="指派给当前子项" style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 26, padding: '3px 8px 3px 10px',
-                    border: 'none', background: 'transparent', color: on ? 'var(--brand-action)' : 'var(--text-body)',
-                    fontSize: 'var(--fs-sm)', fontWeight: on ? 600 : 400, cursor: flowLocked ? 'not-allowed' : 'pointer', minWidth: 0,
-                  }}>
-                    <CollectDot method={device.method} on={on} />
-                    <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
-                  </button>
-                  {!flowLocked && (
-                    <button aria-label={`移除${device.name}`} onClick={() => onRemove(device)} title={locked ? '已有采集数据，需先清空或退回后再删除' : '移除设备'} style={{
-                      width: 25, height: 26, border: 'none', borderLeft: '1px solid var(--border-default)',
-                      background: 'transparent', color: locked ? 'var(--text-placeholder)' : 'var(--text-tertiary,#9aa3b2)', cursor: 'pointer',
-                      fontSize: 15, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>×</button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
+    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        {devices.length ? devices.map((device) => {
+          const on = hasAssignment && device.id === activeDevice.id;
+          const locked = deviceHasData(device.id);
+          return (
+            <div key={device.id} style={{
+              display: 'inline-flex', alignItems: 'center', minHeight: 28, borderRadius: 'var(--radius-pill)',
+              border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
+              background: on ? 'var(--surface-selected)' : 'var(--white)',
+              overflow: 'hidden',
+            }}>
+              <button onClick={() => onAssign(device)} disabled={flowLocked} title="指派给当前子项" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 26, padding: '3px 8px 3px 10px',
+                border: 'none', background: 'transparent', color: on ? 'var(--brand-action)' : 'var(--text-body)',
+                fontSize: 'var(--fs-sm)', fontWeight: on ? 600 : 400, cursor: flowLocked ? 'not-allowed' : 'pointer', minWidth: 0,
+              }}>
+                <CollectDot method={device.method} on={on} />
+                <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
+              </button>
+              {!flowLocked && (
+                <button aria-label={`移除${device.name}`} onClick={() => onRemove(device)} title={locked ? '已有采集数据，需先清空或退回后再删除' : '移除设备'} style={{
+                  width: 25, height: 26, border: 'none', borderLeft: '1px solid var(--border-default)',
+                  background: 'transparent', color: locked ? 'var(--text-placeholder)' : 'var(--text-tertiary,#9aa3b2)', cursor: 'pointer',
+                  fontSize: 15, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>×</button>
+              )}
+            </div>
+          );
+        }) : (
           <div style={{ minHeight: 28, display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>暂无可用设备，请切换设备添加</div>
         )}
       </div>
-      <div style={{ flex: 'none' }}>
+      <div style={{ flex: 'none', alignSelf: 'flex-start' }}>
         {!flowLocked && <Button size="sm" variant="secondary" onClick={onOpenDrawer} style={{ height: 30, padding: '0 12px' }}>切换设备</Button>}
       </div>
     </div>
