@@ -194,8 +194,8 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       setShotPhase('idle');
     }
 
-    function guardManualEntry() {
-      if (method !== 'manual') return true;
+    function guardHandInputRequired() {
+      if (method !== 'manual' && method !== 'ble') return true;
       return guardStartForManual();
     }
 
@@ -218,8 +218,9 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
         setBusy(null); setPhase('filled');
       }, 1100);
     }
-    // 蓝牙/图采：逐条采集第 i 次
+    // 蓝牙：逐条连接采集第 i 次
     function captureTime(i) {
+      if (method === 'ble' && !guardHandInputRequired()) return;
       touchReturn();
       setBusy(i);
       setTimeout(() => {
@@ -248,13 +249,13 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       }, 1000);
     }
     function manualTime(i) {
-      if (!guardManualEntry()) return;
+      if (!guardHandInputRequired()) return;
       touchReturn();
       setTimes((prev) => { const next = prev.slice(); const v = {}; measureFields.forEach((f) => { v[f.key] = ''; }); next[i] = { status: 'filled', vals: v, uploaded: false }; return next; });
     }
     function setField(i, key, value) {
       if (flowLocked) return; // 流程已锁定，禁止修改
-      if (!guardManualEntry()) return;
+      if (!guardHandInputRequired()) return;
       touchReturn();
       setTimes((prev) => {
         const next = prev.slice();
@@ -384,7 +385,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
           </AnnotatedWrapper>
           {/* 基础信息（滚动时固定） */}
           <AnnotatedWrapper id="basicInfo" layout="block">
-          <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
+          <Section title="基础信息" icon="info" headerExtraAtBottom extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
             <Grid items={[
               ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
               ['样品编号', ctx.sample.code], ['样品名称', ctx.sample.name],
@@ -770,21 +771,31 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-pending,#e8a93a)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4 M12 16h.01"/></svg>;
   }
 
-  function Section({ title, icon, extra, children }) {
+  function Section({ title, icon, extra, headerExtraAtBottom = false, children }) {
     const paths = {
       info: 'M12 16v-4 M12 8h.01 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
       cpu: 'M4 4h16v16H4z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3',
       thermometer: 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z',
     };
+    const titleRow = (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
+        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
+      </div>
+    );
     return (
       <Card padding="0">
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
-            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
+        {headerExtraAtBottom ? (
+          <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid var(--divider)' }}>
+            {titleRow}
+            {extra && <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>{extra}</div>}
           </div>
-          {extra}
-        </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
+            {titleRow}
+            {extra}
+          </div>
+        )}
         <div style={{ padding: 16 }}>{children}</div>
       </Card>
     );

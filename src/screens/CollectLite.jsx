@@ -82,8 +82,8 @@ function CollectLite({ ctx, onBack, onDone }) {
   const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
   const { guardStartForUpload, guardStartForManual, requireStartBeforeCollect } = timingCtl;
 
-  function guardManualEntry() {
-    if (method !== 'manual') return true;
+  function guardHandInputRequired() {
+    if (method !== 'manual' && method !== 'ble') return true;
     return guardStartForManual();
   }
   const inspectState = resolveInspectStampState({
@@ -101,7 +101,7 @@ function CollectLite({ ctx, onBack, onDone }) {
 
   function setField(key, value) {
     if (fieldsReadOnly || uploading) return;
-    if (!guardManualEntry()) return;
+    if (!guardHandInputRequired()) return;
     touchReturn();
     setVals((prev) => ({ ...prev, [key]: value }));
   }
@@ -124,7 +124,7 @@ function CollectLite({ ctx, onBack, onDone }) {
         <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', paddingTop: flowLocked || flowReturned ? 0 : 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
+        <Section title="基础信息" icon="info" headerExtraAtBottom extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
           <Grid items={[
             ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
             ['样品编号', ctx.sample?.code || '—'],
@@ -281,21 +281,31 @@ function Stamp({ state }) {
   );
 }
 
-function Section({ title, icon, extra, children }) {
+function Section({ title, icon, extra, headerExtraAtBottom = false, children }) {
   const paths = {
     info: 'M12 16v-4 M12 8h.01 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
     cpu: 'M4 4h16v16H4z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3',
     thermometer: 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z',
   };
+  const titleRow = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
+      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
+    </div>
+  );
   return (
     <Card padding="0">
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
+      {headerExtraAtBottom ? (
+        <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid var(--divider)' }}>
+          {titleRow}
+          {extra && <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>{extra}</div>}
         </div>
-        {extra}
-      </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
+          {titleRow}
+          {extra}
+        </div>
+      )}
       <div style={{ padding: 16 }}>{children}</div>
     </Card>
   );

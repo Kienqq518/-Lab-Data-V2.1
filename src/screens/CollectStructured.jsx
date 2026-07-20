@@ -115,9 +115,9 @@ function CollectStructured({ ctx, onBack, onDone }) {
   });
   const { guardStartForUpload, guardStartForOcr, guardStartForManual, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
 
-  function guardManualEntry(cellMethod) {
+  function guardHandInputRequired(cellMethod) {
     const m = cellMethod || method;
-    if (m !== 'manual') return true;
+    if (m !== 'manual' && m !== 'ble') return true;
     return guardStartForManual();
   }
 
@@ -217,6 +217,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
     if (!sub || !cell || flowLocked || !device) return;
     const source = device.method || 'manual';
     if (source === 'ocr' && !guardStartForOcr()) return;
+    if (source === 'ble' && !guardStartForManual()) return;
     touchReturn();
     setBusy('c-' + cell.key);
     setTimeout(() => {
@@ -237,7 +238,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function setField(cellKey, field, value, idx) {
     if (flowLocked) return;
-    if (!guardManualEntry()) return;
+    if (!guardHandInputRequired()) return;
     touchReturn();
     const cell = cells[cellKey];
     if (!cell || (cell.status === 'uploaded' && !flowReturned)) return;
@@ -437,7 +438,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         </AnnotatedWrapper>
         <AnnotatedWrapper id="structuredMode" layout="block">
           <AnnotatedWrapper id="basicInfo" layout="block">
-            <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
+            <Section title="基础信息" icon="info" headerExtraAtBottom extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
               <Grid items={[
                 ['任务编号', ctx.task?.code || MOCK.taskCodeFromSample(ctx.sample)],
                 ['样品编号', ctx.sample.code],
@@ -1145,21 +1146,31 @@ function FlowBanner({ flow, locked, returned }) {
   );
 }
 
-function Section({ title, icon, extra, compact = false, children }) {
+function Section({ title, icon, extra, compact = false, headerExtraAtBottom = false, children }) {
   const paths = {
     info: 'M12 16v-4 M12 8h.01 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
     cpu: 'M4 4h16v16H4z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3',
     thermometer: 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z',
   };
+  const titleRow = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: headerExtraAtBottom ? undefined : 1 }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d={paths[icon] || paths.info} /></svg>
+      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, minWidth: 0, overflow: 'hidden' }}>{title}</div>
+    </div>
+  );
   return (
     <Card padding="0">
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: compact ? '7px 16px' : '12px 16px', borderBottom: '1px solid var(--divider)', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d={paths[icon] || paths.info} /></svg>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, minWidth: 0, overflow: 'hidden' }}>{title}</div>
+      {headerExtraAtBottom ? (
+        <div style={{ padding: compact ? '7px 16px 8px' : '12px 16px 10px', borderBottom: '1px solid var(--divider)' }}>
+          {titleRow}
+          {extra && <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>{extra}</div>}
         </div>
-        {extra}
-      </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '7px 16px' : '12px 16px', borderBottom: '1px solid var(--divider)', gap: 12 }}>
+          {titleRow}
+          {extra}
+        </div>
+      )}
       <div style={{ padding: compact ? '8px 16px 10px' : 16 }}>{children}</div>
     </Card>
   );
