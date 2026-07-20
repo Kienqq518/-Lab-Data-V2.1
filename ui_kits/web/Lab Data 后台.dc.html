@@ -317,89 +317,93 @@
         </div>
       </sc-if>
 
-      <!-- ============ 系统设置 · 样品编号转换 ============ -->
+      <!-- ============ 系统设置 · 系统参数 ============ -->
       <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
         <div>
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-            <h1 style="font-size:18px; font-weight:600; margin:0; display:flex; align-items:center; gap:10px;">
-              <span style="width:4px; height:16px; background:#2563eb; border-radius:2px;"></span>系统设置
-            </h1>
-          </div>
-
-          <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; padding:20px 22px; margin-bottom:16px;">
-            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap;">
-              <div style="flex:1; min-width:280px;">
-                <div style="font-size:15px; font-weight:600; color:#1a2233; margin-bottom:6px;">启用样品编号转换</div>
-                <div style="font-size:13px; color:#5b6677; line-height:1.65;">对接第三方 LIMS 时，原编号可能含汉字、特殊符号或超长字符串，影响上位机兼容性。开启后，后端按规则库生成标准化 ID 用于系统交互；App 展示「转换后编号（原编号）」。</div>
-              </div>
-              <button onClick="{{ toggleCodeConversion }}" style="border:none; background:transparent; cursor:pointer; padding:0; flex:none; margin-top:4px;">
-                <span style="display:inline-block; width:44px; height:24px; border-radius:999px; background:{{ codeConvSwBg }}; position:relative; transition:background .15s;">
-                  <span style="position:absolute; top:3px; left:{{ codeConvSwX }}; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 2px rgba(0,0,0,0.2);"></span>
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <sc-if value="{{ codeConversionEnabled }}" hint-placeholder-val="{{ true }}">
-            <div style="display:flex; align-items:flex-start; gap:10px; background:#eef4ff; border:1px solid #cfe0ff; color:#1d54c4; border-radius:8px; padding:11px 16px; margin-bottom:16px; font-size:13px; line-height:1.6;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-              <span>规则按优先级顺序执行：<b>去除非法字符 → 长度截断</b>。允许字符含 <b>/</b>（如 SC2026/01001-01）；标准化编号用于上位机/设备交互，App 端同时展示原编号便于现场核对。</span>
+          <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; overflow:hidden;">
+            <!-- Tab 栏 -->
+            <div style="display:flex; align-items:center; gap:32px; padding:0 24px; border-bottom:1px solid #e5e8ee;">
+              <button onClick="{{ setSettingsTabEnum }}" style="border:none; background:transparent; cursor:pointer; font-size:14px; padding:14px 0; color:{{ settingsEnumTabColor }}; border-bottom:2px solid {{ settingsEnumTabBar }}; font-weight:{{ settingsEnumTabWeight }};">枚举值设置</button>
+              <button onClick="{{ setSettingsTabParams }}" style="border:none; background:transparent; cursor:pointer; font-size:14px; padding:14px 0; color:{{ settingsParamsTabColor }}; border-bottom:2px solid {{ settingsParamsTabBar }}; font-weight:{{ settingsParamsTabWeight }};">参数设置</button>
             </div>
 
-            <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; overflow:hidden; margin-bottom:16px;">
-              <div style="display:flex; align-items:center; padding:0 18px; height:46px; background:#f7f9fc; border-bottom:1px solid #e5e8ee; font-size:13px; font-weight:600; color:#3c465c;">
-                <div style="width:48px; flex:none;">序号</div>
-                <div style="width:160px; flex:none;">规则名称</div>
-                <div style="width:120px; flex:none;">类型</div>
-                <div style="flex:1; min-width:160px;">说明</div>
-                <div style="width:72px; flex:none; text-align:center;">优先级</div>
-                <div style="width:64px; flex:none; text-align:center;">启用</div>
-              </div>
-              <sc-for list="{{ codeRuleRows }}" as="r" hint-placeholder-count="3">
-                <div style="display:flex; align-items:center; padding:0 18px; min-height:54px; border-bottom:1px solid #f0f2f6; font-size:13.5px; color:#3c465c;">
-                  <div style="width:48px; flex:none; color:#828c9c;">{{ r.idx }}</div>
-                  <div style="width:160px; flex:none; color:#1a2233; font-weight:500;">{{ r.name }}</div>
-                  <div style="width:120px; flex:none;">
-                    <span style="display:inline-flex; padding:3px 10px; border-radius:6px; font-size:12px; background:{{ r.typeBg }}; color:{{ r.typeFg }};">{{ r.typeLabel }}</span>
-                  </div>
-                  <div style="flex:1; min-width:160px; color:#5b6677; padding-right:12px;">{{ r.desc }}</div>
-                  <div style="width:72px; flex:none; text-align:center; font-variant-numeric:tabular-nums;">{{ r.priority }}</div>
-                  <div style="width:64px; flex:none; display:flex; justify-content:center;">
-                    <button onClick="{{ r.toggle }}" style="border:none; cursor:pointer; padding:0; background:transparent;">
-                      <span style="display:inline-block; width:38px; height:21px; border-radius:999px; background:{{ r.swBg }}; position:relative;">
-                        <span style="position:absolute; top:2px; left:{{ r.swX }}; width:17px; height:17px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.2);"></span>
+            <sc-if value="{{ isSettingsParamsTab }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:8px 28px 28px;">
+                <!-- 数蚕lims直连 -->
+                <div style="display:flex; align-items:center; min-height:56px; border-bottom:1px solid #f0f2f6;">
+                  <div style="width:148px; flex:none; font-size:14px; color:#5b6677;">数蚕lims直连</div>
+                  <div style="flex:1; display:flex; align-items:center; gap:10px;">
+                    <button onClick="{{ toggleLimsDirect }}" style="border:none; background:transparent; cursor:pointer; padding:0;">
+                      <span style="display:inline-block; width:44px; height:24px; border-radius:999px; background:{{ limsDirectSwBg }}; position:relative;">
+                        <span style="position:absolute; top:3px; left:{{ limsDirectSwX }}; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.2);"></span>
                       </span>
                     </button>
+                    <span style="font-size:14px; color:{{ limsDirectLabelColor }};">{{ limsDirectLabel }}</span>
                   </div>
                 </div>
-              </sc-for>
-            </div>
-
-            <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; overflow:hidden;">
-              <div style="padding:16px 18px; background:#f7f9fc; border-bottom:1px solid #e5e8ee; font-size:13px; font-weight:600; color:#3c465c;">转换预览（第三方 LIMS 非标编号示例）</div>
-              <div style="display:flex; align-items:center; padding:0 18px; height:42px; background:#fafbfc; border-bottom:1px solid #f0f2f6; font-size:12.5px; font-weight:600; color:#828c9c;">
-                <div style="flex:1; min-width:200px;">原编号（LIMS 下发）</div>
-                <div style="width:32px; flex:none; text-align:center;">→</div>
-                <div style="flex:1; min-width:200px;">标准化 ID（系统交互）</div>
-                <div style="flex:1; min-width:240px;">App 展示格式</div>
-              </div>
-              <sc-for list="{{ codePreviewRows }}" as="p" hint-placeholder-count="3">
-                <div style="display:flex; align-items:center; padding:12px 18px; border-bottom:1px solid #f0f2f6; font-size:13px; color:#3c465c; gap:8px;">
-                  <div style="flex:1; min-width:200px; color:#5b6677; word-break:break-all; font-family:ui-monospace,monospace; font-size:12px;">{{ p.original }}</div>
-                  <div style="width:32px; flex:none; text-align:center; color:#aab2bf;">→</div>
-                  <div style="flex:1; min-width:200px; color:#1d54c4; font-weight:600; word-break:break-all; font-variant-numeric:tabular-nums;">{{ p.standard }}</div>
-                  <div style="flex:1; min-width:240px; color:#1a2233; word-break:break-all;">{{ p.display }}</div>
+                <!-- 数蚕lims地址 -->
+                <div style="display:flex; align-items:center; min-height:56px; border-bottom:1px solid #f0f2f6;">
+                  <div style="width:148px; flex:none; font-size:14px; color:#5b6677;">数蚕lims地址</div>
+                  <div style="flex:1;">
+                    <input value="{{ limsAddress }}" onChange="{{ onLimsAddress }}" disabled="{{ limsAddressDisabled }}" style="width:100%; max-width:520px; height:36px; border:1px solid #e5e8ee; border-radius:6px; padding:0 12px; font-size:14px; color:#1a2233; background:{{ limsAddressBg }};" />
+                  </div>
                 </div>
-              </sc-for>
-            </div>
-          </sc-if>
+                <!-- 图采压缩开关 -->
+                <div style="display:flex; align-items:center; min-height:56px; border-bottom:1px solid #f0f2f6;">
+                  <div style="width:148px; flex:none; font-size:14px; color:#5b6677;">图采压缩开关</div>
+                  <div style="flex:1; display:flex; align-items:center; gap:10px;">
+                    <button onClick="{{ toggleImageCompress }}" style="border:none; background:transparent; cursor:pointer; padding:0;">
+                      <span style="display:inline-block; width:44px; height:24px; border-radius:999px; background:{{ imageCompressSwBg }}; position:relative;">
+                        <span style="position:absolute; top:3px; left:{{ imageCompressSwX }}; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.2);"></span>
+                      </span>
+                    </button>
+                    <span style="font-size:14px; color:{{ imageCompressLabelColor }};">{{ imageCompressLabel }}</span>
+                  </div>
+                </div>
+                <!-- 启用样品编号转换 -->
+                <div style="display:flex; align-items:flex-start; min-height:56px; padding-top:16px; border-bottom:1px solid #f0f2f6;">
+                  <div style="width:148px; flex:none; font-size:14px; color:#5b6677; padding-top:2px;">启用样品编号转换</div>
+                  <div style="flex:1;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <button onClick="{{ toggleCodeConversion }}" style="border:none; background:transparent; cursor:pointer; padding:0;">
+                        <span style="display:inline-block; width:44px; height:24px; border-radius:999px; background:{{ codeConvSwBg }}; position:relative;">
+                          <span style="position:absolute; top:3px; left:{{ codeConvSwX }}; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.2);"></span>
+                        </span>
+                      </button>
+                      <span style="font-size:14px; color:{{ codeConvLabelColor }};">{{ codeConvLabel }}</span>
+                    </div>
+                    <div style="margin-top:6px; font-size:12.5px; color:#9aa3b2; line-height:1.6;">对接第三方 LIMS 时，将非标编号转换为唯一标准 ID（如 SC2026/01001-01）；App 展示「转换后编号（原编号）」。</div>
+                  </div>
+                </div>
 
-          <sc-if value="{{ codeConversionDisabled }}" hint-placeholder-val="{{ false }}">
-            <div style="display:flex; align-items:flex-start; gap:10px; background:#f7f9fc; border:1px solid #e5e8ee; color:#5b6677; border-radius:8px; padding:14px 18px; font-size:13px; line-height:1.65;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#828c9c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-              <span>转换规则已关闭。App 与上位机将直接使用 LIMS 原编号交互。适用于数蚕 LIMS 直连或第三方编号已符合规范的场景。</span>
-            </div>
-          </sc-if>
+                <sc-if value="{{ codeConversionEnabled }}" hint-placeholder-val="{{ true }}">
+                  <div style="margin-top:20px;">
+                    <div style="font-size:13px; font-weight:600; color:#3c465c; margin-bottom:10px;">转换预览（第三方 LIMS 非标编号示例）</div>
+                    <div style="border:1px solid #e5e8ee; border-radius:8px; overflow:hidden;">
+                      <div style="display:flex; align-items:center; padding:0 16px; height:38px; background:#f7f9fc; border-bottom:1px solid #e5e8ee; font-size:12px; font-weight:600; color:#828c9c;">
+                        <div style="flex:1; min-width:180px;">原编号（LIMS 下发）</div>
+                        <div style="width:28px; flex:none; text-align:center;">→</div>
+                        <div style="flex:1; min-width:160px;">标准 ID（系统交互）</div>
+                        <div style="flex:1; min-width:220px;">App 展示格式</div>
+                      </div>
+                      <sc-for list="{{ codePreviewRows }}" as="p" hint-placeholder-count="3">
+                        <div style="display:flex; align-items:center; padding:10px 16px; border-bottom:1px solid #f0f2f6; font-size:12.5px; color:#3c465c; gap:6px;">
+                          <div style="flex:1; min-width:180px; color:#5b6677; word-break:break-all; font-family:ui-monospace,monospace; font-size:11.5px;">{{ p.original }}</div>
+                          <div style="width:28px; flex:none; text-align:center; color:#aab2bf;">→</div>
+                          <div style="flex:1; min-width:160px; color:#1d54c4; font-weight:600; word-break:break-all; font-variant-numeric:tabular-nums;">{{ p.standard }}</div>
+                          <div style="flex:1; min-width:220px; color:#1a2233; word-break:break-all; font-size:12px;">{{ p.display }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isSettingsEnumTab }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:48px 28px; text-align:center; color:#9aa3b2; font-size:14px;">枚举值设置（原型占位）</div>
+            </sc-if>
+          </div>
           <div style="height:8px;"></div>
         </div>
       </sc-if>
@@ -643,12 +647,12 @@ class Component extends DCLogic {
     relEditIdx: null,
     relForm: { item: '', table: '' },
     relError: '',
-    // 系统设置 · 样品编号转换
+    // 系统设置 · 系统参数
+    settingsTab: 'params',
+    limsDirect: true,
+    limsAddress: 'http://test.lims.shucantech.cn/prod-api',
+    imageCompress: false,
     codeConversionEnabled: true,
-    codeRules: [
-      { id: 'r1', name: '去除非法字符', type: 'sanitize', desc: '仅保留 A-Z、a-z、0-9、/、-、_，其余替换为 _', priority: 1, on: true },
-      { id: 'r2', name: '长度截断', type: 'max_length', replacement: '32', desc: '标准化编号最大 32 字符（上位机兼容）', priority: 2, on: true },
-    ],
     codePreviewSamples: [
       '第三方委托#2026-电缆-A001（杭州）',
       'LIMS/委托单/20260720/001-02',
@@ -690,36 +694,71 @@ class Component extends DCLogic {
   }
   tableLabel(code) { const t = this.TESTS.find((x) => x.code === code); return t ? t.label : code; }
 
-  CODE_TYPE_LABELS = {
-    sanitize: { label: '字符清洗', bg: '#eef4ff', fg: '#1d54c4' },
-    prefix: { label: '添加前缀', bg: '#e7f6ec', fg: '#1b8a5a' },
-    max_length: { label: '长度截断', bg: '#fef3e6', fg: '#a85d00' },
-    regex_replace: { label: '正则替换', bg: '#efeaff', fg: '#6a48e0' },
-  };
-
   hashCode(str) {
     let h = 0;
     for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
     return Math.abs(h).toString(36).toUpperCase().slice(0, 6);
   }
 
-  isStandardCode(code) {
-    return /^[A-Za-z0-9/_-]+$/.test(code) && code.length <= 32;
+  extractTokens(text) {
+    return (String(text || '').match(/[A-Za-z0-9]+/g) || []).filter(Boolean);
   }
 
-  convertCode(original, rules) {
-    if (!original || this.isStandardCode(original)) return original;
-    let result = original;
-    const active = rules.filter((r) => r.on).sort((a, b) => a.priority - b.priority);
-    for (const rule of active) {
-      if (rule.type === 'sanitize') {
-        result = result.replace(/[^A-Za-z0-9/_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-      } else if (rule.type === 'max_length') {
-        const max = parseInt(rule.replacement, 10) || 32;
-        if (result.length > max) result = result.slice(0, max);
-      }
+  normalizeTokens(tokens) {
+    const t = tokens.slice();
+    if (t[0] === 'SC' && t[1] && /^\d{4}$/.test(t[1])) t.splice(0, 2, 'SC' + t[1]);
+    return t;
+  }
+
+  isStandardCode(code) {
+    if (!code || code.length > 32) return false;
+    return /^[A-Za-z0-9]+([/_-][A-Za-z0-9]+)*$/.test(code);
+  }
+
+  joinTokens(tokens, maxLen) {
+    if (!tokens.length) return '';
+    const parts = this.normalizeTokens(tokens);
+    let suffix = '';
+    if (parts.length >= 2 && /^\d{1,3}$/.test(parts[parts.length - 1])) suffix = parts.pop().padStart(2, '0');
+    const main = parts.join('/');
+    let result = main && suffix ? main + '-' + suffix : (main || suffix);
+    if (result.length > maxLen) {
+      if (suffix) result = main.slice(0, Math.max(maxLen - suffix.length - 1, 4)) + '-' + suffix;
+      else result = result.slice(0, maxLen);
     }
-    return result || this.hashCode(original);
+    return result;
+  }
+
+  convertPreserveSlashes(original, maxLen) {
+    if (!original.includes('/')) return '';
+    const segs = original.split('/').map((seg) => this.joinTokens(this.extractTokens(seg), maxLen)).filter(Boolean);
+    if (!segs.length) return '';
+    const result = segs.join('/');
+    return this.isStandardCode(result) && result.length <= maxLen ? result : '';
+  }
+
+  ensureUnique(base, original) {
+    const h = this.hashCode(original).slice(0, 4);
+    if (base.includes('-')) {
+      const idx = base.lastIndexOf('-');
+      return base.slice(0, idx) + '/' + h + '-' + base.slice(idx + 1);
+    }
+    return base + '/' + h;
+  }
+
+  convertCode(original) {
+    if (!original || this.isStandardCode(original)) return original;
+    const maxLen = 32;
+    const preserved = this.convertPreserveSlashes(original, maxLen);
+    if (preserved) return preserved;
+    const tokens = this.extractTokens(original);
+    let result = this.joinTokens(tokens, maxLen);
+    if (!result || !this.isStandardCode(result)) result = 'TP/' + this.hashCode(original);
+    else {
+      result = this.ensureUnique(result, original);
+      if (result.length > maxLen) result = result.slice(0, maxLen).replace(/[/\-_]+$/, '');
+    }
+    return this.isStandardCode(result) ? result : 'TP/' + this.hashCode(original);
   }
 
   componentDidMount() {
@@ -735,6 +774,14 @@ class Component extends DCLogic {
       try { localStorage.setItem('labdata_sample_code_conversion_enabled', next ? 'true' : 'false'); } catch { /* ignore */ }
       return { codeConversionEnabled: next };
     });
+  }
+
+  toggleLimsDirect() {
+    this.setState((st) => ({ limsDirect: !st.limsDirect }));
+  }
+
+  toggleImageCompress() {
+    this.setState((st) => ({ imageCompress: !st.imageCompress }));
   }
 
   renderVals() {
@@ -767,7 +814,7 @@ class Component extends DCLogic {
       ]),
       grp('任务日志', false),
       grp('系统设置', isSettings, [
-        child('样品编号转换', isSettings, goSettings),
+        child('系统参数', isSettings, goSettings),
       ]),
     ];
 
@@ -779,7 +826,7 @@ class Component extends DCLogic {
       tab('关系配置', isRelations, goRelations),
       tab('数据识别规则', isRules, goRules),
       tab('图像识别调试', false),
-      tab('系统设置', isSettings, goSettings),
+      tab('系统参数', isSettings, goSettings),
     ];
 
     // ----- device rows -----
@@ -831,21 +878,14 @@ class Component extends DCLogic {
       del: () => this.setState((p) => ({ relRows: p.relRows.filter((_, k) => k !== i) })),
     }));
 
-    const codeRuleRows = s.codeRules.map((r, i) => {
-      const t = this.CODE_TYPE_LABELS[r.type] || { label: r.type, bg: '#eef1f5', fg: '#5b6677' };
-      return {
-        idx: i + 1, name: r.name, desc: r.desc, priority: r.priority,
-        typeLabel: t.label, typeBg: t.bg, typeFg: t.fg,
-        swBg: r.on ? '#2563eb' : '#cdd3dc', swX: r.on ? '19px' : '2px',
-        toggle: () => this.setState((st) => { const rs = st.codeRules.slice(); rs[i] = { ...rs[i], on: !rs[i].on }; return { codeRules: rs }; }),
-      };
-    });
-
     const codePreviewRows = s.codePreviewSamples.map((original) => {
-      const standard = s.codeConversionEnabled ? this.convertCode(original, s.codeRules) : original;
+      const standard = s.codeConversionEnabled ? this.convertCode(original) : original;
       const display = s.codeConversionEnabled && standard !== original ? standard + '（' + original + '）' : original;
       return { original, standard, display };
     });
+
+    const isSettingsParamsTab = s.settingsTab === 'params';
+    const isSettingsEnumTab = s.settingsTab === 'enum';
 
     const tableOptions = this.TESTS.map((t) => ({ code: t.code, label: t.label }));
     const curTest = this.TESTS.find((t) => t.code === s.form.table);
@@ -922,13 +962,39 @@ class Component extends DCLogic {
       onRelItem: (e) => this.setState((p) => ({ relForm: { ...p.relForm, item: e.target.value }, relError: '' })),
       onRelTable: (e) => this.setState((p) => ({ relForm: { ...p.relForm, table: e.target.value }, relError: '' })),
       saveRelModal: () => this.saveRel(),
-      // 系统设置 · 样品编号转换
+      // 系统设置 · 系统参数
+      isSettingsParamsTab, isSettingsEnumTab,
+      settingsEnumTabColor: isSettingsEnumTab ? '#2563eb' : '#5b6677',
+      settingsEnumTabBar: isSettingsEnumTab ? '#2563eb' : 'transparent',
+      settingsEnumTabWeight: isSettingsEnumTab ? '600' : '400',
+      settingsParamsTabColor: isSettingsParamsTab ? '#2563eb' : '#5b6677',
+      settingsParamsTabBar: isSettingsParamsTab ? '#2563eb' : 'transparent',
+      settingsParamsTabWeight: isSettingsParamsTab ? '600' : '400',
+      setSettingsTabEnum: () => this.setState({ settingsTab: 'enum' }),
+      setSettingsTabParams: () => this.setState({ settingsTab: 'params' }),
+      limsDirect: s.limsDirect,
+      limsDirectSwBg: s.limsDirect ? '#2563eb' : '#cdd3dc',
+      limsDirectSwX: s.limsDirect ? '23px' : '3px',
+      limsDirectLabel: s.limsDirect ? '开启' : '关闭',
+      limsDirectLabelColor: s.limsDirect ? '#2563eb' : '#9aa3b2',
+      toggleLimsDirect: () => this.toggleLimsDirect(),
+      limsAddress: s.limsAddress,
+      limsAddressDisabled: !s.limsDirect,
+      limsAddressBg: s.limsDirect ? '#fff' : '#f4f6f9',
+      onLimsAddress: (e) => this.setState({ limsAddress: e.target.value }),
+      imageCompress: s.imageCompress,
+      imageCompressSwBg: s.imageCompress ? '#2563eb' : '#cdd3dc',
+      imageCompressSwX: s.imageCompress ? '23px' : '3px',
+      imageCompressLabel: s.imageCompress ? '开启' : '关闭',
+      imageCompressLabelColor: s.imageCompress ? '#2563eb' : '#9aa3b2',
+      toggleImageCompress: () => this.toggleImageCompress(),
       codeConversionEnabled: s.codeConversionEnabled,
-      codeConversionDisabled: !s.codeConversionEnabled,
       codeConvSwBg: s.codeConversionEnabled ? '#2563eb' : '#cdd3dc',
       codeConvSwX: s.codeConversionEnabled ? '23px' : '3px',
+      codeConvLabel: s.codeConversionEnabled ? '开启' : '关闭',
+      codeConvLabelColor: s.codeConversionEnabled ? '#2563eb' : '#9aa3b2',
       toggleCodeConversion: () => this.toggleCodeConversion(),
-      codeRuleRows, codePreviewRows,
+      codePreviewRows,
     };
   }
 

@@ -3,15 +3,15 @@
  *
  * 对接第三方 LIMS 时，原编号可能含汉字、特殊符号或超长字符串，影响上位机兼容性。
  * 后端维护转换规则，生成标准化 ID 用于系统交互；App 展示「转换后编号（原编号）」。
- * 开关由数采 Web「系统设置」控制，App 只读消费。
+ * 开关由数采 Web「系统设置 · 系统参数」控制，App 只读消费。
  */
 
 const STORAGE_KEY = 'labdata_sample_code_conversion_enabled';
 
-/** 默认转换规则（数采 Web「系统设置」维护，App 通过 API 同步） */
+/** 默认转换规则（数采 Web「系统参数」维护，App 通过 API 同步） */
 export const DEFAULT_CONVERSION_RULES = [
-  { id: 'r1', name: '去除非法字符', type: 'sanitize', pattern: '', replacement: '', priority: 1,
-    desc: '仅保留 A-Z、a-z、0-9、/、-、_，其余替换为 _' },
+  { id: 'r1', name: '片段拼接', type: 'segment_join', pattern: '', replacement: '', priority: 1,
+    desc: '提取字母数字片段，以 / 或 - 拼接为唯一标准编码' },
   { id: 'r2', name: '长度截断', type: 'max_length', pattern: '', replacement: '32', priority: 2,
     desc: '标准化编号最大 32 字符（上位机兼容）' },
 ];
@@ -49,49 +49,97 @@ function hashCode(str) {
   return Math.abs(h).toString(36).toUpperCase().slice(0, 6);
 }
 
-/** 判断编号是否已为标准格式（无需转换） */
-export function isStandardSampleCode(code) {
-  if (!code) return true;
-  return /^[A-Za-z0-9/_-]+$/.test(code) && code.length <= 32;
+/** 提取字母数字片段 */
+function extractTokens(text) {
+  return (String(text || '').match(/[A-Za-z0-9]+/g) || []).filter(Boolean);
 }
 
-/** 按规则库将原编号转换为标准化 ID */
+/** 合并 SC + 年份 → SC2026 */
+function normalizeTokens(tokens) {
+  const t = [...tokens];
+  if (t[0] === 'SC' && t[1] && /^\d{4}$/.test(t[1])) {
+    t.splice(0, 2, `SC${t[1]}`);
+  }
+  return t;
+}
+
+/**
+ * 判断编号是否已为标准格式（无需转换）
+ * 规则：/ - _ 仅作为字母数字片段之间的单分隔符，不可连续或首尾出现
+ */
+export function isStandardSampleCode(code) {
+  if (!code || code.length > 32) return false;
+  return /^[A-Za-z0-9]+([/_-][A-Za-z0-9]+)*$/.test(code);
+}
+
+/** 将 token 列表拼接为标准 ID */
+function joinTokens(tokens, maxLen = 32) {
+  if (!tokens.length) return '';
+  const parts = normalizeTokens(tokens);
+  let suffix = '';
+  if (parts.length >= 2 && /^\d{1,3}$/.test(parts[parts.length - 1])) {
+    suffix = parts.pop().padStart(2, '0');
+  }
+  const main = parts.join('/');
+  let result = main && suffix ? `${main}-${suffix}` : (main || suffix);
+  if (result.length > maxLen) {
+    if (suffix) {
+      const budget = Math.max(maxLen - suffix.length - 1, 4);
+      result = `${main.slice(0, budget)}-${suffix}`;
+    } else {
+      result = result.slice(0, maxLen);
+    }
+  }
+  return result;
+}
+
+/** 尝试保留原编码中的 / 分段结构 */
+function convertPreserveSlashes(originalCode, maxLen) {
+  if (!originalCode.includes('/')) return '';
+  const segs = originalCode.split('/').map((seg) => joinTokens(extractTokens(seg), maxLen)).filter(Boolean);
+  if (!segs.length) return '';
+  const result = segs.join('/');
+  return isStandardSampleCode(result) && result.length <= maxLen ? result : '';
+}
+
+/** 为非标来源追加唯一性片段（哈希 4 位） */
+function ensureUnique(base, originalCode) {
+  const h = hashCode(originalCode).slice(0, 4);
+  if (base.includes('-')) {
+    const idx = base.lastIndexOf('-');
+    return `${base.slice(0, idx)}/${h}-${base.slice(idx + 1)}`;
+  }
+  return `${base}/${h}`;
+}
+
+function getMaxLen(config) {
+  const rule = (config?.rules || DEFAULT_CONVERSION_RULES).find((r) => r.type === 'max_length' && r.on !== false);
+  return parseInt(rule?.replacement, 10) || 32;
+}
+
+/** 按规则库将原编号转换为标准化唯一 ID */
 export function convertSampleCode(originalCode, config = DEFAULT_CONVERSION_CONFIG) {
   if (!originalCode) return '';
   if (isStandardSampleCode(originalCode)) return originalCode;
 
-  const rules = [...(config.rules || DEFAULT_CONVERSION_RULES)].sort((a, b) => a.priority - b.priority);
-  let result = originalCode;
+  const maxLen = getMaxLen(config);
 
-  for (const rule of rules) {
-    switch (rule.type) {
-      case 'sanitize':
-        result = result.replace(/[^A-Za-z0-9/_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-        break;
-      case 'regex_replace':
-        if (rule.pattern) {
-          try {
-            result = result.replace(new RegExp(rule.pattern, 'g'), rule.replacement || '');
-          } catch { /* invalid regex */ }
-        }
-        break;
-      case 'prefix':
-        if (rule.replacement && !result.startsWith(rule.replacement)) {
-          result = rule.replacement + hashCode(originalCode);
-        }
-        break;
-      case 'max_length': {
-        const max = parseInt(rule.replacement, 10) || 32;
-        if (result.length > max) result = result.slice(0, max);
-        break;
-      }
-      default:
-        break;
+  const preserved = convertPreserveSlashes(originalCode, maxLen);
+  if (preserved) return preserved;
+
+  const tokens = extractTokens(originalCode);
+  let result = joinTokens(tokens, maxLen);
+
+  if (!result || !isStandardSampleCode(result)) {
+    result = `TP/${hashCode(originalCode)}`;
+  } else {
+    result = ensureUnique(result, originalCode);
+    if (result.length > maxLen) {
+      result = result.slice(0, maxLen).replace(/[/\-_]+$/, '');
     }
   }
 
-  if (!result) result = hashCode(originalCode);
-  return result;
+  return isStandardSampleCode(result) ? result : `TP/${hashCode(originalCode)}`;
 }
 
 /**
