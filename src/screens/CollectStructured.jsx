@@ -301,6 +301,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function reRecognizeCell(sub, cell) {
     if (!sub || !cell || flowLocked || !cell.attachments.length) return;
+    if (!guardStartRequired()) return;
     touchReturn();
     const device = deviceForSub(sub);
     if (!device) return;
@@ -335,6 +336,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function addAttach(cellKey, kind = 'upload') {
     if (flowLocked) return;
+    if (!guardStartRequired()) return;
     setCells((prev) => updateCell(prev, cellKey, (cell) => ({
       ...cell,
       attachments: [...cell.attachments, { id: Date.now() + '_' + Math.random().toString(36).slice(2, 6), kind }],
