@@ -58,14 +58,6 @@ export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked,
     return true;
   }
 
-  function guardStartForManual() {
-    if (requireStartBeforeCollect) {
-      setToast('请先记录试验开始时间');
-      return false;
-    }
-    return true;
-  }
-
   function handleRecordStartClick() {
     if (!canRecordStart || recording) return;
     if (timing.startedAt) setConfirmOverwrite(true);
@@ -105,7 +97,6 @@ export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked,
     cancelOverwrite: () => setConfirmOverwrite(false),
     guardStartForUpload,
     guardStartForOcr,
-    guardStartForManual,
     clearEndedOnReset,
     syncAutoStartFromHost,
   };

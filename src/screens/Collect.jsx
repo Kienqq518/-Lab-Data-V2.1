@@ -186,17 +186,12 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     const isAutoDirect = method === 'auto';
 
     const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
-    const { guardStartForUpload, guardStartForOcr, guardStartForManual, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
+    const { guardStartForUpload, guardStartForOcr, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
 
     function openOcrShoot(i) {
       if (!guardStartForOcr()) return;
       setShootIdx(i);
       setShotPhase('idle');
-    }
-
-    function guardManualEntry() {
-      if (method === 'ble' || method === 'ocr' || isAutoDirect || isExternal || isSerial) return true;
-      return guardStartForManual();
     }
 
     // L4 检测状态印章：退回复测未修改前不展示；修改后按未检测/检测中/已检测规则展示
@@ -248,13 +243,11 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       }, 1000);
     }
     function manualTime(i) {
-      if (!guardManualEntry()) return;
       touchReturn();
       setTimes((prev) => { const next = prev.slice(); const v = {}; measureFields.forEach((f) => { v[f.key] = ''; }); next[i] = { status: 'filled', vals: v, uploaded: false }; return next; });
     }
     function setField(i, key, value) {
       if (flowLocked) return; // 流程已锁定，禁止修改
-      if (!guardManualEntry()) return;
       touchReturn();
       setTimes((prev) => {
         const next = prev.slice();
