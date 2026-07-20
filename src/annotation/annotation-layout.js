@@ -7,8 +7,13 @@ export const RAIL_WIDTH_COLLAPSED = 52;
 /** 手机框设计宽度 */
 export const FRAME_WIDTH = 800;
 
-/** 批注开启时舞台总宽度 */
+/** 批注开启时舞台总宽度（下限；实际随视口宽度撑满浏览器） */
 export const STAGE_WIDTH_ANNOTATED = FRAME_WIDTH + RAIL_WIDTH * 2;
+
+/** 批注开启时按视口宽度计算舞台总宽，使左右轨道均分剩余留白 */
+export function getAnnotatedStageWidth(viewportWidth) {
+  return Math.max(viewportWidth, STAGE_WIDTH_ANNOTATED);
+}
 
 /** 批注关闭时舞台总宽度 */
 export const STAGE_WIDTH_COLLAPSED = FRAME_WIDTH + RAIL_WIDTH_COLLAPSED * 2;

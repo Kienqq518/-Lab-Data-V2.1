@@ -3,7 +3,6 @@ import { useAnnotation } from './AnnotationContext.jsx';
 import { AnnotationToggle } from './AnnotationToggle.jsx';
 import { AnnotationTooltip } from './AnnotationTooltip.jsx';
 import {
-  RAIL_WIDTH,
   RAIL_WIDTH_COLLAPSED,
   splitItemsToSides,
   spreadNonOverlapping,
@@ -71,7 +70,9 @@ function AnnotationRailColumn({ side, showToggle, items, frameRef, onContentHeig
     }
   }, [isAnnotationMode, items, buildRawItems, measurePass]);
 
-  const width = isAnnotationMode ? RAIL_WIDTH : RAIL_WIDTH_COLLAPSED;
+  const railStyle = isAnnotationMode
+    ? { flex: 1, minWidth: 0 }
+    : { width: RAIL_WIDTH_COLLAPSED, flex: 'none' };
   const bodyMinHeight = React.useMemo(() => {
     if (!positions.length) return 1280 - 52;
     const last = positions[positions.length - 1];
@@ -90,7 +91,7 @@ function AnnotationRailColumn({ side, showToggle, items, frameRef, onContentHeig
     <aside
       ref={railRef}
       className={`annotation-rail annotation-rail--${side}${isAnnotationMode ? ' annotation-rail--on' : ''}`}
-      style={{ width, minHeight: railHeight, height: isAnnotationMode ? railHeight : undefined }}
+      style={{ ...railStyle, minHeight: railHeight, height: isAnnotationMode ? railHeight : undefined }}
     >
       {showToggle && (
         <div className="annotation-rail__header">
