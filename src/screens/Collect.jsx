@@ -186,8 +186,18 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     const isAutoDirect = method === 'auto';
 
     const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
-    const { guardStartRequired, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
-    const uploadBlockedByTiming = requireStartBeforeCollect && pendingUpload > 0;
+    const { guardStartForUpload, guardStartForOcr, guardStartForManual, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
+
+    function openOcrShoot(i) {
+      if (!guardStartForOcr()) return;
+      setShootIdx(i);
+      setShotPhase('idle');
+    }
+
+    function guardManualEntry() {
+      if (method === 'ble' || method === 'ocr' || isAutoDirect || isExternal || isSerial) return true;
+      return guardStartForManual();
+    }
 
     // L4 检测状态印章：退回复测未修改前不展示；修改后按未检测/检测中/已检测规则展示
     const inspectState = resolveInspectStampState({
@@ -200,7 +210,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 
     // 设备直采：上位机整批写库，一键取值，全部时次 + 汇总一次性回填（只读）
     function captureAll() {
-      if (!guardStartRequired()) return;
       touchReturn();
       setBusy('all');
       setTimeout(() => {
@@ -211,7 +220,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 蓝牙/图采：逐条采集第 i 次
     function captureTime(i) {
-      if (!guardStartRequired()) return;
       touchReturn();
       setBusy(i);
       setTimeout(() => {
@@ -224,7 +232,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 外部程序：从平板程序已推数据中拉取（只读查看）
     function pullExternal() {
-      if (!guardStartRequired()) return;
       setBusy('all');
       setTimeout(() => {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: false }));
@@ -233,7 +240,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 串口（电子天平）：工业平板串口程序已采写库，本端一键读取整批展示，直接为已上传状态（不在本端采集/上传）
     function collectSerial() {
-      if (!guardStartRequired()) return;
       setBusy('all');
       setTimeout(() => {
         const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
@@ -242,13 +248,13 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       }, 1000);
     }
     function manualTime(i) {
-      if (!guardStartRequired()) return;
+      if (!guardManualEntry()) return;
       touchReturn();
       setTimes((prev) => { const next = prev.slice(); const v = {}; measureFields.forEach((f) => { v[f.key] = ''; }); next[i] = { status: 'filled', vals: v, uploaded: false }; return next; });
     }
     function setField(i, key, value) {
       if (flowLocked) return; // 流程已锁定，禁止修改
-      if (!guardStartRequired()) return;
+      if (!guardManualEntry()) return;
       touchReturn();
       setTimes((prev) => {
         const next = prev.slice();
@@ -263,7 +269,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 拍照识别/相册：取景页内识别，完成后回填该次并关闭
     function doShoot() {
-      if (!guardStartRequired()) return;
       const i = shootIdx;
       touchReturn();
       setShotPhase('recognizing');
@@ -280,7 +285,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     // 拍照识别·重新识别：用「上一次拍的同一张照片」重新做识别提取数据（区别于清除图片重新拍照上传）
     function reRecognize(i) {
       if (!(attachments[i] || []).length) return;
-      if (!guardStartRequired()) return;
       touchReturn();
       setBusy(i);
       setTimeout(() => {
@@ -294,7 +298,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       }, 950);
     }
     function upload() {
-      if (!guardStartRequired()) return;
+      if (!guardStartForUpload()) return;
       touchReturn();
       setPhase('uploading');
       setTimeout(() => {
@@ -304,7 +308,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     }
     // 拍照识别/蓝牙：逐条采集完一次即可单独上传该次
     function uploadTime(i) {
-      if (!guardStartRequired()) return;
+      if (!guardStartForUpload()) return;
       touchReturn();
       setBusy('up' + i);
       setTimeout(() => {
@@ -374,13 +378,13 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
         <AppBar title="检测任务" onBack={onBack} />
         {inspectState && <Stamp state={inspectState} />}
-        <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, ...(inspectState ? { paddingRight: 'calc(var(--gap-page) + 124px)' } : {}) }}>
+        <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
           <AnnotatedWrapper id="flowBanner" layout="block">
           <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
           </AnnotatedWrapper>
           {/* 基础信息（滚动时固定） */}
           <AnnotatedWrapper id="basicInfo" layout="block">
-          <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="header" />}>
+          <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
             <Grid items={[
               ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
               ['样品编号', ctx.sample.code], ['样品名称', ctx.sample.name],
@@ -532,7 +536,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                       {/* 顶部：拍照识别 / 连接采集 */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
                         {method === 'ocr' && ocrReady && !flowLocked && (
-                          <button onClick={() => { setShootIdx(i); setShotPhase('idle'); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--collect-ocr,#b06a00)', background: 'var(--collect-ocr-bg,#fff4e6)', color: 'var(--collect-ocr,#b06a00)', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: 600 }}>
+                          <button onClick={() => openOcrShoot(i)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--collect-ocr,#b06a00)', background: 'var(--collect-ocr-bg,#fff4e6)', color: 'var(--collect-ocr,#b06a00)', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: 600 }}>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
                             拍照识别
                           </button>
@@ -616,7 +620,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                                   </div>
                                 ))}
                                 {!flowLocked && (attachments[i] || []).length < 1 && (
-                                <button onClick={() => { if (method === 'ocr' && ocrReady) { setShootIdx(i); setShotPhase('idle'); } else { addAttach(i, 'upload'); } }} style={{ width: 76, height: 76, borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--bg-app)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                                <button onClick={() => { if (method === 'ocr' && ocrReady) openOcrShoot(i); else addAttach(i, 'upload'); }} style={{ width: 76, height: 76, borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--bg-app)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
                                   <span style={{ fontSize: 10 }}>拍照识别</span>
                                 </button>
@@ -633,7 +637,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                                   </React.Fragment>
                                 : flowLocked
                                 ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>数据已锁定</span>
-                                : <Button variant="secondary" onClick={() => uploadTime(i)} disabled={busy === 'up' + i || requireStartBeforeCollect}>{busy === 'up' + i ? '上传中…' : '确认并上传本次'}</Button>}
+                                : <Button variant="secondary" onClick={() => uploadTime(i)} disabled={busy === 'up' + i}>{busy === 'up' + i ? '上传中…' : '确认并上传本次'}</Button>}
                             </div>
                           </div>
                         : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -686,7 +690,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
         <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
           {!flowLocked && <Button variant="secondary" block onClick={reset}>重置全部</Button>}
           <Button block
-            disabled={flowLocked ? false : ((allUploaded ? false : pendingUpload === 0) || phase === 'uploading' || uploadBlockedByTiming)}
+            disabled={flowLocked ? false : ((allUploaded ? false : pendingUpload === 0) || phase === 'uploading')}
             onClick={flowLocked ? onBack : (allUploaded ? onDone : upload)}>
             {flowLocked ? '返回（数据已锁定）'
               : phase === 'uploading' ? '上传中…'
@@ -774,7 +778,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
     };
     return (
       <Card padding="0">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
             <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>

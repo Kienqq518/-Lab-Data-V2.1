@@ -113,8 +113,13 @@ function CollectStructured({ ctx, onBack, onDone }) {
     flowLocked,
     isAutoDirect,
   });
-  const { guardStartRequired, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
-  const uploadBlockedByTiming = requireStartBeforeCollect && summary.pendingUpload > 0;
+  const { guardStartForUpload, guardStartForOcr, guardStartForManual, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
+
+  function guardManualEntry(cellMethod) {
+    const m = cellMethod || method;
+    if (m === 'ble' || m === 'ocr' || m === 'auto' || m === 'external' || m === 'serial') return true;
+    return guardStartForManual();
+  }
 
   /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
   function touchReturn() {
@@ -189,7 +194,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
   function captureSub(sub) {
     const device = deviceForSub(sub);
     if (!sub || flowLocked || !device) return;
-    if (!guardStartRequired()) return;
     touchReturn();
     const source = device.method || 'manual';
     setBusy('all-' + sub.id);
@@ -211,9 +215,9 @@ function CollectStructured({ ctx, onBack, onDone }) {
   function collectOne(sub, cell) {
     const device = deviceForSub(sub);
     if (!sub || !cell || flowLocked || !device) return;
-    if (!guardStartRequired()) return;
-    touchReturn();
     const source = device.method || 'manual';
+    if (source === 'ocr' && !guardStartForOcr()) return;
+    touchReturn();
     setBusy('c-' + cell.key);
     setTimeout(() => {
       setCells((prev) => {
@@ -233,7 +237,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function setField(cellKey, field, value, idx) {
     if (flowLocked) return;
-    if (!guardStartRequired()) return;
+    if (!guardManualEntry()) return;
     touchReturn();
     const cell = cells[cellKey];
     if (!cell || (cell.status === 'uploaded' && !flowReturned)) return;
@@ -261,7 +265,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function uploadCell(cellKey) {
     if (flowLocked) return;
-    if (!guardStartRequired()) return;
+    if (!guardStartForUpload()) return;
     touchReturn();
     setBusy('up-' + cellKey);
     setTimeout(() => {
@@ -272,7 +276,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function uploadAll() {
     if (flowLocked) return;
-    if (!guardStartRequired()) return;
+    if (!guardStartForUpload()) return;
     touchReturn();
     setBusy('upload-all');
     setTimeout(() => {
@@ -308,7 +312,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function reRecognizeCell(sub, cell) {
     if (!sub || !cell || flowLocked || !cell.attachments.length) return;
-    if (!guardStartRequired()) return;
     touchReturn();
     const device = deviceForSub(sub);
     if (!device) return;
@@ -343,7 +346,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function addAttach(cellKey, kind = 'upload') {
     if (flowLocked) return;
-    if (!guardStartRequired()) return;
+    if (kind === 'photo' && method === 'ocr' && !guardStartForOcr()) return;
     setCells((prev) => updateCell(prev, cellKey, (cell) => ({
       ...cell,
       attachments: [...cell.attachments, { id: Date.now() + '_' + Math.random().toString(36).slice(2, 6), kind }],
@@ -428,13 +431,13 @@ function CollectStructured({ ctx, onBack, onDone }) {
       <AppBar title="检测任务" onBack={onBack} />
       {inspectState && <Stamp state={inspectState} />}
 
-      <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, ...(inspectState ? { paddingRight: 'calc(var(--gap-page) + 124px)' } : {}) }}>
+      <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
         <AnnotatedWrapper id="flowBanner" layout="block">
           <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
         </AnnotatedWrapper>
         <AnnotatedWrapper id="structuredMode" layout="block">
           <AnnotatedWrapper id="basicInfo" layout="block">
-            <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="header" />}>
+            <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
               <Grid items={[
                 ['任务编号', ctx.task?.code || MOCK.taskCodeFromSample(ctx.sample)],
                 ['样品编号', ctx.sample.code],
@@ -577,7 +580,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       flowReturned={flowReturned}
                       currentDevice={activeDevice}
                       deviceCatalog={deviceCatalog}
-                      requireStartBeforeCollect={requireStartBeforeCollect}
                       onCollect={() => collectOne(activeSub, activeCell)}
                       onReRecognize={() => reRecognizeCell(activeSub, activeCell)}
                       ocrUnlocked={!!editCells[activeCell.key]}
@@ -612,7 +614,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
       <AnnotatedWrapper id="uploadActions" layout="block">
         <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
           {!flowLocked && <Button variant="secondary" block onClick={reset}>重置全部</Button>}
-          <Button block disabled={flowLocked ? false : (!summary.allUploaded && (summary.pendingUpload === 0 || busy === 'upload-all' || uploadBlockedByTiming))}
+          <Button block disabled={flowLocked ? false : (!summary.allUploaded && (summary.pendingUpload === 0 || busy === 'upload-all'))}
             onClick={flowLocked ? onBack : (summary.allUploaded ? onDone : uploadAll)}>
             {flowLocked ? '返回（数据已锁定）'
               : busy === 'upload-all' ? '上传中…'
@@ -893,7 +895,7 @@ function CheckBox({ on }) {
   );
 }
 
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, requireStartBeforeCollect = false, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
@@ -975,7 +977,7 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
                   ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}><LockIcon />数据已锁定</span>
                   : method === 'auto'
                   ? <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--status-done-fg,#1b8a5a)', display: 'flex', alignItems: 'center', gap: 5 }}><CheckIcon />本单元已上传</span>
-                  : <Button variant="secondary" onClick={() => onUpload(cell.key)} disabled={uploading || requireStartBeforeCollect}>{uploading ? '上传中…' : cell.status === 'failed' ? '重试上传' : '确认并上传'}</Button>}
+                  : <Button variant="secondary" onClick={() => onUpload(cell.key)} disabled={uploading}>{uploading ? '上传中…' : cell.status === 'failed' ? '重试上传' : '确认并上传'}</Button>}
               </div>
             )}
           </div>}
@@ -1151,7 +1153,7 @@ function Section({ title, icon, extra, compact = false, children }) {
   };
   return (
     <Card padding="0">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '7px 16px' : '12px 16px', borderBottom: '1px solid var(--divider)', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: compact ? '7px 16px' : '12px 16px', borderBottom: '1px solid var(--divider)', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d={paths[icon] || paths.info} /></svg>
           <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, minWidth: 0, overflow: 'hidden' }}>{title}</div>

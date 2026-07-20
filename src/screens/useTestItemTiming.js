@@ -42,9 +42,25 @@ export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked,
     MOCK.recordTestTimingEnd(ctx, endedAt);
   }, [allUploaded, timing.startedAt, timing.endedAt, ctx]);
 
-  function guardStartRequired() {
+  function guardStartForUpload() {
     if (requireStartBeforeCollect) {
       setToast('请先记录试验开始时间后再上传数据');
+      return false;
+    }
+    return true;
+  }
+
+  function guardStartForOcr() {
+    if (requireStartBeforeCollect) {
+      setToast('请先记录试验开始时间');
+      return false;
+    }
+    return true;
+  }
+
+  function guardStartForManual() {
+    if (requireStartBeforeCollect) {
+      setToast('请先记录试验开始时间');
       return false;
     }
     return true;
@@ -87,7 +103,9 @@ export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked,
     handleRecordStartClick,
     recordStart,
     cancelOverwrite: () => setConfirmOverwrite(false),
-    guardStartRequired,
+    guardStartForUpload,
+    guardStartForOcr,
+    guardStartForManual,
     clearEndedOnReset,
     syncAutoStartFromHost,
   };

@@ -80,8 +80,12 @@ function CollectLite({ ctx, onBack, onDone }) {
   const allUploaded = uploaded;
   const isAutoDirect = method === 'auto';
   const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
-  const { guardStartRequired, requireStartBeforeCollect } = timingCtl;
-  const uploadBlockedByTiming = requireStartBeforeCollect && !uploaded;
+  const { guardStartForUpload, guardStartForManual, requireStartBeforeCollect } = timingCtl;
+
+  function guardManualEntry() {
+    if (method === 'ble' || method === 'auto') return true;
+    return guardStartForManual();
+  }
   const inspectState = resolveInspectStampState({
     flowReturned,
     returnTouched,
@@ -97,13 +101,13 @@ function CollectLite({ ctx, onBack, onDone }) {
 
   function setField(key, value) {
     if (fieldsReadOnly || uploading) return;
-    if (!guardStartRequired()) return;
+    if (!guardManualEntry()) return;
     touchReturn();
     setVals((prev) => ({ ...prev, [key]: value }));
   }
 
   function upload() {
-    if (!guardStartRequired()) return;
+    if (!guardStartForUpload()) return;
     touchReturn();
     setUploading(true);
     setTimeout(() => {
@@ -116,11 +120,11 @@ function CollectLite({ ctx, onBack, onDone }) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
       <AppBar title={ctx.item?.name || '试验检测'} onBack={onBack} />
       {inspectState && <Stamp state={inspectState} />}
-      <div style={{ padding: 'var(--gap-page)', paddingBottom: 0, ...(inspectState ? { paddingRight: 'calc(var(--gap-page) + 124px)' } : {}) }}>
+      <div style={{ padding: 'var(--gap-page)', paddingBottom: 0 }}>
         <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
       </div>
-      <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', paddingTop: flowLocked || flowReturned ? 0 : 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14, ...(inspectState ? { paddingRight: 'calc(var(--gap-page) + 124px)' } : {}) }}>
-        <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="header" />}>
+      <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', paddingTop: flowLocked || flowReturned ? 0 : 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="headerEnd" />}>
           <Grid items={[
             ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
             ['样品编号', ctx.sample?.code || '—'],
@@ -235,10 +239,10 @@ function CollectLite({ ctx, onBack, onDone }) {
         {flowLocked
           ? <Button block onClick={onBack}>返回（数据已锁定）</Button>
           : isReview && !flowLocked
-          ? <Button block disabled={uploading || uploadBlockedByTiming} onClick={upload}>{uploading ? '上传中…' : (uploaded ? '重新上传' : '上传结果')}</Button>
+          ? <Button block disabled={uploading} onClick={upload}>{uploading ? '上传中…' : (uploaded ? '重新上传' : '上传结果')}</Button>
           : uploaded
           ? <Button block onClick={onDone}>完成并退出</Button>
-          : <Button block disabled={uploading || uploadBlockedByTiming} onClick={upload}>{uploading ? '上传中…' : '上传结果'}</Button>}
+          : <Button block disabled={uploading} onClick={upload}>{uploading ? '上传中…' : '上传结果'}</Button>}
       </div>
       </AnnotatedWrapper>
 
@@ -285,7 +289,7 @@ function Section({ title, icon, extra, children }) {
   };
   return (
     <Card padding="0">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
           <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
