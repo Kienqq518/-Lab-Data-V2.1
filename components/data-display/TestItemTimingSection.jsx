@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { Card } from './Card.jsx';
 import { Button } from '../forms/Button.jsx';
 import { formatTestTiming } from '../../src/screens/collect-model.js';
 
@@ -7,9 +8,18 @@ function getModalRoot() {
   return document.querySelector('.screen') || document.body;
 }
 
+function ClockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  );
+}
+
 function TimingGrid({ items }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px', marginTop: 12 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
       {items.map(([label, value]) => (
         <div key={label} style={{ display: 'flex', gap: 8, fontSize: 'var(--fs-base)' }}>
           <span style={{ color: 'var(--text-secondary)', flex: 'none' }}>{label}</span>
@@ -85,17 +95,25 @@ export function TestItemTimingSection({
 }) {
   return (
     <React.Fragment>
-      <TimingGrid items={[
-        ['试验开始时间', formatTestTiming(timing.startedAt)],
-        ['试验结束时间', formatTestTiming(timing.endedAt)],
-      ]} />
-      {canRecordStart && (
-        <div style={{ marginTop: 12 }}>
-          <Button size="sm" variant="secondary" onClick={onRecordStartClick} disabled={recording}>
-            {recording ? '记录中…' : '记录开始时间'}
-          </Button>
+      <Card padding="0">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--divider)' }}>
+          <ClockIcon />
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>试验时间</span>
         </div>
-      )}
+        <div style={{ padding: 16 }}>
+          <TimingGrid items={[
+            ['试验开始时间', formatTestTiming(timing.startedAt)],
+            ['试验结束时间', formatTestTiming(timing.endedAt)],
+          ]} />
+          {canRecordStart && (
+            <div style={{ marginTop: 12 }}>
+              <Button size="sm" variant="secondary" onClick={onRecordStartClick} disabled={recording}>
+                {recording ? '记录中…' : '记录开始时间'}
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
       {confirmOverwrite && (
         <OverwriteConfirmModal
           currentStartedAt={timing.startedAt}

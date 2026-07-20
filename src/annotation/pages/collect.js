@@ -21,7 +21,7 @@ export const collectAnnotations = {
   testItemTiming: {
     title: '试验开始/结束时间',
     requirementLogic: '试验项级检测起止时间（区别于单次采集的 collectedAt/uploadedAt）。开始时间：检测员手动点击「记录开始时间」；未记录前禁止一切采集与上传。在尚未上传任何数据前可多次点击覆盖开始时间（需确认）；一旦存在已上传数据则隐藏按钮；「重置全部」清空全部采集数据（含已上传）后按钮重现，startedAt 保留，可通过覆盖确认修改。结束时间：该试验项最后一条数据上传成功时自动写入，无手动按钮。三种 L4（标准/多子项/轻量版）行为一致。退回复测清空 endedAt；流程锁定后只读。',
-    displayRule: '基础信息区 Grid 增加「试验开始时间」「试验结束时间」；无开始时间且可记录时展示「记录开始时间」按钮。',
+    displayRule: '独立 Section「试验时间」卡片，位于环境信息与试验数据之间；展示开始/结束时间及「记录开始时间」按钮。',
     interactionLogic: '点击记录开始 → mock/API 写入 startedAt；全部 uploaded 后自动写入 endedAt；覆盖开始时间弹确认框。',
   },
   deviceInfo: {

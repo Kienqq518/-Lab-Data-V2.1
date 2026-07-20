@@ -418,16 +418,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
               </div>
             )}
             <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>试验次数随任务下发 · 不可修改</div>
-            <TestItemTimingSection
-              timing={timingCtl.timing}
-              canRecordStart={timingCtl.canRecordStart}
-              recording={timingCtl.recording}
-              confirmOverwrite={timingCtl.confirmOverwrite}
-              toast={timingCtl.toast}
-              onRecordStartClick={timingCtl.handleRecordStartClick}
-              onConfirmOverwrite={timingCtl.recordStart}
-              onCancelOverwrite={timingCtl.cancelOverwrite}
-            />
             <SampleLabelQrLink sample={ctx.sample} />
           </Section>
           </AnnotatedWrapper>
@@ -473,6 +463,19 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
             onRefresh={() => setEnv({ wd: (20 + Math.random() * 3).toFixed(1), sd: (28 + Math.random() * 8).toFixed(1) })}
             Section={Section}
             Grid={Grid}
+          />
+          </AnnotatedWrapper>
+
+          <AnnotatedWrapper id="testItemTiming" layout="block">
+          <TestItemTimingSection
+            timing={timingCtl.timing}
+            canRecordStart={timingCtl.canRecordStart}
+            recording={timingCtl.recording}
+            confirmOverwrite={timingCtl.confirmOverwrite}
+            toast={timingCtl.toast}
+            onRecordStartClick={timingCtl.handleRecordStartClick}
+            onConfirmOverwrite={timingCtl.recordStart}
+            onCancelOverwrite={timingCtl.cancelOverwrite}
           />
           </AnnotatedWrapper>
 

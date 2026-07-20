@@ -439,16 +439,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
                 含 {subs.length} 个试验子项 · 采集单元 {summary.total} 个 · 试验次数随任务下发，不可修改 · 物资版多子项
               </div>
-              <TestItemTimingSection
-                timing={timingCtl.timing}
-                canRecordStart={timingCtl.canRecordStart}
-                recording={timingCtl.recording}
-                confirmOverwrite={timingCtl.confirmOverwrite}
-                toast={timingCtl.toast}
-                onRecordStartClick={timingCtl.handleRecordStartClick}
-                onConfirmOverwrite={timingCtl.recordStart}
-                onCancelOverwrite={timingCtl.cancelOverwrite}
-              />
               <SampleLabelQrLink sample={ctx.sample} />
             </Section>
           </AnnotatedWrapper>
@@ -486,6 +476,19 @@ function CollectStructured({ ctx, onBack, onDone }) {
             Section={Section}
             Grid={Grid}
           />
+        </AnnotatedWrapper>
+
+        <AnnotatedWrapper id="testItemTiming" layout="block">
+        <TestItemTimingSection
+          timing={timingCtl.timing}
+          canRecordStart={timingCtl.canRecordStart}
+          recording={timingCtl.recording}
+          confirmOverwrite={timingCtl.confirmOverwrite}
+          toast={timingCtl.toast}
+          onRecordStartClick={timingCtl.handleRecordStartClick}
+          onConfirmOverwrite={timingCtl.recordStart}
+          onCancelOverwrite={timingCtl.cancelOverwrite}
+        />
         </AnnotatedWrapper>
 
         {(deviceMissing || methodMissing || fieldMissing) && (
