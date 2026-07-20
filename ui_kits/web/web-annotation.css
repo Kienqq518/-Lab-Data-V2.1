@@ -81,6 +81,7 @@
 .web-annotation-marker__core {
   position: relative;
   z-index: 1;
+  pointer-events: none;
 }
 
 .web-annotation-marker__pulse {
@@ -106,7 +107,7 @@
 /* 点击后加载的批注卡片 */
 .web-annotation-card-host {
   position: fixed;
-  z-index: 960;
+  z-index: 10050;
   max-height: calc(100vh - 68px);
   overflow: auto;
   pointer-events: auto;
