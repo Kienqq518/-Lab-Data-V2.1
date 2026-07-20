@@ -101,9 +101,12 @@ function PrototypeStage({ frameRef, children }) {
       setViewportWidth(window.innerWidth);
       const nextStageWidth = isAnnotationMode ? getAnnotatedStageWidth(window.innerWidth) : STAGE_WIDTH_COLLAPSED;
       const byWidth = window.innerWidth / nextStageWidth;
-      // 批注开启且轨道变高时，按手机框高度(1280)适配缩放，舞台整体可纵向滚动查看底部卡片
-      const fitHeight = isAnnotationMode ? Math.min(stageHeight, 1280) : stageHeight;
-      const byHeight = window.innerHeight / fitHeight;
+      if (isAnnotationMode) {
+        // 批注模式：仅按宽度缩放，使左右轨道撑满浏览器宽度，纵向超出则滚动查看
+        setLiveScale(Math.min(byWidth, 1));
+        return;
+      }
+      const byHeight = window.innerHeight / stageHeight;
       setLiveScale(Math.min(byWidth, byHeight, 1));
     };
     fit();

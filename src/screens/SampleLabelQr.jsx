@@ -60,13 +60,13 @@ export function SampleLabelQrModal({ sample, onClose }) {
           pointerEvents: 'none',
         }}
       >
-        <AnnotatedWrapper id="sampleLabelQrModal" layout="block">
+        <AnnotatedWrapper id="sampleLabelQrModal" layout="inline">
         <div
           role="dialog"
           aria-labelledby="sample-label-qr-title"
           style={{
             pointerEvents: 'auto',
-            zIndex: 260, width: 'min(300px, calc(100% - 40px))',
+            zIndex: 260, width: 300, maxWidth: 'calc(100% - 40px)',
             background: 'var(--white)', borderRadius: 'var(--radius-lg, 16px)',
             boxShadow: '0 24px 56px rgba(15,23,42,0.28)', overflow: 'hidden',
           }}
