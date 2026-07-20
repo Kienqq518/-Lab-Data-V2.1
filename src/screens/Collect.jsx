@@ -11,7 +11,7 @@ import { EnvInfoSection, getOcrReferenceAttachments, mergeRecordEnvVals, RecordE
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
-import { OcrScenarioSelect } from './OcrScenarioSelect.jsx';
+import { OcrCaptureBar } from './OcrCaptureBar.jsx';
 import { OcrImagePreview } from './OcrImagePreview.jsx';
 import {
   clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
@@ -634,39 +634,21 @@ import {
                   const locked = ocrField && !editTimes[i]; // 识别结果默认锁定置灰，点「编辑」解锁
                   return (
                     <React.Fragment>
-                      {/* 顶部：场景选择 + 拍照识别 / 连接采集 */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                        {method === 'ocr' && !flowLocked && (
-                          <OcrScenarioSelect
-                            ocrScenarios={ocrScenarios}
-                            value={selectedScenarioFor(i)}
-                            onChange={(name) => setScenarioFor(i, name)}
-                            style={{ flex: 1, minWidth: 180 }}
-                          />
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
-                          {method === 'ocr' && !flowLocked && (
-                            <button
-                              onClick={() => openOcrShoot(i)}
-                              disabled={!hasPassedRule || !selectedScenarioFor(i)}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px',
-                                borderRadius: 'var(--radius-pill)', border: '1px solid var(--collect-ocr,#b06a00)',
-                                background: hasPassedRule && selectedScenarioFor(i) ? 'var(--collect-ocr-bg,#fff4e6)' : 'var(--surface-sunken)',
-                                color: hasPassedRule && selectedScenarioFor(i) ? 'var(--collect-ocr,#b06a00)' : 'var(--text-placeholder)',
-                                cursor: hasPassedRule && selectedScenarioFor(i) ? 'pointer' : 'not-allowed',
-                                fontSize: 'var(--fs-sm)', fontWeight: 600,
-                              }}
-                            >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
-                              拍照识别
-                            </button>
-                          )}
-                          {method === 'ble' && !filled && !flowLocked && (
-                            <Button onClick={() => captureTime(i)} disabled={busy === i}>🔵 连接采集</Button>
-                          )}
+                      {/* 顶部：场景选择 + 拍照识别 */}
+                      {method === 'ocr' && !flowLocked && (
+                        <OcrCaptureBar
+                          ocrScenarios={ocrScenarios}
+                          value={selectedScenarioFor(i)}
+                          onChange={(name) => setScenarioFor(i, name)}
+                          onShoot={() => openOcrShoot(i)}
+                          busy={busy === i || shotPhase === 'recognizing'}
+                        />
+                      )}
+                      {method === 'ble' && !filled && !flowLocked && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <Button onClick={() => captureTime(i)} disabled={busy === i}>🔵 连接采集</Button>
                         </div>
-                      </div>
+                      )}
 
                       {/* 数据主体 */}
                       {busy === i

@@ -23,7 +23,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 import { useTestItemTiming } from './useTestItemTiming.js';
 import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
 import { TimingToast } from '../../components/data-display/TimingToast.jsx';
-import { OcrScenarioSelect } from './OcrScenarioSelect.jsx';
+import { OcrCaptureBar } from './OcrCaptureBar.jsx';
 import { OcrImagePreview } from './OcrImagePreview.jsx';
 import {
   clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
@@ -683,7 +683,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       handInputBlocked={handInputBlocked}
                       onHandInputBlocked={guardStartForManual}
                       ocrScenarios={ocrScenarios}
-                      hasPassedRule={hasPassedRule}
                       selectedScenario={selectedScenarioFor(activeCell.key)}
                       onScenarioChange={(name) => setScenarioFor(activeCell.key, name)}
                       onCollect={() => collectOne(activeSub, activeCell)}
@@ -1009,7 +1008,7 @@ function CheckBox({ on }) {
   );
 }
 
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, env, envMock, handInputBlocked = false, onHandInputBlocked, ocrScenarios, hasPassedRule, selectedScenario, onScenarioChange, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach, onPreviewAttach }) {
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, env, envMock, handInputBlocked = false, onHandInputBlocked, ocrScenarios, selectedScenario, onScenarioChange, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach, onPreviewAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
@@ -1021,25 +1020,21 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
   const traceDevice = recordDevice || (filled && cell.deviceId ? { name: cell.deviceId, code: '—', method: cell.source || method } : currentDevice);
   const traceMethod = filled ? (traceDevice.method || cell.source || method) : method;
   const showCollectActions = !flowLocked && cell.status !== 'uploaded' && (method === 'ble' || method === 'ocr');
-  const canShoot = method === 'ocr' && hasPassedRule && selectedScenario;
 
   return (
     <React.Fragment>
-      {method === 'ocr' && !flowLocked && (
-        <OcrScenarioSelect
+      {method === 'ocr' && !flowLocked && showCollectActions && (
+        <OcrCaptureBar
           ocrScenarios={ocrScenarios}
           value={selectedScenario}
           onChange={onScenarioChange}
+          onShoot={onCollect}
+          busy={busyCell}
         />
       )}
-      {showCollectActions && (
+      {showCollectActions && method === 'ble' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-          {method === 'ble' && <Button onClick={onCollect} disabled={busyCell}>{busyCell ? '连接中…' : '连接采集'}</Button>}
-          {method === 'ocr' && (
-            <Button onClick={onCollect} disabled={busyCell || !canShoot}>
-              {busyCell ? '识别中…' : '拍照识别'}
-            </Button>
-          )}
+          <Button onClick={onCollect} disabled={busyCell}>{busyCell ? '连接中…' : '连接采集'}</Button>
         </div>
       )}
 
