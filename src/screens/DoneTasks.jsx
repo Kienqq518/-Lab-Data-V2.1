@@ -2,6 +2,7 @@ import React from 'react';
 import { AppBar, Card, SearchBar, StatusTag, TestItemCard } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import { AnnotatedWrapper } from '../annotation/index.js';
+import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
 
 /* 已检任务（首页「已检任务」入口）
    L2 已检归档任务列表 → L3 复核 → L4 查看/编辑（流程未锁定时可改） */
@@ -137,7 +138,10 @@ function DoneTasks({ onBack, onCollect }) {
                         <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--status-overdue-fg,#c53030)', background: 'var(--status-overdue-bg)', padding: '2px 6px', borderRadius: 'var(--radius-pill)' }}>逾期完成</span>
                       )}
                     </div>
-                    <span style={{ fontSize: 'var(--fs-xs)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
+                      <SampleLabelQrIcon sample={s} />
+                      <span style={{ fontSize: 'var(--fs-xs)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
+                    </div>
                   </div>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{s.code}</span>
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.35, color: 'var(--text-title)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.name}</span>

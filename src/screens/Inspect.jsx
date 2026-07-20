@@ -6,6 +6,7 @@ import { TaskListSort } from './TaskListSort.jsx';
 import { MethodFilterChips, countDevicesByMethod } from './MethodFilterChips.jsx';
 import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index.js';
 import { filterL3View } from './l3-search-filter.js';
+import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
 
 /* 检测模块 — 工位上下文 + 按设备/按任务双模式 + 钻取试验项
    · 按设备：L1 设备列表 → L2 委托任务 → L3 样品(左)+试验项(右)，仅展示该设备相关样品与试验项
@@ -13,7 +14,7 @@ import { filterL3View } from './l3-search-filter.js';
 
   function Inspect({ stationId, onBack, onCollect, onSwitchStation, onClearStation }) {
     const station = M.stations.find((s) => s.id === stationId) || null;
-    const [mode, setMode] = React.useState('device');   // device | task
+    const [mode, setMode] = React.useState('task');   // task | device
     const [view, setView] = React.useState('list');     // list | device | task
     const [device, setDevice] = React.useState(null);
     const [task, setTask] = React.useState(null);
@@ -167,7 +168,7 @@ import { filterL3View } from './l3-search-filter.js';
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, gap: 12 }}>
               <AnnotatedWrapper id="modeSwitch" layout="inline" placement="bottom">
                 <SegmentedSwitch value={mode} onChange={switchMode}
-                  options={[{ value: 'device', label: '按设备' }, { value: 'task', label: '按任务' }]} />
+                  options={[{ value: 'task', label: '按任务' }, { value: 'device', label: '按设备' }]} />
               </AnnotatedWrapper>
               {mode === 'device'
                 ? (
@@ -372,7 +373,10 @@ import { filterL3View } from './l3-search-filter.js';
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%' }}>
                     <StatusTag status={s.status} size="sm" />
-                    <span style={{ fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 400, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
+                      <SampleLabelQrIcon sample={s} />
+                      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 400, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
+                    </div>
                   </div>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{s.code}</span>
                   <span

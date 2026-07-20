@@ -5,6 +5,7 @@ import { EnvInfoSection, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { resolveInspectStampState } from './collect-model.js';
 import { AnnotatedWrapper } from '../annotation/index.js';
+import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 
 /* 轻量 LIMS 试验项 L4：参数平铺展示，结论由检测员手工录入 */
 
@@ -128,6 +129,7 @@ function CollectLite({ ctx, onBack, onDone }) {
             </div>
           )}
           <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>试验次数随任务下发 · 不可修改</div>
+          <SampleLabelQrLink sample={ctx.sample} />
         </Section>
 
         <Section title="设备信息" icon="cpu" extra={

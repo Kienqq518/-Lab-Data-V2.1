@@ -19,6 +19,7 @@ import {
 } from './collect-model.js';
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
+import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 
 /* 采集详情（L4·复合试验项 · 物资版 LIMS+数采）
    试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
@@ -413,6 +414,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
                 含 {subs.length} 个试验子项 · 采集单元 {summary.total} 个 · 试验次数随任务下发，不可修改 · 物资版多子项
               </div>
+              <SampleLabelQrLink sample={ctx.sample} />
             </Section>
           </AnnotatedWrapper>
         </AnnotatedWrapper>

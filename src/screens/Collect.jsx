@@ -7,6 +7,7 @@ import { isCompositeItem, isFlowReturned, resolveInspectStampState } from './col
 import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
+import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 
 /* 采集详情（L4）— 基础/设备/环境 + 按「采集方式」自适应的 N 次字段录入 + 汇总 + 上传
    试验次数 N = 样段数量 × 试样数量 × 测试芯数（随 LIMS 任务下发，检测员不可改）。
@@ -398,6 +399,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
               </div>
             )}
             <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>试验次数随任务下发 · 不可修改</div>
+            <SampleLabelQrLink sample={ctx.sample} />
           </Section>
           </AnnotatedWrapper>
         </div>

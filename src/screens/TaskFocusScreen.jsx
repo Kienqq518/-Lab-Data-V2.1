@@ -5,6 +5,7 @@ import { SCAN_SAMPLE_ID, ScanSampleOverlay, resolveTaskForSample } from './ScanS
 import { TaskListSort, TASK_SORT_OPTIONS, RETURNED_SORT_OPTIONS } from './TaskListSort.jsx';
 import { AnnotatedWrapper, AnnotationPageKeyProvider } from '../annotation/index.js';
 import { filterL3View } from './l3-search-filter.js';
+import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
 
 /* 配置驱动的任务聚焦页（方案 A）：L2 任务列表 → L3 样品+试验项 → L4 采集
    一套组件覆盖：待检 / 检测中 / 逾期 / 临期 / 退回复测。
@@ -200,7 +201,10 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%' }}>
                     <StatusTag status={s.status} size="sm" />
-                    <span style={{ fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 400, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
+                      <SampleLabelQrIcon sample={s} />
+                      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 400, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
+                    </div>
                   </div>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{s.code}</span>
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.35, color: 'var(--text-title)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.name}</span>
