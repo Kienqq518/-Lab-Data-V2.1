@@ -13,6 +13,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 import { OcrCaptureBar } from './OcrCaptureBar.jsx';
 import { OcrImagePreview } from './OcrImagePreview.jsx';
+import { OcrAttachmentThumb } from './OcrAttachmentThumb.jsx';
 import {
   clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
   mergeOcrFields, removeScenarioAttachment, sortAttachmentsByScenario, upsertScenarioAttachment,
@@ -729,13 +730,15 @@ import {
                               <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>
                                 识别参照图 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>· 按场景 · 同场景新拍覆盖旧图</span>
                               </div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                                 {sortAttachmentsByScenario(getOcrReferenceAttachments(attachments[i], { filled, flowLocked, isOcr: true })).map((a) => (
-                                  <div key={a.id} role="button" tabIndex={0} onClick={() => !a.mock && setPreviewAttach(a)} onKeyDown={(e) => { if (e.key === 'Enter') !a.mock && setPreviewAttach(a); }} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: a.mock ? 'default' : 'pointer' }}>
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
-                                    <span style={{ fontSize: 10, color: 'var(--collect-ocr,#b06a00)', fontWeight: 600, maxWidth: 68, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.scenario || (a.kind === 'photo' ? '拍照' : '上传')}</span>
-                                    {!flowLocked && !a.mock && <button onClick={(e) => { e.stopPropagation(); removeAttach(i, a.id); }} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
-                                  </div>
+                                  <OcrAttachmentThumb
+                                    key={a.id}
+                                    attachment={a}
+                                    flowLocked={flowLocked}
+                                    onPreview={!a.mock ? setPreviewAttach : undefined}
+                                    onRemove={!a.mock ? (id) => removeAttach(i, id) : undefined}
+                                  />
                                 ))}
                               </div>
                             </div>

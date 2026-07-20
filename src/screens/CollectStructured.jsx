@@ -25,6 +25,7 @@ import { TestItemTimingSection } from '../../components/data-display/TestItemTim
 import { TimingToast } from '../../components/data-display/TimingToast.jsx';
 import { OcrCaptureBar } from './OcrCaptureBar.jsx';
 import { OcrImagePreview } from './OcrImagePreview.jsx';
+import { OcrAttachmentThumb } from './OcrAttachmentThumb.jsx';
 import {
   clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
   mergeOcrFields, removeScenarioAttachment, sortAttachmentsByScenario, upsertScenarioAttachment,
@@ -1217,13 +1218,25 @@ function AttachmentList({ cell, method, flowLocked, selectedScenario, onAdd, onR
   return (
     <div style={{ paddingTop: 10, borderTop: '1px dashed var(--divider)' }}>
       <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>{title} <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>{hint}</span></div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         {displayAttachments.map((item) => (
-          <div key={item.id} role={onPreview && !item.mock ? 'button' : undefined} tabIndex={onPreview && !item.mock ? 0 : undefined} onClick={() => onPreview && !item.mock && onPreview(item)} onKeyDown={(e) => { if (e.key === 'Enter' && onPreview && !item.mock) onPreview(item); }} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: onPreview && !item.mock ? 'pointer' : 'default' }}>
-            <CameraIcon />
-            <span style={{ fontSize: 10, color: method === 'ocr' ? 'var(--collect-ocr,#b06a00)' : 'var(--text-secondary)', fontWeight: method === 'ocr' ? 600 : 400, maxWidth: 68, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.scenario || (item.kind === 'photo' ? '拍照' : '上传')}</span>
-            {!flowLocked && !item.mock && <button onClick={(e) => { e.stopPropagation(); onRemove(item.id); }} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
-          </div>
+          method === 'ocr'
+            ? (
+              <OcrAttachmentThumb
+                key={item.id}
+                attachment={item}
+                flowLocked={flowLocked}
+                onPreview={onPreview && !item.mock ? onPreview : undefined}
+                onRemove={onRemove && !item.mock ? onRemove : undefined}
+              />
+            )
+            : (
+              <div key={item.id} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <CameraIcon />
+                <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono,monospace)' }}>{item.kind === 'photo' ? '拍照' : '上传'}</span>
+                {!flowLocked && !item.mock && <button onClick={() => onRemove(item.id)} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
+              </div>
+            )
         ))}
         {!flowLocked && method !== 'ocr' && onAdd && (
           <button onClick={onAdd} style={{ width: 76, height: 76, borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--bg-app)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5 }}>

@@ -191,12 +191,21 @@
               <div style="width:200px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-size:13px; color:#aab2bf;">请选择<span style="font-size:10px;">▾</span></div>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13.5px; color:#5b6677; flex:none;">场景</span>
+              <select class="lk-sel" value="{{ ruleFilterDraft.scenario }}" onChange="{{ onRuleFilterScenario }}" style="width:140px; height:34px; border:1px solid #e5e8ee; border-radius:7px; padding:0 28px 0 12px; font-size:13px; color:{{ ruleFilterScenarioColor }}; background-color:#fff; cursor:pointer;">
+                <option value="">全部</option>
+                <sc-for list="{{ ruleScenarioOptions }}" as="o" hint-placeholder-count="0">
+                  <option value="{{ o }}">{{ o }}</option>
+                </sc-for>
+              </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
               <span style="font-size:13.5px; color:#5b6677; flex:none;">验证状态</span>
               <div style="width:140px; height:34px; border:1px solid #e5e8ee; border-radius:7px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-size:13px; color:#aab2bf;">请选择<span style="font-size:10px;">▾</span></div>
             </div>
             <div style="display:flex; gap:10px; margin-left:auto;">
-              <button style="border:1px solid #cdd3dc; background:#fff; color:#5b6677; cursor:pointer; font-size:13.5px; padding:7px 18px; border-radius:7px;">重置</button>
-              <button style="border:none; background:#2563eb; color:#fff; cursor:pointer; font-size:13.5px; padding:7px 20px; border-radius:7px;">查询</button>
+              <button onClick="{{ resetRuleFilter }}" style="border:1px solid #cdd3dc; background:#fff; color:#5b6677; cursor:pointer; font-size:13.5px; padding:7px 18px; border-radius:7px;">重置</button>
+              <button onClick="{{ applyRuleFilter }}" style="border:none; background:#2563eb; color:#fff; cursor:pointer; font-size:13.5px; padding:7px 20px; border-radius:7px;">查询</button>
             </div>
           </div>
 
@@ -604,6 +613,8 @@ class Component extends DCLogic {
     ruleEditIdx: null,
     form: { table: '', device: '', scenario: '', rule: '' },
     ruleError: '',
+    ruleFilter: { table: '', device: '', scenario: '', status: '' },
+    ruleFilterDraft: { table: '', device: '', scenario: '', status: '' },
     ruleRows: [
       { table: 'sc_zldz', device: '智能型数字电桥|QJ36-ZS', scenario: '屏幕界面', rule: 'zx-正向-1-Reg(\\d*\\.?\\d+),fx-反向-2-Reg(\\d*\\.?\\d+),pj-平均-3-Reg(\\d*\\.?\\d+)', status: 'passed', passedAt: '2026-06-20T10:00:00+08:00' },
       { table: 'sc_zldz', device: '智能型数字电桥|QJ36-ZS', scenario: '纸质报表', rule: 'cd-长度-1-Reg(\\d*\\.?\\d+),wb-温补-2-Reg(\\d*\\.?\\d+),jg-结果-3-Reg(\\d*\\.?\\d+),jl-结论-4-Reg(.+)', status: 'passed', passedAt: '2026-06-22T14:30:00+08:00' },
@@ -796,14 +807,25 @@ class Component extends DCLogic {
     });
 
     // ----- rule rows -----
-    const ruleRows = s.ruleRows.map((r, i) => {
+    const ruleScenarioOptions = [...new Set(s.ruleRows.map((r) => r.scenario).filter(Boolean))].sort();
+    const filteredRuleSource = s.ruleRows
+      .map((r, i) => ({ ...r, _idx: i }))
+      .filter((r) => {
+        const f = s.ruleFilter || {};
+        if (f.scenario && r.scenario !== f.scenario) return false;
+        if (f.status && r.status !== f.status) return false;
+        if (f.table && r.table !== f.table) return false;
+        if (f.device && r.device !== f.device) return false;
+        return true;
+      });
+    const ruleRows = filteredRuleSource.map((r, i) => {
       const st = this.STATUS[r.status] || this.STATUS.pending;
       const parts = r.device.split('|');
       return {
         idx: i + 1, tableLabel: this.tableLabel(r.table), devName: parts[0], devModel: parts[1], scenario: r.scenario || '—', rule: r.rule,
         stLabel: st.label, stBg: st.bg, stFg: st.fg, stDot: st.dot,
-        edit: () => this.openEditRule(i),
-        del: () => this.setState((p) => ({ ruleRows: p.ruleRows.filter((_, k) => k !== i) })),
+        edit: () => this.openEditRule(r._idx),
+        del: () => this.setState((p) => ({ ruleRows: p.ruleRows.filter((_, k) => k !== r._idx) })),
       };
     });
     const relRows = s.relRows.map((r, i) => ({
@@ -865,7 +887,13 @@ class Component extends DCLogic {
         return { devRows: rs, drawerOpen: false };
       }),
       // rules
-      ruleRows, ruleTotal: s.ruleRows.length,
+      ruleRows, ruleTotal: filteredRuleSource.length,
+      ruleFilterDraft: s.ruleFilterDraft,
+      ruleScenarioOptions,
+      ruleFilterScenarioColor: s.ruleFilterDraft.scenario ? '#1a2233' : '#aab2bf',
+      onRuleFilterScenario: (e) => this.setState((p) => ({ ruleFilterDraft: { ...p.ruleFilterDraft, scenario: e.target.value } })),
+      applyRuleFilter: () => this.setState((p) => ({ ruleFilter: { ...p.ruleFilterDraft } })),
+      resetRuleFilter: () => this.setState({ ruleFilter: { table: '', device: '', scenario: '', status: '' }, ruleFilterDraft: { table: '', device: '', scenario: '', status: '' } }),
       modalOpen: s.modalOpen,
       modalTitle: s.ruleEditIdx == null ? '新增数据识别规则' : '编辑数据识别规则',
       form: s.form, tableOptions, deviceOptions, deviceDisabled,
