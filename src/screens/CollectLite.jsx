@@ -121,7 +121,7 @@ function CollectLite({ ctx, onBack, onDone }) {
         <FlowBanner flow={flow} locked={flowLocked} returned={flowReturned} />
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', paddingTop: flowLocked || flowReturned ? 0 : 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Section title="基础信息" icon="info">
+        <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="header" />}>
           <Grid items={[
             ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
             ['样品编号', ctx.sample?.code || '—'],
@@ -136,7 +136,6 @@ function CollectLite({ ctx, onBack, onDone }) {
               {M.overdueTagLabel[ctx.item.overdueTag]}
             </div>
           )}
-          <SampleLabelQrLink sample={ctx.sample} />
         </Section>
 
         <Section title="设备信息" icon="cpu" extra={

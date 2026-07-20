@@ -427,7 +427,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         </AnnotatedWrapper>
         <AnnotatedWrapper id="structuredMode" layout="block">
           <AnnotatedWrapper id="basicInfo" layout="block">
-            <Section title="基础信息" icon="info">
+            <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="header" />}>
               <Grid items={[
                 ['任务编号', ctx.task?.code || MOCK.taskCodeFromSample(ctx.sample)],
                 ['样品编号', ctx.sample.code],
@@ -439,7 +439,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
                 含 {subs.length} 个试验子项 · 采集单元 {summary.total} 个 · 物资版多子项
               </div>
-              <SampleLabelQrLink sample={ctx.sample} />
             </Section>
           </AnnotatedWrapper>
         </AnnotatedWrapper>

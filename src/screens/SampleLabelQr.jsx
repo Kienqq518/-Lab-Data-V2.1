@@ -153,22 +153,26 @@ export function SampleLabelQrIcon({ sample, size = 18 }) {
   );
 }
 
-/** L4 基础信息区的「查看样品标签二维码」入口 */
-export function SampleLabelQrLink({ sample }) {
+/** L4 基础信息区的「查看样品标签二维码」入口；placement=header 时置于 Section 右上角 */
+export function SampleLabelQrLink({ sample, placement = 'inline' }) {
   const [open, setOpen] = React.useState(false);
   if (!sample?.code) return null;
+  const isHeader = placement === 'header';
   return (
     <React.Fragment>
       <button
         type="button"
+        aria-label="查看样品标签二维码"
         onClick={() => setOpen(true)}
         style={{
-          marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6,
+          marginTop: isHeader ? 0 : 10,
+          display: 'inline-flex', alignItems: 'center', gap: isHeader ? 4 : 6,
           border: 'none', background: 'transparent', cursor: 'pointer', padding: 0,
-          color: 'var(--brand-action)', fontSize: 'var(--fs-sm)', fontWeight: 600,
+          color: 'var(--brand-action)', fontSize: isHeader ? 'var(--fs-xs)' : 'var(--fs-sm)',
+          fontWeight: 600, flex: 'none', whiteSpace: 'nowrap',
         }}
       >
-        <QrGlyph size={16} />
+        <QrGlyph size={isHeader ? 14 : 16} />
         查看样品标签二维码
       </button>
       {open && <SampleLabelQrModal sample={sample} onClose={() => setOpen(false)} />}

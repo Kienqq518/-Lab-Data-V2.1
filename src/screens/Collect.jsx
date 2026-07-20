@@ -404,7 +404,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
           </AnnotatedWrapper>
           {/* 基础信息（滚动时固定） */}
           <AnnotatedWrapper id="basicInfo" layout="block">
-          <Section title="基础信息" icon="info">
+          <Section title="基础信息" icon="info" extra={<SampleLabelQrLink sample={ctx.sample} placement="header" />}>
             <Grid items={[
               ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
               ['样品编号', ctx.sample.code], ['样品名称', ctx.sample.name],
@@ -417,7 +417,6 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                 {M.overdueTagLabel[ctx.item.overdueTag]}
               </div>
             )}
-            <SampleLabelQrLink sample={ctx.sample} />
           </Section>
           </AnnotatedWrapper>
         </div>
