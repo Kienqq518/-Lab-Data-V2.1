@@ -379,7 +379,6 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
                       <span style={{ fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 400, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
                     </div>
                   </div>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{M.formatSampleCodeDisplay(s)}</span>
                   <span
                     title={s.name}
                     onClick={(e) => {

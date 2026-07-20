@@ -75,7 +75,7 @@ export const inspectAnnotations = {
   sampleSidebar: {
     title: '样品左栏（L3）',
     requirementLogic: '一个委托任务可含多个样品；左栏切换当前样品驱动右侧试验项。扫码进入时可高亮目标样品。受 L3 搜索过滤：搜样品名/编号时收窄左栏；搜试验项时仅保留含匹配试验项的样品。',
-    displayRule: '160px 按钮列表：StatusTag、序号、样品编号、样品名两行截断；选中左蓝条+浅底；扫码样品加蓝色描边高亮。启用编号转换时，样品编号展示「转换后编号（原编号）」；未启用或编号已规范时仅展示原编号。',
+    displayRule: '160px 按钮列表：StatusTag、序号、样品名两行截断；选中左蓝条+浅底；扫码样品加蓝色描边高亮。不展示样品编号，避免卡片过长。',
     interactionLogic: '点击切换样品；点击样品名弹出全名 tooltip（不阻断切换）。',
   },
   testItemCard: {
