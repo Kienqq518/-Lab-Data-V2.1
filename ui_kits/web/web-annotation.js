@@ -5,7 +5,6 @@
 (function initWebAnnotation() {
   const STORAGE_KEY = 'labdata_web_annotation_mode';
   const HEADER_HEIGHT = 54;
-  const CARD_GAP = 12;
   const VIEWPORT_PAD = 12;
 
   let enabled = false;
@@ -14,8 +13,13 @@
   let markerHost = null;
   let cardHost = null;
   let refreshTimer = null;
+  let suppressObserver = false;
   /** @type {Map<string, { anchor: HTMLElement, dot: HTMLElement }>} */
   const anchorMap = new Map();
+
+  function getAnnotationId(el) {
+    return el.getAttribute('data-annotation-id') || el.dataset.annotationId || '';
+  }
 
   function loadEnabled() {
     try {
@@ -48,7 +52,8 @@
     toggleEl.className = 'web-annotation-toggle';
     toggleEl.innerHTML = '<span class="web-annotation-toggle__dot"></span>批注';
     toggleEl.title = '批注模式（需求评审）';
-    toggleEl.addEventListener('click', () => {
+    toggleEl.addEventListener('click', (e) => {
+      e.stopPropagation();
       enabled = !enabled;
       saveEnabled(enabled);
       applyEnabled();
@@ -66,26 +71,23 @@
     cardHost.className = 'web-annotation-card-host';
     cardHost.style.display = 'none';
     cardHost.addEventListener('click', (e) => e.stopPropagation());
+    cardHost.addEventListener('mousedown', (e) => e.stopPropagation());
 
     document.body.appendChild(markerHost);
     document.body.appendChild(cardHost);
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('mousedown', (e) => {
       if (!enabled || !openedId) return;
       if (e.target.closest('.web-annotation-marker, .web-annotation-card-host, .web-annotation-toggle')) return;
-      setOpened(null);
-    });
+      closeCard();
+    }, true);
   }
 
   function applyEnabled() {
     document.body.classList.toggle('web-annotation-mode-on', enabled);
     toggleEl.classList.toggle('web-annotation-toggle--on', enabled);
     markerHost.style.display = enabled ? 'block' : 'none';
-    if (!enabled) {
-      openedId = null;
-      cardHost.style.display = 'none';
-      cardHost.innerHTML = '';
-    }
+    if (!enabled) closeCard();
     document.querySelectorAll('.web-annotated-anchor').forEach((el) => {
       el.classList.toggle('web-annotated-anchor--on', enabled);
       if (!enabled) el.classList.remove('web-annotated-anchor--active');
@@ -115,73 +117,43 @@
       </div>`;
     card.querySelector('.web-annotation-card__close')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      setOpened(null);
+      closeCard();
     });
     return card;
   }
 
-  function setOpened(id) {
-    openedId = id;
-    document.querySelectorAll('.web-annotated-anchor').forEach((el) => {
-      el.classList.toggle('web-annotated-anchor--active', el.dataset.annotationId === id);
+  function syncActiveStates() {
+    suppressObserver = true;
+    document.querySelectorAll('[data-annotation-id]').forEach((el) => {
+      const id = getAnnotationId(el);
+      el.classList.toggle('web-annotated-anchor--active', !!openedId && id === openedId);
     });
     document.querySelectorAll('.web-annotation-marker').forEach((dot) => {
-      dot.classList.toggle('web-annotation-marker--active', dot.dataset.annotationId === id);
+      dot.classList.toggle('web-annotation-marker--active', dot.dataset.annotationId === openedId);
     });
-    renderOpenedCard();
-  }
-
-  function toggleOpened(id) {
-    setOpened(openedId === id ? null : id);
-  }
-
-  function positionDot(dot, anchor) {
-    const rect = anchor.getBoundingClientRect();
-    const size = 22;
-    let top = rect.top + 8;
-    let left = rect.right - size - 6;
-
-    if (left + size > window.innerWidth - VIEWPORT_PAD) {
-      left = Math.max(VIEWPORT_PAD, rect.right - size - 6);
-    }
-    if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
-    if (top < HEADER_HEIGHT + 4) top = HEADER_HEIGHT + 4;
-    if (top + size > window.innerHeight - VIEWPORT_PAD) {
-      top = Math.max(HEADER_HEIGHT + 4, rect.bottom - size - 8);
-    }
-
-    dot.style.top = `${top}px`;
-    dot.style.left = `${left}px`;
+    suppressObserver = false;
   }
 
   function positionCardHost(anchor) {
+    const cardWidth = Math.min(340, window.innerWidth - VIEWPORT_PAD * 2);
     const rect = anchor.getBoundingClientRect();
-    const cardWidth = Math.min(320, window.innerWidth - VIEWPORT_PAD * 2);
-    const cardRect = cardHost.getBoundingClientRect();
-    const cardHeight = cardRect.height || 280;
-
-    const spaceRight = window.innerWidth - rect.right - VIEWPORT_PAD;
-    const spaceLeft = rect.left - VIEWPORT_PAD;
-    const preferRight = spaceRight >= cardWidth || spaceRight >= spaceLeft;
-
-    let left = preferRight
-      ? rect.right + CARD_GAP
-      : rect.left - cardWidth - CARD_GAP;
-
-    if (left + cardWidth > window.innerWidth - VIEWPORT_PAD) {
-      left = window.innerWidth - cardWidth - VIEWPORT_PAD;
-    }
-    if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
-
-    let top = rect.top;
-    if (top + cardHeight > window.innerHeight - VIEWPORT_PAD) {
-      top = window.innerHeight - cardHeight - VIEWPORT_PAD;
-    }
-    if (top < HEADER_HEIGHT + 4) top = HEADER_HEIGHT + 4;
 
     cardHost.style.width = `${cardWidth}px`;
+    cardHost.style.maxHeight = `calc(100vh - ${HEADER_HEIGHT + VIEWPORT_PAD * 2}px)`;
+    cardHost.style.overflow = 'auto';
+
+    let left = Math.min(rect.right + 12, window.innerWidth - cardWidth - VIEWPORT_PAD);
+    if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
+
+    let top = Math.max(HEADER_HEIGHT + VIEWPORT_PAD, rect.top);
+    const cardHeight = cardHost.offsetHeight || 320;
+    if (top + cardHeight > window.innerHeight - VIEWPORT_PAD) {
+      top = Math.max(HEADER_HEIGHT + VIEWPORT_PAD, window.innerHeight - cardHeight - VIEWPORT_PAD);
+    }
+
     cardHost.style.left = `${left}px`;
     cardHost.style.top = `${top}px`;
+    cardHost.style.right = 'auto';
   }
 
   function renderOpenedCard() {
@@ -204,10 +176,45 @@
     cardHost.appendChild(renderCard({ ...spec, id: openedId }));
     cardHost.style.display = 'block';
     positionCardHost(entry.anchor);
-
     requestAnimationFrame(() => {
-      if (openedId) positionCardHost(entry.anchor);
+      if (openedId && anchorMap.get(openedId)) positionCardHost(anchorMap.get(openedId).anchor);
     });
+  }
+
+  function openCard(id) {
+    openedId = id;
+    syncActiveStates();
+    renderOpenedCard();
+  }
+
+  function closeCard() {
+    openedId = null;
+    syncActiveStates();
+    renderOpenedCard();
+  }
+
+  function toggleCard(id) {
+    if (openedId === id) closeCard();
+    else openCard(id);
+  }
+
+  function positionDot(dot, anchor) {
+    const rect = anchor.getBoundingClientRect();
+    const size = 22;
+    let top = rect.top + 8;
+    let left = rect.right - size - 6;
+
+    if (left + size > window.innerWidth - VIEWPORT_PAD) {
+      left = Math.max(VIEWPORT_PAD, rect.right - size - 6);
+    }
+    if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
+    if (top < HEADER_HEIGHT + 4) top = HEADER_HEIGHT + 4;
+    if (top + size > window.innerHeight - VIEWPORT_PAD) {
+      top = Math.max(HEADER_HEIGHT + 4, rect.bottom - size - 8);
+    }
+
+    dot.style.top = `${top}px`;
+    dot.style.left = `${left}px`;
   }
 
   function clearMarkers() {
@@ -222,14 +229,18 @@
     if (refreshTimer) cancelAnimationFrame(refreshTimer);
     refreshTimer = requestAnimationFrame(() => {
       refreshTimer = null;
-      clearMarkers();
-
       if (!enabled) return;
 
       const pageKey = detectPageKey();
       const config = getRegistryConfig();
+      const prevOpenedId = openedId;
+
+      suppressObserver = true;
+      clearMarkers();
+      suppressObserver = false;
+
       if (!config || !pageKey) {
-        setOpened(null);
+        closeCard();
         return;
       }
 
@@ -238,18 +249,12 @@
         return page && page.getAttribute('data-annotation-page') === pageKey;
       });
 
-      let openedStillExists = false;
-
       anchors.forEach((anchor, index) => {
-        const id = anchor.dataset.annotationId;
+        const id = getAnnotationId(anchor);
         const spec = config[id];
         if (!spec) return;
 
         anchor.classList.add('web-annotated-anchor', 'web-annotated-anchor--on');
-        if (id === openedId) {
-          anchor.classList.add('web-annotated-anchor--active');
-          openedStillExists = true;
-        }
 
         const dot = document.createElement('button');
         dot.type = 'button';
@@ -258,11 +263,15 @@
         dot.title = spec.title;
         dot.setAttribute('aria-label', `查看批注：${spec.title}`);
         dot.innerHTML = `<span class="web-annotation-marker__pulse"></span><span class="web-annotation-marker__core">${index + 1}</span>`;
-        if (id === openedId) dot.classList.add('web-annotation-marker--active');
 
-        dot.addEventListener('click', (e) => {
+        dot.addEventListener('mousedown', (e) => {
+          e.preventDefault();
           e.stopPropagation();
-          toggleOpened(id);
+        });
+        dot.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleCard(id);
         });
 
         positionDot(dot, anchor);
@@ -270,8 +279,14 @@
         anchorMap.set(id, { anchor, dot });
       });
 
-      if (!openedStillExists) setOpened(null);
-      else renderOpenedCard();
+      const openedAnchorExists = prevOpenedId && anchorMap.has(prevOpenedId);
+      if (prevOpenedId && !openedAnchorExists) {
+        closeCard();
+      } else if (openedAnchorExists) {
+        openedId = prevOpenedId;
+        syncActiveStates();
+        renderOpenedCard();
+      }
     });
   }
 
@@ -283,7 +298,10 @@
 
     const root = document.getElementById('dc-root');
     if (root) {
-      new MutationObserver(() => refresh()).observe(root, { childList: true, subtree: true, attributes: true });
+      new MutationObserver(() => {
+        if (suppressObserver || !enabled) return;
+        refresh();
+      }).observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
     }
     window.addEventListener('resize', refresh);
     document.addEventListener('scroll', refresh, true);
