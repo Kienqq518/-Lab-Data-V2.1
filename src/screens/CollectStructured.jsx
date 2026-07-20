@@ -28,6 +28,7 @@ import { OcrImagePreview } from './OcrImagePreview.jsx';
 import { OcrAttachmentThumb } from './OcrAttachmentThumb.jsx';
 import { getCameraOrientationConfig } from '../camera-orientation-config.js';
 import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
+import { OCR_CAMERA_INPUT_PROPS, openCameraCapture, readPickedImageFile } from '../ocr-camera-capture.js';
 import {
   clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
   mergeOcrFields, removeScenarioAttachment, sortAttachmentsByScenario, upsertScenarioAttachment,
@@ -349,7 +350,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
     }, source === 'external' ? 850 : 1050);
   }
 
-  function collectOne(sub, cell) {
+  function collectOne(sub, cell, file) {
     const device = deviceForSub(sub);
     if (!sub || !cell || flowLocked || !device) return;
     const source = device.method || 'manual';
@@ -362,10 +363,10 @@ function CollectStructured({ ctx, onBack, onDone }) {
     setBusy('c-' + cell.key);
     const existingAttach = source === 'ocr' ? getAttachmentForScenario(cell.attachments, scenario) : null;
     runOcrCapturePipeline({
-      file: null,
+      file: source === 'ocr' ? (file || null) : null,
       attachment: existingAttach,
       mockDelayMs: source === 'ble' ? 1100 : 900,
-    }).then(() => {
+    }).then(({ prepared }) => {
       setCells((prev) => {
         const cur = prev[cell.key];
         const partial = source === 'ocr' ? fillScenarioValues(sub, cell, meta.fieldKeys) : fillValues(sub, cell);
@@ -377,7 +378,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
             attachments: upsertScenarioAttachment(c.attachments, scenario, {
               id: Date.now() + '_ocr',
               kind: 'photo',
-              orientationApplied: getCameraOrientationConfig().enabled,
+              orientationApplied: prepared?.orientationApplied ?? getCameraOrientationConfig().enabled,
+              previewUrl: prepared?.objectUrl,
             }),
           }));
         }
@@ -762,7 +764,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       ocrScenarios={ocrScenarios}
                       selectedScenario={selectedScenarioFor(activeCell.key)}
                       onScenarioChange={(name) => setScenarioFor(activeCell.key, name)}
-                      onCollect={() => collectOne(activeSub, activeCell)}
+                      onCollect={(file) => collectOne(activeSub, activeCell, file)}
                       onReRecognize={() => reRecognizeCell(activeSub, activeCell)}
                       ocrUnlocked={!!editCells[activeCell.key]}
                       onSetOcrUnlocked={(unlocked) => setEditCells((prev) => ({ ...prev, [activeCell.key]: unlocked }))}
@@ -1082,6 +1084,7 @@ function CheckBox({ on }) {
 }
 
 function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, env, envMock, handInputBlocked = false, onHandInputBlocked, ocrScenarios, selectedScenario, onScenarioChange, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach, onPreviewAttach }) {
+  const cameraInputRef = React.useRef(null);
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
@@ -1096,18 +1099,27 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
 
   return (
     <React.Fragment>
+      <input
+        ref={cameraInputRef}
+        {...OCR_CAMERA_INPUT_PROPS}
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = readPickedImageFile(e);
+          if (file) onCollect(file);
+        }}
+      />
       {method === 'ocr' && !flowLocked && showCollectActions && (
         <OcrCaptureBar
           ocrScenarios={ocrScenarios}
           value={selectedScenario}
           onChange={onScenarioChange}
-          onShoot={onCollect}
+          onShoot={() => openCameraCapture(cameraInputRef)}
           busy={busyCell}
         />
       )}
       {showCollectActions && method === 'ble' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-          <Button onClick={onCollect} disabled={busyCell}>{busyCell ? '连接中…' : '连接采集'}</Button>
+          <Button onClick={() => onCollect()} disabled={busyCell}>{busyCell ? '连接中…' : '连接采集'}</Button>
         </div>
       )}
 

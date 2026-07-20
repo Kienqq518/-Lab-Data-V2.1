@@ -22,6 +22,6 @@ export const meAnnotations = {
     title: '设置·相机方向锁定',
     requirementLogic: '针对华为、小米等 Android 平板拍照方向与 OCR 识别规则不一致问题，提供本机「相机方向锁定」：开启后可固定对拍照/选图结果顺时针旋转 0°/90°/180°/270°，在送入 OCR 前统一为识别规则期望的正立方向。配置仅存本机 localStorage，按设备生效，不上传服务端。关闭时仅依赖浏览器/系统的 EXIF 自动扶正，不做额外旋转。重新识别已归档参照图时不二次旋转。',
     displayRule: '设置页「拍照识别」分区：Switch「相机方向锁定」+ 四选一角度单选（开关关闭时置灰）+ 灰字说明华为/小米平板场景。',
-    interactionLogic: '开关或角度变更即时保存并 toast「相机方向设置已保存」；拍照识别、相册选图走 ocr-image-pipeline 预处理；重新识别不再旋转已校正图片。',
+    interactionLogic: '开关或角度变更即时保存并 toast「相机方向设置已保存」；拍照识别时「从相册选择」走图库 file input，快门/拍照按钮走 capture=environment 调起系统相机；二者均经 ocr-image-pipeline 预处理；重新识别不再旋转已校正图片。',
   },
 };
