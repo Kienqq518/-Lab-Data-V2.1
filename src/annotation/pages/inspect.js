@@ -1,4 +1,6 @@
 /** 检测模块批注配置（L1/L2/L3 共用） */
+import { sampleLabelQrModalAnnotation } from './sample-label-qr.js';
+
 export const inspectAnnotations = {
   modeSwitch: {
     title: '按设备 / 按任务切换',
@@ -84,4 +86,5 @@ export const inspectAnnotations = {
     displayRule: 'TestItemCard：试验名、设备、采集方式、StatusTag、逾期标签文案。',
     interactionLogic: '点击进入 L4 采集（Collect / CollectLite / CollectStructured 按试验项类型分流）。',
   },
+  ...sampleLabelQrModalAnnotation,
 };

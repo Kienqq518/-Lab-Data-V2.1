@@ -1,4 +1,6 @@
 /** L4 采集页批注配置（单试验项 + 多试验子项共用 pageKey=collect） */
+import { sampleLabelQrModalAnnotation } from './sample-label-qr.js';
+
 export const collectAnnotations = {
   flowBanner: {
     title: '流程状态条',
@@ -138,4 +140,5 @@ export const collectAnnotations = {
     displayRule: '底栏白底+顶部分割线：左侧「重置全部」（非锁定时），右侧主按钮（上传已完成 x/y / 上传全部 / 完成并退出 / 返回锁定）。演示流程胶囊不计入本批注。',
     interactionLogic: '主按钮：有待上传且非锁定时可点；上传中禁用；全部完成后点「完成并退出」回上一层；锁定态点返回。重置需确认业务上仅清未上传数据。',
   },
+  ...sampleLabelQrModalAnnotation,
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { MOCK } from '../mock.js';
+import { AnnotatedWrapper } from '../annotation/index.js';
 
 /** 样品标签二维码 payload：编码标准 ID，供上位机扫描定位 */
 export function sampleLabelPayload(sample) {
@@ -9,7 +10,7 @@ export function sampleLabelPayload(sample) {
 }
 
 function getModalRoot() {
-  return document.querySelector('.screen') || document.body;
+  return document.querySelector('.overlay-screen') || document.querySelector('.screen') || document.body;
 }
 
 function QrGlyph({ size = 18, color = 'var(--brand-action)' }) {
@@ -52,6 +53,7 @@ export function SampleLabelQrModal({ sample, onClose }) {
           background: 'rgba(15,23,42,0.52)', backdropFilter: 'blur(2px)',
         }}
       />
+      <AnnotatedWrapper id="sampleLabelQrModal" layout="block">
       <div
         role="dialog"
         aria-labelledby="sample-label-qr-title"
@@ -127,6 +129,7 @@ export function SampleLabelQrModal({ sample, onClose }) {
           </button>
         </div>
       </div>
+      </AnnotatedWrapper>
     </React.Fragment>,
     root,
   );
