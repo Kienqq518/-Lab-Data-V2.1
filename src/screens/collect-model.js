@@ -128,8 +128,11 @@ export function summarizeCells(cells) {
   return { total, filled, uploaded, failed, pendingUpload, inspectState, allUploaded: total > 0 && uploaded === total, bySub };
 }
 
-export function getMethodCapabilities(method, ocrVerified = true) {
-  const ocrReady = method === 'ocr' && ocrVerified !== false;
+export function getMethodCapabilities(method, ocrVerified = true, ocrScenarios = null) {
+  const hasPassedScenarios = Array.isArray(ocrScenarios)
+    ? ocrScenarios.some((s) => s.status === 'passed')
+    : ocrVerified !== false;
+  const ocrReady = method === 'ocr' && hasPassedScenarios;
   return {
     canBatch: method === 'auto' || method === 'external',
     canCollectOne: method === 'ble' || ocrReady,
@@ -137,6 +140,7 @@ export function getMethodCapabilities(method, ocrVerified = true) {
     canAttach: method === 'external' || ocrReady,
     isReadOnlySource: method === 'auto',
     ocrReady,
+    hasPassedScenarios,
   };
 }
 

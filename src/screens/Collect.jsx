@@ -10,12 +10,18 @@ import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './co
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
+import { OcrScenarioSelect } from './OcrScenarioSelect.jsx';
+import { OcrImagePreview } from './OcrImagePreview.jsx';
+import {
+  clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
+  mergeOcrFields, removeScenarioAttachment, sortAttachmentsByScenario, upsertScenarioAttachment,
+} from './ocr-scenario.js';
 
 /* 采集详情（L4）— 基础/设备/环境 + 按「采集方式」自适应的 N 次字段录入 + 汇总 + 上传
    试验次数 N = 样段数量 × 试样数量 × 测试芯数（随 LIMS 任务下发，检测员不可改）。
    · 设备直采(auto)：上位机算完整批写库，页面一键从库取值整批回填，只读。
    · 蓝牙/串口(ble)：逐条采集（一次一条读数），可手输。
-   · 图像采集(ocr)：逐条拍照识别；拍照入口仅当「采集方式=图采 且 识别规则验证状态=已通过」时出现，否则回退手输。
+   · 图像采集(ocr)：逐条拍照识别；拍照前选择场景匹配识别规则；多场景图片合并识别字段；无已通过规则时回退手输。
    · 外部程序(external)：电子天平类，平板程序代采写库，App 不出现采集按钮，仅手输补录 + 查看已采数据。
    · 汇总字段（结论 jl / 平均值 pjz）：N 次全部完成后整体计算一次（auto 由上位机随数据回传）。 */
 
@@ -87,8 +93,10 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 
     const measureFields = tpl.filter((f) => !SUMMARY_KEYS.has(f.key));
 
-    // 图采是否就绪：采集方式=图采 且 识别规则验证状态=已通过
-    const ocrReady = method === 'ocr' && ctx.ocrVerified !== false;
+    const ocrScenarios = React.useMemo(() => M.resolveOcrScenarios(ctx.item, dev), [ctx.item, dev]);
+    const passedScenarios = getPassedScenarios(ocrScenarios);
+    const hasPassedRule = passedScenarios.length > 0;
+    const ocrReady = method === 'ocr' && hasPassedRule;
     const isExternal = method === 'external';
     const isSerial = method === 'serial';
     const editable = method === 'ble' || method === 'manual' || method === 'ocr' || isExternal || isSerial;
@@ -127,10 +135,12 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       [ctx.sample?.code, ctx.item?.name, method],
     );
     const [activeTime, setActiveTime] = React.useState(0);
-    const [scenes, setScenes] = React.useState({});
+    const [scenes, setScenes] = React.useState({}); // { [repeatIndex]: scenarioName }
     const [shootIdx, setShootIdx] = React.useState(null);   // 拍照识别取景页目标次序
+    const [shootScenario, setShootScenario] = React.useState(null);
     const [shotPhase, setShotPhase] = React.useState('idle'); // idle|recognizing
-    const [attachments, setAttachments] = React.useState({}); // { [次序]: [{id, kind}] }
+    const [attachments, setAttachments] = React.useState({}); // { [repeatIndex]: [{id, kind, scenario}] }
+    const [previewAttach, setPreviewAttach] = React.useState(null);
     const [editTimes, setEditTimes] = React.useState({}); // 拍照识别：{ [次序]: true } 表示该次已解锁可编辑（默认锁定置灰防误触）
     const [phases, setPhases] = React.useState({}); // 电缆相别：{ [次序]: '红'|'黄'|'绿' }
 
@@ -138,14 +148,61 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       setAttachments((p) => ({ ...p, [i]: [...(p[i] || []), { id: Date.now() + '_' + Math.random().toString(36).slice(2, 6), kind }] }));
     }
     function removeAttach(i, id) {
-      setAttachments((p) => ({ ...p, [i]: (p[i] || []).filter((a) => a.id !== id) }));
+      const item = (attachments[i] || []).find((a) => a.id === id);
+      setAttachments((p) => ({ ...p, [i]: removeScenarioAttachment(p[i], id) }));
+      if (item?.scenario) {
+        const meta = scenarioMeta(item.scenario);
+        if (meta?.fieldKeys?.length) {
+          setTimes((prev) => {
+            const next = prev.slice();
+            const cur = next[i] || { status: 'idle', vals: {}, uploaded: false };
+            const vals = clearScenarioFields(cur.vals, meta.fieldKeys);
+            const hasVals = Object.keys(vals).length > 0;
+            next[i] = { ...cur, vals, status: hasVals ? 'filled' : 'idle', uploaded: false };
+            return next;
+          });
+        }
+      }
     }
+
+    function selectedScenarioFor(i) {
+      if (scenes[i]) return scenes[i];
+      const def = getDefaultScenario(ocrScenarios);
+      return def?.name || '';
+    }
+
+    function setScenarioFor(i, name) {
+      setScenes((p) => ({ ...p, [i]: name }));
+    }
+
+    React.useEffect(() => {
+      if (method !== 'ocr' || !hasPassedRule) return;
+      const def = getDefaultScenario(ocrScenarios);
+      if (!def) return;
+      setScenes((prev) => {
+        const next = { ...prev };
+        for (let idx = 0; idx < N; idx += 1) {
+          if (!next[idx]) next[idx] = def.name;
+        }
+        return next;
+      });
+    }, [method, hasPassedRule, ocrScenarios, N]);
 
     function fillTime(i, syzjzVal) {
       const fields = fieldsForSyzjz(syzjzVal || BASE.syzjz);
       const v = {};
       fields.forEach((f) => { v[f.key] = valAt(f.key, i, syzjzVal || BASE.syzjz); });
       return v;
+    }
+
+    function fillScenarioFields(i, fieldKeys, syzjzVal) {
+      const v = {};
+      (fieldKeys || []).forEach((key) => { v[key] = valAt(key, i, syzjzVal || BASE.syzjz); });
+      return v;
+    }
+
+    function scenarioMeta(name) {
+      return (ocrScenarios || []).find((s) => s.name === name) || null;
     }
 
     /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
@@ -190,6 +247,9 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 
     function openOcrShoot(i) {
       if (!guardStartForOcr()) return;
+      const scenario = selectedScenarioFor(i);
+      if (!scenario) return;
+      setShootScenario(scenario);
       setShootIdx(i);
       setShotPhase('idle');
     }
@@ -267,33 +327,53 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
         return next;
       });
     }
-    // 拍照识别/相册：取景页内识别，完成后回填该次并关闭
+    // 拍照识别/相册：取景页内识别，按场景回填部分字段
     function doShoot() {
       const i = shootIdx;
+      const scenario = shootScenario || selectedScenarioFor(i);
+      const meta = scenarioMeta(scenario);
+      if (!meta) return;
       touchReturn();
       setShotPhase('recognizing');
       setTimeout(() => {
+        const partial = fillScenarioFields(i, meta.fieldKeys);
         setTimes((prev) => {
-          const next = prev.slice(); next[i] = { status: 'filled', vals: fillTime(i), uploaded: false };
+          const next = prev.slice();
+          const cur = next[i] || { status: 'idle', vals: {}, uploaded: false };
+          const merged = mergeOcrFields(cur.vals, partial, meta.fieldKeys);
+          next[i] = { ...cur, status: 'filled', vals: merged, uploaded: false };
           return next;
         });
-        setShotPhase('idle'); setShootIdx(null); setActiveTime(i);
-        // 拍照识别只保留一张参照图：每次识别替换上一张，避免核查时无法对应数据来源
-        setAttachments((p) => ({ ...p, [i]: [{ id: Date.now() + '_' + Math.random().toString(36).slice(2, 6), kind: 'photo' }] }));
+        setShotPhase('idle');
+        setShootIdx(null);
+        setShootScenario(null);
+        setActiveTime(i);
+        setAttachments((p) => ({
+          ...p,
+          [i]: upsertScenarioAttachment(p[i], scenario, {
+            id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            kind: 'photo',
+          }),
+        }));
+        setEditTimes((prev) => ({ ...prev, [i]: false }));
       }, 1100);
     }
-    // 拍照识别·重新识别：用「上一次拍的同一张照片」重新做识别提取数据（区别于清除图片重新拍照上传）
+    // 拍照识别·重新识别：用当前场景已有照片重新提取
     function reRecognize(i) {
-      if (!(attachments[i] || []).length) return;
+      const scenario = selectedScenarioFor(i);
+      const meta = scenarioMeta(scenario);
+      if (!meta || !getAttachmentForScenario(attachments[i], scenario)) return;
       touchReturn();
       setBusy(i);
       setTimeout(() => {
         setTimes((prev) => {
           const next = prev.slice();
-          next[i] = { ...next[i], status: 'filled', vals: fillTime(i), uploaded: false };
+          const cur = next[i] || { status: 'idle', vals: {}, uploaded: false };
+          const partial = fillScenarioFields(i, meta.fieldKeys);
+          next[i] = { ...cur, status: 'filled', vals: mergeOcrFields(cur.vals, partial, meta.fieldKeys), uploaded: false };
           return next;
         });
-        setEditTimes((p) => ({ ...p, [i]: false })); // 重新识别后回到锁定态
+        setEditTimes((p) => ({ ...p, [i]: false }));
         setBusy(null);
       }, 950);
     }
@@ -344,7 +424,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 
     const methodHint = {
       auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输',
-      ocr: ocrReady ? '逐条拍摄仪器读数屏自动识别，完成一次即可上传，无需等全部完成' : '该试验项识别规则未通过验证，已回退手工录入',
+      ocr: ocrReady ? '逐条拍摄仪器读数屏自动识别，按场景匹配识别规则；完成一次即可上传' : '该设备与试验项下不存在验证通过的识别规则，已回退手工录入',
       ble: '蓝牙数显卡尺 · 逐条连接同步读数，也可手动输入',
       manual: '手工逐条录入数据',
       external: '外部程序代采写库（工业平板）· App 无采集按钮，可查看已采或手输补录',
@@ -533,17 +613,38 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                   const locked = ocrField && !editTimes[i]; // 识别结果默认锁定置灰，点「编辑」解锁
                   return (
                     <React.Fragment>
-                      {/* 顶部：拍照识别 / 连接采集 */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-                        {method === 'ocr' && ocrReady && !flowLocked && (
-                          <button onClick={() => openOcrShoot(i)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--collect-ocr,#b06a00)', background: 'var(--collect-ocr-bg,#fff4e6)', color: 'var(--collect-ocr,#b06a00)', cursor: 'pointer', fontSize: 'var(--fs-sm)', fontWeight: 600 }}>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
-                            拍照识别
-                          </button>
+                      {/* 顶部：场景选择 + 拍照识别 / 连接采集 */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        {method === 'ocr' && !flowLocked && (
+                          <OcrScenarioSelect
+                            ocrScenarios={ocrScenarios}
+                            value={selectedScenarioFor(i)}
+                            onChange={(name) => setScenarioFor(i, name)}
+                            style={{ flex: 1, minWidth: 180 }}
+                          />
                         )}
-                        {method === 'ble' && !filled && !flowLocked && (
-                          <Button onClick={() => captureTime(i)} disabled={busy === i}>🔵 连接采集</Button>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+                          {method === 'ocr' && !flowLocked && (
+                            <button
+                              onClick={() => openOcrShoot(i)}
+                              disabled={!hasPassedRule || !selectedScenarioFor(i)}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px',
+                                borderRadius: 'var(--radius-pill)', border: '1px solid var(--collect-ocr,#b06a00)',
+                                background: hasPassedRule && selectedScenarioFor(i) ? 'var(--collect-ocr-bg,#fff4e6)' : 'var(--surface-sunken)',
+                                color: hasPassedRule && selectedScenarioFor(i) ? 'var(--collect-ocr,#b06a00)' : 'var(--text-placeholder)',
+                                cursor: hasPassedRule && selectedScenarioFor(i) ? 'pointer' : 'not-allowed',
+                                fontSize: 'var(--fs-sm)', fontWeight: 600,
+                              }}
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
+                              拍照识别
+                            </button>
+                          )}
+                          {method === 'ble' && !filled && !flowLocked && (
+                            <Button onClick={() => captureTime(i)} disabled={busy === i}>🔵 连接采集</Button>
+                          )}
+                        </div>
                       </div>
 
                       {/* 数据主体 */}
@@ -582,8 +683,8 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                                     : <React.Fragment><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>编辑中 · 若改乱了可「重新识别」用原照片还原</React.Fragment>}
                                 </span>
                                 <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
-                                  <button onClick={() => reRecognize(i)} disabled={!(attachments[i] || []).length}
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-strong)', background: 'var(--white)', color: (attachments[i] || []).length ? 'var(--text-body)' : 'var(--text-placeholder)', cursor: (attachments[i] || []).length ? 'pointer' : 'not-allowed', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
+                                  <button onClick={() => reRecognize(i)} disabled={!getAttachmentForScenario(attachments[i], selectedScenarioFor(i))}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-strong)', background: 'var(--white)', color: getAttachmentForScenario(attachments[i], selectedScenarioFor(i)) ? 'var(--text-body)' : 'var(--text-placeholder)', cursor: getAttachmentForScenario(attachments[i], selectedScenarioFor(i)) ? 'pointer' : 'not-allowed', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
                                     重新识别
                                   </button>
@@ -605,26 +706,20 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>可在此手输补录或矫正</div>
                             )}
 
-                            {/* 识别参照图：仅拍照识别需要随本次数据归档 */}
+                            {/* 识别参照图：按场景归档，支持放大与删除 */}
                             {ocrField && (
                             <div style={{ paddingTop: 10, marginTop: 2, borderTop: '1px dashed var(--divider)' }}>
                               <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>
-                                识别参照图 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>· 仅一张 · 对应本次识别数据来源</span>
+                                识别参照图 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>· 按场景 · 同场景新拍覆盖旧图</span>
                               </div>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                                {getOcrReferenceAttachments(attachments[i], { filled, flowLocked, isOcr: true }).map((a) => (
-                                  <div key={a.id} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                                {sortAttachmentsByScenario(getOcrReferenceAttachments(attachments[i], { filled, flowLocked, isOcr: true })).map((a) => (
+                                  <div key={a.id} role="button" tabIndex={0} onClick={() => !a.mock && setPreviewAttach(a)} onKeyDown={(e) => { if (e.key === 'Enter') !a.mock && setPreviewAttach(a); }} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: a.mock ? 'default' : 'pointer' }}>
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
-                                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono,monospace)' }}>{a.kind === 'photo' ? '拍照' : '上传'}</span>
-                                    {!flowLocked && !a.mock && <button onClick={() => removeAttach(i, a.id)} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
+                                    <span style={{ fontSize: 10, color: 'var(--collect-ocr,#b06a00)', fontWeight: 600, maxWidth: 68, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.scenario || (a.kind === 'photo' ? '拍照' : '上传')}</span>
+                                    {!flowLocked && !a.mock && <button onClick={(e) => { e.stopPropagation(); removeAttach(i, a.id); }} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
                                   </div>
                                 ))}
-                                {!flowLocked && (attachments[i] || []).length < 1 && (
-                                <button onClick={() => { if (method === 'ocr' && ocrReady) openOcrShoot(i); else addAttach(i, 'upload'); }} style={{ width: 76, height: 76, borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--bg-app)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                                  <span style={{ fontSize: 10 }}>拍照识别</span>
-                                </button>
-                                )}
                               </div>
                             </div>
                             )}
@@ -661,7 +756,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                             ))}
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
-                              <span>{method === 'ocr' ? (ocrReady ? '字段待采集 · 点击右上「拍照识别」拍摄读数屏自动填入' : '该试验项识别规则未通过验证 · 请在上方字段手动输入') : method === 'ble' ? '字段待采集 · 点击右上「连接采集」同步，或直接在上方手动输入' : method === 'auto' ? '字段待采集 · 等待上位机写库回填（原型可用上方演示「一键采集」）' : isExternal ? '字段待采集 · 等待平板外部程序写库，或在上方手输补录' : isSerial ? '字段待采集 · 等待外部程序·串口写库（原型可用上方演示「一键采集」），或手输兜底' : '字段待采集 · 请在上方手动输入'}</span>
+                              <span>{method === 'ocr' ? (ocrReady ? '字段待采集 · 选择场景后点击「拍照识别」，多场景图片合并识别字段' : '该设备与试验项下不存在验证通过的识别规则 · 请在上方字段手动输入') : method === 'ble' ? '字段待采集 · 点击右上「连接采集」同步，或直接在上方手动输入' : method === 'auto' ? '字段待采集 · 等待上位机写库回填（原型可用上方演示「一键采集」）' : isExternal ? '字段待采集 · 等待平板外部程序写库，或在上方手输补录' : isSerial ? '字段待采集 · 等待外部程序·串口写库（原型可用上方演示「一键采集」），或手输兜底' : '字段待采集 · 请在上方手动输入'}</span>
                             </div>
                           </div>}
                     </React.Fragment>
@@ -719,7 +814,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 取消
               </button>
-              <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>拍照识别 · 第 {shootIdx + 1} 次</span>
+              <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>拍照识别 · 第 {shootIdx + 1} 次{shootScenario ? ` · ${shootScenario}` : ''}</span>
               <span style={{ width: 56 }} />
             </div>
 
@@ -738,7 +833,7 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                       <span key={k} style={{ position: 'absolute', width: 22, height: 22, border: '3px solid var(--brand-action)', ...(k === 0 ? { top: -1, left: -1, borderRight: 'none', borderBottom: 'none' } : k === 1 ? { top: -1, right: -1, borderLeft: 'none', borderBottom: 'none' } : k === 2 ? { bottom: -1, left: -1, borderRight: 'none', borderTop: 'none' } : { bottom: -1, right: -1, borderLeft: 'none', borderTop: 'none' }) }} />
                     ))}
                   </div>
-                  <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.8)', fontSize: 'var(--fs-sm)', fontFamily: 'var(--font-mono,monospace)' }}>将「{dev.name || '仪器'}」读数屏对准取景框</div>
+                  <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.8)', fontSize: 'var(--fs-sm)', fontFamily: 'var(--font-mono,monospace)' }}>将「{dev.name || '仪器'}」{shootScenario ? `· ${shootScenario}` : ''} 对准取景框</div>
                 </React.Fragment>
               )}
             </div>
@@ -758,6 +853,12 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
             </div>
           </div>
         )}
+
+        <OcrImagePreview
+          open={!!previewAttach}
+          scenario={previewAttach?.scenario}
+          onClose={() => setPreviewAttach(null)}
+        />
       </div>
     );
   }

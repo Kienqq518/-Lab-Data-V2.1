@@ -407,6 +407,56 @@
     { code: 'SC2026/00490', sampleName: '绝缘操作杆', client: '国网浙江省电力有限公司', time: '2026-06-15 08:30:00', status: 'done', doneAt: '2026-06-18 16:40:00', sampleCount: 1, testCount: 4, detectDeadline: '2026-07-15' },
   ];
 
+  // 试验项 → 第三方试验表 code（与 Web 数据识别规则对齐）
+  const testItemTableMap = {
+    '导体直流电阻': 'sc_zldz',
+    'XLPE绝缘的热延伸试验': 't_rsy',
+  };
+
+  // 数据识别规则（Web 图片采集配置 · 按 试验表 + 设备 + 场景 唯一）
+  const ocrRecognitionRules = [
+    { table: 'sc_zldz', device: '智能型数字电桥|QJ36-ZS', scenario: '屏幕界面',
+      rule: 'zx-正向-1-Reg(\\d*\\.?\\d+),fx-反向-2-Reg(\\d*\\.?\\d+),pj-平均-3-Reg(\\d*\\.?\\d+)',
+      status: 'passed', passedAt: '2026-06-20T10:00:00+08:00' },
+    { table: 'sc_zldz', device: '智能型数字电桥|QJ36-ZS', scenario: '纸质报表',
+      rule: 'cd-长度-1-Reg(\\d*\\.?\\d+),wb-温补-2-Reg(\\d*\\.?\\d+),jg-结果-3-Reg(\\d*\\.?\\d+),jl-结论-4-Reg(.+)',
+      status: 'passed', passedAt: '2026-06-22T14:30:00+08:00' },
+    { table: 'sc_zldz', device: '电缆直流电阻快速测量系统-无人化版|YM-WRH-01',
+      scenario: '屏幕界面', rule: 'wd-温度-1-Reg(\\d*\\.?\\d+),sd-湿度-2-Reg(\\d*\\.?\\d+)',
+      status: 'passed', passedAt: '2026-06-18T09:00:00+08:00' },
+    { table: 't_rsy', device: '热延伸试验箱|YRSC-200I', scenario: '屏幕界面',
+      rule: 'l0-施加负荷前标距-1-Reg(\\d*\\.?\\d+),l1-施加负荷15min后-2-Reg(\\d*\\.?\\d+)',
+      status: 'pending' },
+  ];
+
+  function parseRuleFieldKeys(rule) {
+    if (!rule) return [];
+    return rule.split(',').map((part) => part.trim().split('-')[0]).filter(Boolean);
+  }
+
+  function deviceRuleKey(device) {
+    if (!device) return '';
+    return `${device.name}|${device.model || ''}`;
+  }
+
+  /** 解析当前试验项 + 设备下的 OCR 场景列表（供采集端场景下拉） */
+  function resolveOcrScenarios(item, device) {
+    if (!device || device.method !== 'ocr') return [];
+    const table = testItemTableMap[item?.name];
+    if (!table) return [];
+    const devKey = deviceRuleKey(device);
+    return ocrRecognitionRules
+      .filter((r) => r.table === table && r.device === devKey)
+      .map((r) => ({
+        id: r.scenario,
+        name: r.scenario,
+        status: r.status,
+        passedAt: r.passedAt,
+        fieldKeys: parseRuleFieldKeys(r.rule),
+        rule: r.rule,
+      }));
+  }
+
   // 试验项相别/次数规则（含相别 → 红/黄/绿三相，perPhase=每相次数；无相别 → count=总次数）
   const testRules = {
     '导体直流电阻': { phased: true, perPhase: 1 },
@@ -530,15 +580,20 @@
   function buildCollectCtx({ sample, item, task, stationId, extra = {} }) {
     const dev = resolveTestDevice(item);
     const tpl = dev ? (dev.items?.find((x) => x.name === item.name) || {}).tpl : undefined;
+    const method = item.method || (dev && dev.method);
+    const ocrScenarios = resolveOcrScenarios(item, dev);
+    const hasPassedRule = ocrScenarios.some((s) => s.status === 'passed');
     const base = {
       sample,
       device: dev,
       item: { ...item, tpl },
-      method: item.method || (dev && dev.method),
+      method,
       status: item.status,
       flow: item.flow,
       stationId,
       task,
+      ocrScenarios,
+      ocrVerified: method !== 'ocr' || hasPassedRule || extra.ocrVerified,
       ...extra,
     };
     return { ...base, timing: resolveTestItemTiming(base) };
@@ -807,4 +862,4 @@
     { q: '检测时效是如何计算的？', a: '检测时效随委托任务下发，不可在移动端修改。临近或超过时效的任务会在首页「工作概览」中以逾期 / 临期维度提醒。' },
   ];
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, resolveTestItemTiming, recordTestTimingStart, recordTestTimingEnd, clearTestTimingEnd, fetchAutoTestStartTime, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, sampleSpec, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, testItemTableMap, ocrRecognitionRules, resolveOcrScenarios, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, resolveTestItemTiming, recordTestTimingStart, recordTestTimingEnd, clearTestTimingEnd, fetchAutoTestStartTime, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, sampleSpec, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
