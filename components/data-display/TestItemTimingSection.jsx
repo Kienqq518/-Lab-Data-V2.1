@@ -120,7 +120,7 @@ export function TestItemTimingSection({
               background: 'var(--status-pending-bg, #fff8eb)', border: '1px solid var(--status-pending-border, #f0d9a8)',
               fontSize: 'var(--fs-sm)', color: 'var(--status-pending-fg, #97640f)', lineHeight: 1.5,
             }}>
-              上传数据前请先点击上方「记录开始时间」。蓝牙/手工可先录入，图像识别在点击「拍照识别」时校验；上传时若尚未记录将弹出提示。
+              上传数据前请先点击上方「记录开始时间」。蓝牙可先连接采集；手工录入须先记录开始时间才能手输；图像识别在点击「拍照识别」时校验；上传时若尚未记录将弹出提示。
             </div>
           )}
           {isAutoDirect && !canRecordStart && (

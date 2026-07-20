@@ -113,7 +113,13 @@ function CollectStructured({ ctx, onBack, onDone }) {
     flowLocked,
     isAutoDirect,
   });
-  const { guardStartForUpload, guardStartForOcr, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
+  const { guardStartForUpload, guardStartForOcr, guardStartForManual, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
+
+  function guardManualEntry(cellMethod) {
+    const m = cellMethod || method;
+    if (m !== 'manual') return true;
+    return guardStartForManual();
+  }
 
   /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
   function touchReturn() {
@@ -231,6 +237,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function setField(cellKey, field, value, idx) {
     if (flowLocked) return;
+    if (!guardManualEntry()) return;
     touchReturn();
     const cell = cells[cellKey];
     if (!cell || (cell.status === 'uploaded' && !flowReturned)) return;

@@ -80,7 +80,12 @@ function CollectLite({ ctx, onBack, onDone }) {
   const allUploaded = uploaded;
   const isAutoDirect = method === 'auto';
   const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
-  const { guardStartForUpload, requireStartBeforeCollect } = timingCtl;
+  const { guardStartForUpload, guardStartForManual, requireStartBeforeCollect } = timingCtl;
+
+  function guardManualEntry() {
+    if (method !== 'manual') return true;
+    return guardStartForManual();
+  }
   const inspectState = resolveInspectStampState({
     flowReturned,
     returnTouched,
@@ -96,6 +101,7 @@ function CollectLite({ ctx, onBack, onDone }) {
 
   function setField(key, value) {
     if (fieldsReadOnly || uploading) return;
+    if (!guardManualEntry()) return;
     touchReturn();
     setVals((prev) => ({ ...prev, [key]: value }));
   }
