@@ -42,9 +42,17 @@
     const [env] = React.useState({ wd: '21.0', sd: '30.7' });
 
     const sub = subs[activeSub];
-    // 设备与试验子项解除绑定：设备决定采集方式/录入样式，子项决定展示哪些测量值字段
+    // 设备与试验子项联动：切换子项时，上方设备信息随当前子项配置刷新
     const devices = [];
     subs.forEach((s) => { if (s.device && !devices.some((d) => d.code === s.device.code)) devices.push({ ...s.device, method: s.method }); });
+    React.useEffect(() => {
+      const current = subs[activeSub];
+      if (!current?.device) return;
+      const list = [];
+      subs.forEach((s) => { if (s.device && !list.some((d) => d.code === s.device.code)) list.push({ ...s.device, method: s.method }); });
+      const idx = list.findIndex((d) => d.id === current.device.id || d.code === current.device.code);
+      if (idx >= 0) setActiveDevice(idx);
+    }, [activeSub, subs]);
     const dev = devices[activeDevice] || {};
     const method = dev.method || 'auto';
     const phased = !!sub.phased;
@@ -149,7 +157,7 @@
             <Grid items={[['检测设备', dev.name || '—'], ['设备编号', dev.code || '—'], ['设备型号', dev.model || '—']]} />
             <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1.5 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d="M8 3H5a2 2 0 0 0-2 2v3 M21 8V5a2 2 0 0 0-2-2h-3 M3 16v3a2 2 0 0 0 2 2h3 M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-              该试验项关联 {devices.length} 台设备，设备与试验子项相互独立：切设备改采集方式/录入样式，切子项改测量值字段
+              该试验项关联 {devices.length} 台设备，当前设备随试验子项联动；切子项改测量值字段，切设备改采集方式/录入样式
             </div>
           </Section>
 
