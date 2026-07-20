@@ -1,10 +1,11 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import { MOCK } from '../mock.js';
 
-/** 样品标签二维码 payload：与扫码入口一致，编码样品编号 */
+/** 样品标签二维码 payload：编码原编号，与扫码入口一致 */
 export function sampleLabelPayload(sample) {
-  return sample?.code || '';
+  return MOCK.resolveSampleCode(sample).qrPayload;
 }
 
 function getModalRoot() {
@@ -39,6 +40,7 @@ export function SampleLabelQrModal({ sample, onClose }) {
 
   if (!sample || !root) return null;
   const payload = sampleLabelPayload(sample);
+  const displayCode = MOCK.formatSampleCodeDisplay(sample);
 
   return createPortal(
     <React.Fragment>
@@ -85,7 +87,7 @@ export function SampleLabelQrModal({ sample, onClose }) {
             <div style={{
               fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)',
               fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all', lineHeight: 1.35,
-            }}>{sample.code}</div>
+            }}>{displayCode}</div>
             <div style={{
               marginTop: 6, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.45,
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',

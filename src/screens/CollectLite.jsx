@@ -128,7 +128,7 @@ function CollectLite({ ctx, onBack, onDone }) {
         <Section title="基础信息" icon="info">
           <Grid items={[
             ['任务编号', ctx.task?.code || M.taskCodeFromSample(ctx.sample)],
-            ['样品编号', ctx.sample?.code || '—'],
+            ['样品编号', M.formatSampleCodeDisplay(ctx.sample)],
             ['样品名称', ctx.sample?.name || '—'],
             ['型号规格', M.sampleSpec(ctx.sample)],
             ['试验名称', ctx.item?.name || '—'],

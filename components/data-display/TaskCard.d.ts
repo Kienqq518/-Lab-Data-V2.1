@@ -10,6 +10,9 @@ export interface TaskCardProps {
   /** 下发时间 2025-08-27 13:18:10 */
   time: string;
   status?: StatusKind;
+  detectDeadline?: string;
+  /** 第三方 LIMS 对接任务 */
+  thirdParty?: boolean;
   onClick?: () => void;
   style?: React.CSSProperties;
 }

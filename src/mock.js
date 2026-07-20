@@ -1,3 +1,16 @@
+import {
+  DEFAULT_CONVERSION_CONFIG,
+  DEFAULT_CONVERSION_RULES,
+  convertSampleCode,
+  formatSampleCodeDisplay,
+  isConversionEnabled,
+  resolveSampleCode,
+  sampleCodeForCell,
+  sampleCodeMatchesKeyword,
+  sampleSystemId,
+  setConversionEnabled,
+} from './sample-code.js';
+
 /* 数蚕 Lab Data · 检测员 UI Kit 模拟数据
    工位/样品/试验项取自国网绿链泰山物资检测中心实拍工位牌 + Web 试验填报（8.7/10kV-3芯 电缆）。
    采集方式规则：导体直流电阻=拍照识别(ocr)；非金属护套&钢带铠装=蓝牙数显卡尺(ble)；
@@ -385,6 +398,23 @@
         { id: 'rod-bs', name: '绝缘操作杆 - 抗弯静负荷试验', device: 'rodbend', method: 'manual', limsLite: true, status: 'done', upload: 'done', fields: rodBendStaticFields,
           doneVals: { syc: '1', bzz: '100', syz: '108', sj: '1', ztms: '无异常', wd: '23', qy: '1013', sd: '55', beizhu: '', jl: '合格' } },
       ] },
+    // —— 第三方 LIMS 非标编号样品（含汉字、特殊符号、长字符串）——
+    { id: 's7a', taskCode: 'TP2026/00789', code: '第三方委托#2026-电缆-A001（杭州）', originalCode: '第三方委托#2026-电缆-A001（杭州）', thirdParty: true,
+      name: '8.7/10kV-3芯 电力电缆', status: 'testing', cable: true, client: '某第三方检测机构',
+      tests: [
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'testing', phased: true },
+        { name: 'XLPE绝缘的收缩试验', device: 'shr', method: 'auto', status: 'pending' },
+      ] },
+    { id: 's7b', taskCode: 'TP2026/00789', code: 'LIMS/委托单/20260720/001-02', originalCode: 'LIMS/委托单/20260720/001-02', thirdParty: true,
+      name: '8.7/10kV-3芯 电力电缆', status: 'pending', cable: true, client: '某第三方检测机构',
+      tests: [
+        { name: '导体直流电阻', device: 'dcr', method: 'ocr', status: 'pending' },
+      ] },
+    { id: 's7c', taskCode: 'TP2026/00789', code: '样品编号：SC-2026★00789-超长委托单号-杭州数蚕智能科技有限公司-电缆检测专项', originalCode: '样品编号：SC-2026★00789-超长委托单号-杭州数蚕智能科技有限公司-电缆检测专项', thirdParty: true,
+      name: '8.7/10kV-3芯 电力电缆', status: 'pending', cable: true, client: '某第三方检测机构',
+      tests: [
+        { name: '老化前绝缘的机械性能试验', device: 'mech', method: 'auto', status: 'pending' },
+      ] },
   ];
 
   // 任务列表（首页快捷入口 / 统计）
@@ -405,6 +435,8 @@
     { code: 'SC2026/00902', sampleName: '控制电缆', client: '杭州数蚕智能科技有限公司', time: '2026-03-12 09:00:00', status: 'done', doneAt: '2026-03-20 16:40:00', sampleCount: 1, testCount: 1, detectDeadline: '2026-04-12' },
     { code: 'SC2026/00991', sampleName: '8.7/10kV-1芯 电力电缆', client: '杭州数蚕智能科技有限公司', time: '2026-05-29 16:31:51', status: 'done', doneAt: '2026-06-05 14:20:00', sampleCount: 1, testCount: 1, detectDeadline: '2026-05-31', overdueDone: true },
     { code: 'SC2026/00490', sampleName: '绝缘操作杆', client: '国网浙江省电力有限公司', time: '2026-06-15 08:30:00', status: 'done', doneAt: '2026-06-18 16:40:00', sampleCount: 1, testCount: 4, detectDeadline: '2026-07-15' },
+    // 第三方 LIMS 对接任务（非标编号，启用编号转换规则）
+    { code: 'TP2026/00789', sampleName: '8.7/10kV-3芯 电力电缆', client: '某第三方检测机构', time: '2026-07-18 11:00:00', status: 'testing', detectDeadline: '2026-07-25', thirdParty: true },
   ];
 
   // 试验项 → 第三方试验表 code（与 Web 数据识别规则对齐）
@@ -457,6 +489,13 @@
       }));
   }
 
+  // 数采 Web「系统设置」· 样品编号转换规则库（App 只读，通过 API 同步）
+  const sampleCodeConversionConfig = {
+    ...DEFAULT_CONVERSION_CONFIG,
+    get enabled() { return isConversionEnabled(); },
+    rules: DEFAULT_CONVERSION_RULES,
+  };
+
   // 试验项相别/次数规则（含相别 → 红/黄/绿三相，perPhase=每相次数；无相别 → count=总次数）
   const testRules = {
     '导体直流电阻': { phased: true, perPhase: 1 },
@@ -504,7 +543,9 @@
   };
 
   function taskSamples(task) {
-    return samples.filter((s) => s.code.startsWith(task.code));
+    return samples.filter((s) =>
+      (s.taskCode && s.taskCode === task.code) || s.code.startsWith(task.code),
+    );
   }
   function taskTests(task) {
     return taskSamples(task).flatMap((s) => s.tests || []);
@@ -764,6 +805,7 @@
 
   /** 从样品编号推导任务编号 */
   function taskCodeFromSample(sample) {
+    if (sample?.taskCode) return sample.taskCode;
     return sample?.code ? sample.code.replace(/-\d+$/, '') : '—';
   }
 
@@ -862,4 +904,4 @@
     { q: '检测时效是如何计算的？', a: '检测时效随委托任务下发，不可在移动端修改。临近或超过时效的任务会在首页「工作概览」中以逾期 / 临期维度提醒。' },
   ];
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, testItemTableMap, ocrRecognitionRules, resolveOcrScenarios, allowManualInput, deviceCollectConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, resolveTestItemTiming, recordTestTimingStart, recordTestTimingEnd, clearTestTimingEnd, fetchAutoTestStartTime, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, sampleSpec, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, testItemTableMap, ocrRecognitionRules, resolveOcrScenarios, allowManualInput, deviceCollectConfig, sampleCodeConversionConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, resolveTestItemTiming, recordTestTimingStart, recordTestTimingEnd, clearTestTimingEnd, fetchAutoTestStartTime, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, sampleSpec, resolveSampleCode, formatSampleCodeDisplay, sampleSystemId, sampleCodeForCell, sampleCodeMatchesKeyword, convertSampleCode, isConversionEnabled, setConversionEnabled, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveReturnNotification, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };

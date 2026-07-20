@@ -65,7 +65,15 @@ function Notifications({ onBack, onGoReturned }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 14, borderTop: '1px solid var(--divider)' }}>
               {active.taskCode && <DetailLine label="任务编号" value={active.taskCode} />}
-              {active.sampleCode && <DetailLine label="样品编号" value={active.sampleCode} />}
+              {active.sampleCode && (
+                <DetailLine
+                  label="样品编号"
+                  value={(() => {
+                    const s = M.samples.find((x) => x.code === active.sampleCode || x.originalCode === active.sampleCode);
+                    return s ? M.formatSampleCodeDisplay(s) : active.sampleCode;
+                  })()}
+                />
+              )}
               {active.testName && <DetailLine label="试验项" value={active.testName} />}
               {active.type === 'returned' && active.returnNode && <DetailLine label="退回节点" value={active.returnNode} />}
               {active.type === 'returned' && active.returnBy && (

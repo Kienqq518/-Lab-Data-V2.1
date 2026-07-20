@@ -246,7 +246,7 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
                     ? fTasks.map((t, i) => (
                         <AnnotatedWrapper key={t.code} id={i === 0 ? 'taskList' : undefined} layout="block" placement="right">
                           <TaskCard code={t.code} sampleName={t.sampleName} client={t.client}
-                            time={t.time} status={t.status} detectDeadline={t.detectDeadline}
+                            time={t.time} status={t.status} detectDeadline={t.detectDeadline} thirdParty={t.thirdParty}
                             onClick={() => openTask(t, 'task')} />
                         </AnnotatedWrapper>
                       ))
@@ -298,7 +298,8 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
                   {dtasks.map((t) => (
                     <TaskCard key={t.code} code={t.code} sampleName={t.sampleName} client={t.client}
-                      time={t.time} status={t.status} detectDeadline={t.detectDeadline} onClick={() => openTask(t, 'device')} />
+                      time={t.time} status={t.status} detectDeadline={t.detectDeadline} thirdParty={t.thirdParty}
+                      onClick={() => openTask(t, 'device')} />
                   ))}
                 </div>
               ) : (
@@ -321,7 +322,7 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
     const getBaseTests = (sample) => (
       cameFrom === 'device' && device ? M.sampleTestsForDevice(sample, device) : sample.tests
     );
-    const { samples: visibleSamples, getTests } = filterL3View(tSamples, getBaseTests, q);
+    const { samples: visibleSamples, getTests } = filterL3View(tSamples, getBaseTests, q, (s, kw) => M.sampleCodeMatchesKeyword(s, kw));
     const cur = visibleSamples.find((s) => s.id === taskSample) || visibleSamples[0];
     const its = cur ? getTests(cur) : [];
 
@@ -378,7 +379,7 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
                       <span style={{ fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 400, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
                     </div>
                   </div>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{s.code}</span>
+                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{M.formatSampleCodeDisplay(s)}</span>
                   <span
                     title={s.name}
                     onClick={(e) => {
