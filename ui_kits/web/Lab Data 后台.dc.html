@@ -178,7 +178,7 @@
 
           <div style="display:flex; align-items:flex-start; gap:10px; background:#eef4ff; border:1px solid #cfe0ff; color:#1d54c4; border-radius:8px; padding:11px 16px; margin-bottom:16px; font-size:13px; line-height:1.6;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            <span>一条规则 = <b>一个试验表 + 一个设备（型号·名称）</b>。同型号·同名称的设备读数屏版面一致，视为一类——LIMS 试验检测页所选的具体那台设备，只要型号与名称一致即可命中该规则。</span>
+            <span>一条规则 = <b>一个试验表 + 一个设备（型号·名称）+ 一个场景</b>。同一设备可配置多个场景，每场景仅一条识别规则；LIMS 页所选设备型号与名称一致即可命中。</span>
           </div>
 
           <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; padding:18px 20px; margin-bottom:16px; display:flex; align-items:center; gap:26px; flex-wrap:wrap;">
@@ -204,8 +204,9 @@
             <div style="display:flex; align-items:center; padding:0 18px; height:46px; background:#f7f9fc; border-bottom:1px solid #e5e8ee; font-size:13px; font-weight:600; color:#3c465c;">
               <div style="width:48px; flex:none;">序号</div>
               <div style="width:230px; flex:none;">试验表名</div>
-              <div style="width:230px; flex:none;">设备<span style="color:#aab2bf; font-weight:400;">（型号·名称）</span></div>
-              <div style="flex:1; min-width:180px;">数据识别规则</div>
+              <div style="width:200px; flex:none;">设备<span style="color:#aab2bf; font-weight:400;">（型号·名称）</span></div>
+              <div style="width:90px; flex:none;">场景</div>
+              <div style="flex:1; min-width:160px;">数据识别规则</div>
               <div style="width:90px; flex:none;">验证状态</div>
               <div style="width:96px; flex:none; text-align:right;">操作</div>
             </div>
@@ -213,11 +214,12 @@
               <div style="display:flex; align-items:center; padding:0 18px; min-height:56px; border-bottom:1px solid #f0f2f6; font-size:13.5px; color:#3c465c;">
                 <div style="width:48px; flex:none; color:#828c9c;">{{ r.idx }}</div>
                 <div style="width:230px; flex:none; color:#1a2233; padding-right:10px;">{{ r.tableLabel }}</div>
-                <div style="width:230px; flex:none; color:#3c465c; padding-right:10px;">
+                <div style="width:200px; flex:none; color:#3c465c; padding-right:10px;">
                   <div style="font-weight:500;">{{ r.devName }}</div>
                   <div style="font-size:12px; color:#828c9c; font-variant-numeric:tabular-nums;">{{ r.devModel }}</div>
                 </div>
-                <div style="flex:1; min-width:180px; color:#5b6677; font-size:12.5px; font-family:'SF Mono',Menlo,Consolas,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:12px;">{{ r.rule }}</div>
+                <div style="width:90px; flex:none; color:#3c465c;">{{ r.scenario }}</div>
+                <div style="flex:1; min-width:160px; color:#5b6677; font-size:12.5px; font-family:'SF Mono',Menlo,Consolas,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:12px;">{{ r.rule }}</div>
                 <div style="width:90px; flex:none;">
                   <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:6px; font-size:12px; font-weight:500; background:{{ r.stBg }}; color:{{ r.stFg }};"><span style="width:6px; height:6px; border-radius:50%; background:{{ r.stDot }};"></span>{{ r.stLabel }}</span>
                 </div>
@@ -413,6 +415,10 @@
                 </sc-for>
               </select>
             </div>
+            <div style="flex:0 0 160px; display:flex; flex-direction:column; gap:7px;">
+              <label style="font-size:13.5px; color:#5b6677;"><span style="color:#e23b3b;">*</span> 场景</label>
+              <input value="{{ form.scenario }}" onChange="{{ onScenario }}" placeholder="如：屏幕界面" style="height:38px; border:1px solid #e5e8ee; border-radius:7px; padding:0 12px; font-size:13.5px; color:#1a2233; width:100%; box-sizing:border-box;" />
+            </div>
           </div>
           <div style="display:flex; flex-direction:column; gap:7px;">
             <div style="display:flex; align-items:center; justify-content:space-between;">
@@ -509,17 +515,18 @@ class Component extends DCLogic {
     // 数据识别规则
     modalOpen: false,
     ruleEditIdx: null,
-    form: { table: '', device: '', rule: '' },
+    form: { table: '', device: '', scenario: '', rule: '' },
     ruleError: '',
     ruleRows: [
-      { table: 'sc_zldz',         device: '智能型数字电桥|QJ36-ZS',                   rule: 'zx-正向-1-Reg(\\d*\\.?\\d+),fx-反向-2-Reg(\\d*\\.?\\d+),pj-平均-3-Reg(\\d*\\.?\\d+),wb-温补-4-Reg(\\d*\\.?\\d+),jg-结果-5-Reg(\\d*\\.?\\d+)', status: 'pending' },
-      { table: 'sc_zldz',         device: '电缆直流电阻快速测量系统-无人化版|YM-WRH-01', rule: 'wd-温度-1-Reg(\\d*\\.?\\d+),sd-湿度-2-Reg(\\d*\\.?\\d+),scdz-实测电阻-3-Reg(\\d*\\.?\\d+),dz20-20度电阻-4-Reg(\\d*\\.?\\d+)', status: 'passed' },
-      { table: 'sc_gpnysy',       device: '工频耐压试验装置|YDJ-150',                  rule: 'cd-re-\\d*\\.?\\d+-t-Pre1000,bcz-re-\\d*\\.?\\d+-t-Pre1000,syz-re-\\d*\\.?\\d+-t-Pre1000', status: 'passed' },
-      { table: 't_jyysy',         device: '绝缘油介电强度测试仪|HCJ-9201',             rule: 'jcdy-ro-宗源-1', status: 'passed' },
-      { table: 'hntdg_ccpc',      device: '激光测距尺寸检测仪|LS-200',                 rule: 'a1-re-\\d*\\.?\\d+-t-Pre1000,a5-re-\\d*\\.?\\d+-t-Pre1000,a7-re-\\d*\\.?\\d+-t-Pre1000', status: 'pending' },
-      { table: 't_jbfd',          device: '局部放电检测仪|PDS-9',                      rule: 'jzsl-s-[1-1-Sub1-comma].-Reg(\\d*\\.?\\d+)-For00.0,yqzh-s-1)-1-Sub1', status: 'pending' },
-      { table: 'jgt_gcczjc_hxcf', device: '直读光谱仪|Q4-TASMAN',                      rule: 'c-o-CH01-1-Reg(\\d*\\.?\\d+),si-o-CH02-1-Reg(\\d*\\.?\\d+),mn-o-CH03-1-Reg(\\d*\\.?\\d+)', status: 'passed' },
-      { table: 'sc_wgjc',         device: '工业相机视觉台|CV-X',                       rule: 'bh-col-打保-变比误差|1', status: 'passed' },
+      { table: 'sc_zldz', device: '智能型数字电桥|QJ36-ZS', scenario: '屏幕界面', rule: 'zx-正向-1-Reg(\\d*\\.?\\d+),fx-反向-2-Reg(\\d*\\.?\\d+),pj-平均-3-Reg(\\d*\\.?\\d+)', status: 'passed', passedAt: '2026-06-20T10:00:00+08:00' },
+      { table: 'sc_zldz', device: '智能型数字电桥|QJ36-ZS', scenario: '纸质报表', rule: 'cd-长度-1-Reg(\\d*\\.?\\d+),wb-温补-2-Reg(\\d*\\.?\\d+),jg-结果-3-Reg(\\d*\\.?\\d+),jl-结论-4-Reg(.+)', status: 'passed', passedAt: '2026-06-22T14:30:00+08:00' },
+      { table: 'sc_zldz', device: '电缆直流电阻快速测量系统-无人化版|YM-WRH-01', scenario: '屏幕界面', rule: 'wd-温度-1-Reg(\\d*\\.?\\d+),sd-湿度-2-Reg(\\d*\\.?\\d+),scdz-实测电阻-3-Reg(\\d*\\.?\\d+),dz20-20度电阻-4-Reg(\\d*\\.?\\d+)', status: 'passed' },
+      { table: 'sc_gpnysy', device: '工频耐压试验装置|YDJ-150', scenario: '屏幕界面', rule: 'cd-re-\\d*\\.?\\d+-t-Pre1000,bcz-re-\\d*\\.?\\d+-t-Pre1000,syz-re-\\d*\\.?\\d+-t-Pre1000', status: 'passed' },
+      { table: 't_jyysy', device: '绝缘油介电强度测试仪|HCJ-9201', scenario: '屏幕界面', rule: 'jcdy-ro-宗源-1', status: 'passed' },
+      { table: 'hntdg_ccpc', device: '激光测距尺寸检测仪|LS-200', scenario: '屏幕界面', rule: 'a1-re-\\d*\\.?\\d+-t-Pre1000,a5-re-\\d*\\.?\\d+-t-Pre1000,a7-re-\\d*\\.?\\d+-t-Pre1000', status: 'pending' },
+      { table: 't_jbfd', device: '局部放电检测仪|PDS-9', scenario: '屏幕界面', rule: 'jzsl-s-[1-1-Sub1-comma].-Reg(\\d*\\.?\\d+)-For00.0,yqzh-s-1)-1-Sub1', status: 'pending' },
+      { table: 'jgt_gcczjc_hxcf', device: '直读光谱仪|Q4-TASMAN', scenario: '纸质报表', rule: 'c-o-CH01-1-Reg(\\d*\\.?\\d+),si-o-CH02-1-Reg(\\d*\\.?\\d+),mn-o-CH03-1-Reg(\\d*\\.?\\d+)', status: 'passed' },
+      { table: 'sc_wgjc', device: '工业相机视觉台|CV-X', scenario: '屏幕界面', rule: 'bh-col-打保-变比误差|1', status: 'passed' },
     ],
     // 采集表与试验项关系
     relRows: [
@@ -639,7 +646,7 @@ class Component extends DCLogic {
       const st = this.STATUS[r.status] || this.STATUS.pending;
       const parts = r.device.split('|');
       return {
-        idx: i + 1, tableLabel: this.tableLabel(r.table), devName: parts[0], devModel: parts[1], rule: r.rule,
+        idx: i + 1, tableLabel: this.tableLabel(r.table), devName: parts[0], devModel: parts[1], scenario: r.scenario || '—', rule: r.rule,
         stLabel: st.label, stBg: st.bg, stFg: st.fg, stDot: st.dot,
         edit: () => this.openEditRule(i),
         del: () => this.setState((p) => ({ ruleRows: p.ruleRows.filter((_, k) => k !== i) })),
@@ -698,10 +705,11 @@ class Component extends DCLogic {
       deviceCursor: deviceDisabled ? 'not-allowed' : 'pointer',
       devicePlaceholder: deviceDisabled ? '请先选择试验表' : '请选择设备',
       hasError: !!s.ruleError, errorMsg: s.ruleError,
-      openNewRule: () => this.setState({ modalOpen: true, ruleEditIdx: null, form: { table: '', device: '', rule: '' }, ruleError: '' }),
+      openNewRule: () => this.setState({ modalOpen: true, ruleEditIdx: null, form: { table: '', device: '', scenario: '', rule: '' }, ruleError: '' }),
       closeModal: () => this.setState({ modalOpen: false, ruleError: '' }),
       onTable: (e) => this.setState((p) => ({ form: { ...p.form, table: e.target.value, device: '' }, ruleError: '' })),
       onDevice: (e) => this.setState((p) => ({ form: { ...p.form, device: e.target.value }, ruleError: '' })),
+      onScenario: (e) => this.setState((p) => ({ form: { ...p.form, scenario: e.target.value }, ruleError: '' })),
       onRule: (e) => this.setState((p) => ({ form: { ...p.form, rule: e.target.value } })),
       formatRule: () => this.setState((p) => ({ form: { ...p.form, rule: p.form.rule.split(',').map((x) => x.trim()).filter(Boolean).join(',\n') } })),
       saveModal: () => this.saveRule(),
@@ -728,18 +736,19 @@ class Component extends DCLogic {
   }
   openEditRule(i) {
     const r = this.state.ruleRows[i];
-    this.setState({ modalOpen: true, ruleEditIdx: i, form: { table: r.table, device: r.device, rule: r.rule }, ruleError: '' });
+    this.setState({ modalOpen: true, ruleEditIdx: i, form: { table: r.table, device: r.device, scenario: r.scenario || '', rule: r.rule }, ruleError: '' });
   }
   saveRule() {
     const { form, ruleEditIdx, ruleRows } = this.state;
-    if (!form.table || !form.device) { this.setState({ ruleError: '「试验表名」与「设备」均为必填项' }); return; }
-    const dup = ruleRows.findIndex((r) => r.table === form.table && r.device === form.device);
-    if (dup !== -1 && dup !== ruleEditIdx) { this.setState({ ruleError: '该「试验表 + 设备」已存在识别规则，不可重复创建（请改为编辑）' }); return; }
+    if (!form.table || !form.device || !form.scenario?.trim()) { this.setState({ ruleError: '「试验表名」「设备」与「场景」均为必填项' }); return; }
+    const scenario = form.scenario.trim();
+    const dup = ruleRows.findIndex((r) => r.table === form.table && r.device === form.device && r.scenario === scenario);
+    if (dup !== -1 && dup !== ruleEditIdx) { this.setState({ ruleError: '该「试验表 + 设备 + 场景」已存在识别规则，不可重复创建（请改为编辑）' }); return; }
     const rule = form.rule.trim() || '（未配置）';
     this.setState((p) => {
       const next = p.ruleRows.slice();
-      if (p.ruleEditIdx == null) next.push({ table: form.table, device: form.device, rule, status: 'pending' });
-      else next[p.ruleEditIdx] = { ...next[p.ruleEditIdx], table: form.table, device: form.device, rule };
+      if (p.ruleEditIdx == null) next.push({ table: form.table, device: form.device, scenario, rule, status: 'pending' });
+      else next[p.ruleEditIdx] = { ...next[p.ruleEditIdx], table: form.table, device: form.device, scenario, rule };
       return { ruleRows: next, modalOpen: false, ruleError: '' };
     });
   }

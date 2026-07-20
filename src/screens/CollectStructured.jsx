@@ -23,6 +23,12 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 import { useTestItemTiming } from './useTestItemTiming.js';
 import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
 import { TimingToast } from '../../components/data-display/TimingToast.jsx';
+import { OcrScenarioSelect } from './OcrScenarioSelect.jsx';
+import { OcrImagePreview } from './OcrImagePreview.jsx';
+import {
+  clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
+  mergeOcrFields, removeScenarioAttachment, sortAttachmentsByScenario, upsertScenarioAttachment,
+} from './ocr-scenario.js';
 
 /* 采集详情（L4·复合试验项 · 物资版 LIMS+数采）
    试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
@@ -49,6 +55,16 @@ const STATION_OPTIONS = [
   { value: 'none', label: '未绑定工位' },
 ];
 const DRAWER_MOCK_DEVICES = MOCK.drawerDevices;
+
+function fillScenarioValues(sub, cell, fieldKeys) {
+  const index = cellIndexFor(cell);
+  const vals = {};
+  (fieldKeys || []).forEach((key) => {
+    const field = sub.fields.find((f) => f.key === key);
+    if (field) vals[key] = genVal(field, index);
+  });
+  return vals;
+}
 
 function genVal(field, cellIndex) {
   if (FIXED[field.key]) return FIXED[field.key];
@@ -92,6 +108,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const [demoFlow, setDemoFlow] = React.useState(null);
   const [deviceError, setDeviceError] = React.useState('');
   const [editCells, setEditCells] = React.useState({}); // 拍照识别：{ [cellKey]: true } 表示已解锁可编辑
+  const [cellScenarios, setCellScenarios] = React.useState({}); // { [cellKey]: scenarioName }
+  const [previewAttach, setPreviewAttach] = React.useState(null);
   const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
   const itemMethod = ctx.method || ctx.item?.method;
   const envMock = React.useMemo(
@@ -143,7 +161,13 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const activeDevice = activeAssigned || normalizeDevice(null);
   const method = hasAssignment ? (activeDevice.method || 'manual') : null;
   const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
-  const caps = getMethodCapabilities(method, ctx.ocrVerified !== false);
+  const ocrScenarios = React.useMemo(
+    () => MOCK.resolveOcrScenarios(ctx.item, activeAssigned),
+    [ctx.item, activeAssigned],
+  );
+  const passedScenarios = getPassedScenarios(ocrScenarios);
+  const hasPassedRule = passedScenarios.length > 0;
+  const caps = getMethodCapabilities(method, hasPassedRule, ocrScenarios);
   const mainTimes = Math.max(1, ...subs.map((sub) => Object.values(cells).filter((cell) => cell.subItemId === sub.id).length));
 
   function deviceHasData(deviceId) {
@@ -186,6 +210,33 @@ function CollectStructured({ ctx, onBack, onDone }) {
     }
   }, [activeCells, activeCellKey]);
 
+  function scenarioMeta(name) {
+    return (ocrScenarios || []).find((s) => s.name === name) || null;
+  }
+
+  function selectedScenarioFor(cellKey) {
+    if (cellScenarios[cellKey]) return cellScenarios[cellKey];
+    const def = getDefaultScenario(ocrScenarios);
+    return def?.name || '';
+  }
+
+  function setScenarioFor(cellKey, name) {
+    setCellScenarios((prev) => ({ ...prev, [cellKey]: name }));
+  }
+
+  React.useEffect(() => {
+    if (method !== 'ocr' || !hasPassedRule) return;
+    const def = getDefaultScenario(ocrScenarios);
+    if (!def) return;
+    setCellScenarios((prev) => {
+      const next = { ...prev };
+      Object.keys(cells).forEach((key) => {
+        if (!next[key]) next[key] = def.name;
+      });
+      return next;
+    });
+  }, [method, hasPassedRule, ocrScenarios, cells]);
+
   function fillValues(sub, cell) {
     const index = cellIndexFor(cell);
     const vals = {};
@@ -220,15 +271,24 @@ function CollectStructured({ ctx, onBack, onDone }) {
     const source = device.method || 'manual';
     if (source === 'ocr' && !guardStartForOcr()) return;
     if (source === 'ble' && !guardStartForManual()) return;
+    const scenario = selectedScenarioFor(cell.key);
+    const meta = scenarioMeta(scenario);
+    if (source === 'ocr' && (!hasPassedRule || !meta)) return;
     touchReturn();
     setBusy('c-' + cell.key);
     setTimeout(() => {
       setCells((prev) => {
-        let next = markCellFilled(prev, cell.key, fillValues(sub, cell), { deviceId: device.id, source });
+        const cur = prev[cell.key];
+        const partial = source === 'ocr' ? fillScenarioValues(sub, cell, meta.fieldKeys) : fillValues(sub, cell);
+        const merged = source === 'ocr' ? mergeOcrFields(cur?.vals, partial, meta.fieldKeys) : partial;
+        let next = markCellFilled(prev, cell.key, merged, { deviceId: device.id, source });
         if (source === 'ocr') {
-          next = updateCell(next, cell.key, (cur) => ({
-            ...cur,
-            attachments: [{ id: Date.now() + '_ocr', kind: 'photo' }],
+          next = updateCell(next, cell.key, (c) => ({
+            ...c,
+            attachments: upsertScenarioAttachment(c.attachments, scenario, {
+              id: Date.now() + '_ocr',
+              kind: 'photo',
+            }),
           }));
         }
         return next;
@@ -314,14 +374,20 @@ function CollectStructured({ ctx, onBack, onDone }) {
   }
 
   function reRecognizeCell(sub, cell) {
-    if (!sub || !cell || flowLocked || !cell.attachments.length) return;
+    const scenario = selectedScenarioFor(cell.key);
+    const meta = scenarioMeta(scenario);
+    if (!sub || !cell || flowLocked || !meta || !getAttachmentForScenario(cell.attachments, scenario)) return;
     touchReturn();
     const device = deviceForSub(sub);
     if (!device) return;
     const source = device.method || 'manual';
     setBusy('c-' + cell.key);
     setTimeout(() => {
-      setCells((prev) => markCellFilled(prev, cell.key, fillValues(sub, cell), { deviceId: device.id, source }));
+      setCells((prev) => {
+        const cur = prev[cell.key];
+        const partial = fillScenarioValues(sub, cell, meta.fieldKeys);
+        return markCellFilled(prev, cell.key, mergeOcrFields(cur?.vals, partial, meta.fieldKeys), { deviceId: device.id, source });
+      });
       setEditCells((prev) => ({ ...prev, [cell.key]: false }));
       setBusy(null);
     }, 950);
@@ -358,10 +424,22 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function removeAttach(cellKey, id) {
     if (flowLocked) return;
-    setCells((prev) => updateCell(prev, cellKey, (cell) => ({
-      ...cell,
-      attachments: cell.attachments.filter((item) => item.id !== id),
+    const cell = cells[cellKey];
+    const item = cell?.attachments?.find((a) => a.id === id);
+    setCells((prev) => updateCell(prev, cellKey, (c) => ({
+      ...c,
+      attachments: removeScenarioAttachment(c.attachments, id),
     })));
+    if (item?.scenario) {
+      const meta = scenarioMeta(item.scenario);
+      if (meta?.fieldKeys?.length) {
+        setCells((prev) => updateCell(prev, cellKey, (c) => {
+          const vals = clearScenarioFields(c.vals, meta.fieldKeys);
+          const hasVals = Object.keys(vals).length > 0;
+          return { ...c, vals, status: hasVals ? c.status : 'idle', uploadedAt: null };
+        }));
+      }
+    }
   }
 
   function assignDevice(device) {
@@ -421,7 +499,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
     ? '请先为当前子项指派设备后再采集'
     : ({
         auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输',
-        ocr: caps.ocrReady ? '拍照识别 · 逐条拍摄仪器读数屏自动识别，识别结果可校正' : '识别规则未通过验证，已回退手工录入',
+        ocr: caps.ocrReady ? '拍照识别 · 选择场景后拍摄，多场景图片合并识别字段' : '该设备与试验项下不存在验证通过的识别规则，已回退手工录入',
         ble: '蓝牙数显卡尺 · 逐相连接同步读数，也可手动输入',
         manual: '读数由检测员手工录入',
         external: '外部程序代采写库（含串口通路）· App 生产无采集按钮，可查看已采或手输补录',
@@ -587,6 +665,10 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       deviceCatalog={deviceCatalog}
                       handInputBlocked={handInputBlocked}
                       onHandInputBlocked={guardStartForManual}
+                      ocrScenarios={ocrScenarios}
+                      hasPassedRule={hasPassedRule}
+                      selectedScenario={selectedScenarioFor(activeCell.key)}
+                      onScenarioChange={(name) => setScenarioFor(activeCell.key, name)}
                       onCollect={() => collectOne(activeSub, activeCell)}
                       onReRecognize={() => reRecognizeCell(activeSub, activeCell)}
                       ocrUnlocked={!!editCells[activeCell.key]}
@@ -596,6 +678,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       onReset={resetCell}
                       onAddAttach={addAttach}
                       onRemoveAttach={removeAttach}
+                      onPreviewAttach={setPreviewAttach}
                     />
                     </AnnotatedWrapper>
                   )}
@@ -642,6 +725,12 @@ function CollectStructured({ ctx, onBack, onDone }) {
           onConfirm={confirmDeviceDrawer}
         />
       )}
+
+      <OcrImagePreview
+        open={!!previewAttach}
+        scenario={previewAttach?.scenario}
+        onClose={() => setPreviewAttach(null)}
+      />
       <TimingToast message={timingCtl.toast} />
     </div>
   );
@@ -903,7 +992,7 @@ function CheckBox({ on }) {
   );
 }
 
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, handInputBlocked = false, onHandInputBlocked, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, handInputBlocked = false, onHandInputBlocked, ocrScenarios, hasPassedRule, selectedScenario, onScenarioChange, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach, onPreviewAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
@@ -915,13 +1004,25 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
   const traceDevice = recordDevice || (filled && cell.deviceId ? { name: cell.deviceId, code: '—', method: cell.source || method } : currentDevice);
   const traceMethod = filled ? (traceDevice.method || cell.source || method) : method;
   const showCollectActions = !flowLocked && cell.status !== 'uploaded' && (method === 'ble' || method === 'ocr');
+  const canShoot = method === 'ocr' && hasPassedRule && selectedScenario;
 
   return (
     <React.Fragment>
+      {method === 'ocr' && !flowLocked && (
+        <OcrScenarioSelect
+          ocrScenarios={ocrScenarios}
+          value={selectedScenario}
+          onChange={onScenarioChange}
+        />
+      )}
       {showCollectActions && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
           {method === 'ble' && <Button onClick={onCollect} disabled={busyCell}>{busyCell ? '连接中…' : '连接采集'}</Button>}
-          {method === 'ocr' && <Button onClick={onCollect} disabled={busyCell}>{busyCell ? '识别中…' : '拍照识别'}</Button>}
+          {method === 'ocr' && (
+            <Button onClick={onCollect} disabled={busyCell || !canShoot}>
+              {busyCell ? '识别中…' : '拍照识别'}
+            </Button>
+          )}
         </div>
       )}
 
@@ -956,7 +1057,7 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
             {ocrField && filled && !flowLocked && (
               <OcrEditBar
                 locked={ocrLocked}
-                hasPhoto={cell.attachments.length > 0}
+                hasPhoto={!!getAttachmentForScenario(cell.attachments, selectedScenario)}
                 busy={busyCell}
                 onReRecognize={onReRecognize}
                 onEdit={() => onSetOcrUnlocked(true)}
@@ -966,12 +1067,22 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
 
             {!filled && <MethodNote method={method} readOnly={readOnly} />}
 
-            {caps.canAttach && filled && (
+            {caps.canAttach && filled && method === 'ocr' && (
               <AttachmentList
                 cell={cell}
                 method={method}
                 flowLocked={flowLocked}
-                onAdd={() => onAddAttach(cell.key, method === 'ocr' ? 'photo' : 'upload')}
+                selectedScenario={selectedScenario}
+                onRemove={(id) => onRemoveAttach(cell.key, id)}
+                onPreview={onPreviewAttach}
+              />
+            )}
+            {caps.canAttach && filled && method !== 'ocr' && (
+              <AttachmentList
+                cell={cell}
+                method={method}
+                flowLocked={flowLocked}
+                onAdd={() => onAddAttach(cell.key, 'upload')}
                 onRemove={(id) => onRemoveAttach(cell.key, id)}
               />
             )}
@@ -1071,28 +1182,28 @@ function OcrEditBar({ locked, hasPhoto, busy, onReRecognize, onEdit, onDone }) {
   );
 }
 
-function AttachmentList({ cell, method, flowLocked, onAdd, onRemove }) {
+function AttachmentList({ cell, method, flowLocked, selectedScenario, onAdd, onRemove, onPreview }) {
   const title = method === 'ocr' ? '识别参照图' : '参照图';
-  const hint = method === 'ocr' ? '· 仅一张 · 对应本次识别数据来源' : '· 随数据一起上传归档';
+  const hint = method === 'ocr' ? '· 按场景 · 同场景新拍覆盖旧图' : '· 随数据一起上传归档';
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
   const displayAttachments = method === 'ocr'
-    ? getOcrReferenceAttachments(cell.attachments, { filled, flowLocked, isOcr: true })
+    ? sortAttachmentsByScenario(getOcrReferenceAttachments(cell.attachments, { filled, flowLocked, isOcr: true }))
     : cell.attachments;
   return (
     <div style={{ paddingTop: 10, borderTop: '1px dashed var(--divider)' }}>
       <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>{title} <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>{hint}</span></div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         {displayAttachments.map((item) => (
-          <div key={item.id} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <div key={item.id} role={onPreview && !item.mock ? 'button' : undefined} tabIndex={onPreview && !item.mock ? 0 : undefined} onClick={() => onPreview && !item.mock && onPreview(item)} onKeyDown={(e) => { if (e.key === 'Enter' && onPreview && !item.mock) onPreview(item); }} style={{ position: 'relative', width: 76, height: 76, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'repeating-linear-gradient(135deg,#eef1f5 0 8px,#e6eaef 8px 16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: onPreview && !item.mock ? 'pointer' : 'default' }}>
             <CameraIcon />
-            <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono,monospace)' }}>{item.kind === 'photo' ? '拍照' : '上传'}</span>
-            {!flowLocked && !item.mock && <button onClick={() => onRemove(item.id)} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
+            <span style={{ fontSize: 10, color: method === 'ocr' ? 'var(--collect-ocr,#b06a00)' : 'var(--text-secondary)', fontWeight: method === 'ocr' ? 600 : 400, maxWidth: 68, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.scenario || (item.kind === 'photo' ? '拍照' : '上传')}</span>
+            {!flowLocked && !item.mock && <button onClick={(e) => { e.stopPropagation(); onRemove(item.id); }} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>}
           </div>
         ))}
-        {!flowLocked && !(method === 'ocr' && cell.attachments.length >= 1) && (
+        {!flowLocked && method !== 'ocr' && onAdd && (
           <button onClick={onAdd} style={{ width: 76, height: 76, borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--bg-app)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
             <PlusIcon />
-            <span style={{ fontSize: 10 }}>{method === 'ocr' ? '拍照识别' : '拍照/上传'}</span>
+            <span style={{ fontSize: 10 }}>拍照/上传</span>
           </button>
         )}
       </div>
@@ -1105,7 +1216,7 @@ function MethodNote({ method, readOnly }) {
     auto: '设备直采数据，不可修改',
     ble: '',
     manual: '单机设备无通讯接口，读数手工录入',
-    ocr: '识别结果可校正，参照图随数据归档',
+    ocr: '识别结果可校正，参照图按场景随数据归档',
     external: '外部程序已采数据可在本端补录或矫正',
   }[method];
   if (!text) return null;
