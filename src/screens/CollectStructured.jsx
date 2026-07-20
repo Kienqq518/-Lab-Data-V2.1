@@ -34,7 +34,8 @@ import {
 } from './ocr-scenario.js';
 
 /* 采集详情（L4·复合试验项 · 物资版 LIMS+数采）
-   试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
+   试验子项决定采集字段、次数与默认设备；设备池支持多设备协同，各子项独立指派。
+   切换子项时，设备信息区随当前子项联动展示其已指派/配置设备。
    每条采集记录保存采集时使用的设备，避免后续换设备影响历史读数。
    轻量版 LIMS+数采无多试验子项，不进入本页。 */
 
@@ -79,7 +80,14 @@ function genVal(field, cellIndex) {
 }
 
 function CollectStructured({ ctx, onBack, onDone }) {
-  const baseSubs = React.useMemo(() => getSubItems(ctx), [ctx]);
+  const baseSubs = React.useMemo(() => {
+    const seen = new Set();
+    return getSubItems(ctx).filter((sub) => {
+      if (!sub?.id || seen.has(sub.id)) return false;
+      seen.add(sub.id);
+      return true;
+    });
+  }, [ctx]);
   const subs = baseSubs;
   const configuredDevices = React.useMemo(() => sortDevicePool(uniqueDevices(
     baseSubs.flatMap((sub) => [sub.device, ...(sub.candidateDevices || [])])
@@ -114,6 +122,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const [cellScenarios, setCellScenarios] = React.useState({}); // { [cellKey]: scenarioName }
   const [previewAttach, setPreviewAttach] = React.useState(null);
   const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
+  const itemKey = `${ctx.item?.id || ''}|${ctx.item?.name || ''}`;
+  const syncedItemKeyRef = React.useRef(itemKey);
   const itemMethod = ctx.method || ctx.item?.method;
   const envMock = React.useMemo(
     () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`, { forceGuard: itemMethod === 'auto' }),
@@ -159,7 +169,19 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const activeSub = subs.find((sub) => sub.id === activeSubId) || subs[0];
   const activeCells = React.useMemo(() => sortCells(Object.values(cells).filter((cell) => cell.subItemId === activeSub?.id)), [cells, activeSub?.id]);
   const activeCell = cells[activeCellKey] || activeCells[0];
-  const activeAssigned = selectedDevices[activeSub?.id] || null;
+
+  function configuredDeviceForSub(sub) {
+    if (!sub) return null;
+    const ref = configuredDevices.find((device) => device.id === sub.device?.id) || sub.device;
+    return ref ? normalizeDevice(ref, sub.method) : null;
+  }
+
+  function resolveSubDevice(sub) {
+    if (!sub) return null;
+    return selectedDevices[sub.id] ?? configuredDeviceForSub(sub);
+  }
+
+  const activeAssigned = resolveSubDevice(activeSub);
   const hasAssignment = !!activeAssigned;
   const activeDevice = activeAssigned || normalizeDevice(null);
   const method = hasAssignment ? (activeDevice.method || 'manual') : null;
@@ -178,7 +200,20 @@ function CollectStructured({ ctx, onBack, onDone }) {
   }
 
   function deviceForSub(sub) {
-    return selectedDevices[sub?.id] || null;
+    return resolveSubDevice(sub);
+  }
+
+  function selectSub(subId) {
+    const sub = subs.find((s) => s.id === subId);
+    setActiveSubId(subId);
+    setDeviceError('');
+    if (!sub) return;
+    setSelectedDevices((prev) => {
+      if (prev[subId]) return prev;
+      const seeded = configuredDeviceForSub(sub);
+      if (!seeded) return prev;
+      return { ...prev, [subId]: seeded };
+    });
   }
 
   /** 退回复测：回填上次提交的试验数据 */
@@ -202,6 +237,24 @@ function CollectStructured({ ctx, onBack, onDone }) {
   React.useEffect(() => {
     if (!activeSub && subs[0]) setActiveSubId(subs[0].id);
   }, [activeSub, subs]);
+
+  React.useEffect(() => {
+    if (!itemKey || !baseSubs.length || syncedItemKeyRef.current === itemKey) return;
+    syncedItemKeyRef.current = itemKey;
+    setSelectedDevices(() => {
+      const initial = {};
+      baseSubs.forEach((sub) => {
+        const ref = configuredDevices.find((device) => device.id === sub.device?.id) || sub.device;
+        initial[sub.id] = normalizeDevice(ref, sub.method);
+      });
+      return initial;
+    });
+    setPooledDeviceIds(configuredDevices.map((device) => device.id));
+    setActiveSubId(baseSubs[0]?.id || '');
+    setCells(toCellMap(createCollectCells(ctx)));
+    setActiveCellKey('');
+    setDeviceError('');
+  }, [itemKey, baseSubs, configuredDevices, ctx]);
 
   React.useEffect(() => {
     if (!activeCells.length) {
@@ -567,6 +620,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         <AnnotatedWrapper id="structuredDeviceInfo" layout="block">
           <Section title="设备信息" icon="cpu" compact extra={<CollectBadge method={method || 'manual'} size="sm" />}>
             <DevicePool
+              key={activeSubId}
               devices={availableDevices}
               activeDevice={activeDevice}
               hasAssignment={hasAssignment}
@@ -582,7 +636,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
                 <span>{deviceError}</span>
               </div>
             )}
-            <DeviceMeta subName={activeSub.name} device={hasAssignment ? activeDevice : null} />
+            <DeviceMeta key={activeSubId} subName={activeSub.name} device={hasAssignment ? activeDevice : null} />
           </Section>
         </AnnotatedWrapper>
 
@@ -626,7 +680,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
               </div>
               <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>已上传 {summary.uploaded}/{summary.total}</span>
             </div>
-            <SubItemSwitches subs={subs} activeSub={activeSub} summary={summary} onSelect={(id) => { setActiveSubId(id); setDeviceError(''); }} />
+            <SubItemSwitches subs={subs} activeSub={activeSub} summary={summary} onSelect={selectSub} />
           </div>
         </AnnotatedWrapper>
 
