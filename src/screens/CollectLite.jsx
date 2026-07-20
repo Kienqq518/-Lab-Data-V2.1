@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppBar, Button, Card, CollectBadge, FieldRow } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
-import { EnvInfoSection, resolveEnvMock } from './collect-env.jsx';
+import { EnvInfoSection, mergeRecordEnvVals, RecordEnvFields, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { resolveInspectStampState } from './collect-model.js';
 import { AnnotatedWrapper } from '../annotation/index.js';
@@ -19,13 +19,13 @@ const DEMO_FLOWS = {
   locked: { node: '组内审核' },
 };
 
-/** 轻量版：wd/sd 不在试验参数区展示，由环境信息区环境室温/环境湿度回填 */
-const ENV_SYNC_KEYS = new Set(['wd', 'sd']);
+/** 轻量版：wd/sd 在试验参数区展示，有传感器时由环境信息回填，无传感器时手输 */
+const ENV_FIELD_KEYS = new Set(['wd', 'sd']);
 
 function CollectLite({ ctx, onBack, onDone }) {
   const fields = ctx.item?.fields || [];
-  const hasEnvSyncFields = fields.some((f) => ENV_SYNC_KEYS.has(f.key));
-  const measureFields = fields.filter((f) => f.key !== 'jl' && f.key !== 'bhgyy' && !ENV_SYNC_KEYS.has(f.key));
+  const hasEnvFields = fields.some((f) => ENV_FIELD_KEYS.has(f.key));
+  const measureFields = fields.filter((f) => f.key !== 'jl' && f.key !== 'bhgyy' && !ENV_FIELD_KEYS.has(f.key));
   const isReview = !!(ctx.reviewMode || ctx.status === 'done');
   const demoVals = ctx.item?.doneVals || {};
   const N = ctx.item?.count ?? 1;
@@ -45,13 +45,18 @@ function CollectLite({ ctx, onBack, onDone }) {
 
   const [returnTouched, setReturnTouched] = React.useState(false);
   const [env, setEnv] = React.useState({ wd: '21.0', sd: '30.7' });
+  const envMock = React.useMemo(
+    () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`, { forceGuard: method === 'auto' }),
+    [ctx.sample?.code, ctx.item?.name, method],
+  );
   const [vals, setVals] = React.useState(() => {
     const init = {};
     fields.forEach((f) => { init[f.key] = demoVals[f.key] ?? ''; });
-    // 有 wd/sd 时优先用环境信息初值回填（复核态保留 doneVals）
-    if (!isReview) {
-      if (fields.some((f) => f.key === 'wd')) init.wd = '21.0';
-      if (fields.some((f) => f.key === 'sd')) init.sd = '30.7';
+    // 有 wd/sd 且有传感器时优先用环境信息初值回填（复核态保留 doneVals）
+    if (!isReview && hasEnvFields) {
+      const initEnv = mergeRecordEnvVals({}, { wd: '21.0', sd: '30.7' }, resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`, { forceGuard: method === 'auto' }));
+      if (fields.some((f) => f.key === 'wd') && initEnv.wd) init.wd = initEnv.wd;
+      if (fields.some((f) => f.key === 'sd') && initEnv.sd) init.sd = initEnv.sd;
     }
     return init;
   });
@@ -66,22 +71,16 @@ function CollectLite({ ctx, onBack, onDone }) {
   const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
   /** 已检任务 L4：流程未锁定（仍在试验检测或未进组内审核）时可编辑；进入组内审核及以后只读 */
   const fieldsReadOnly = flowLocked || handInputBlocked || (uploaded && !flowReturned && !(isReview && !flowLocked));
-  const envMock = React.useMemo(
-    () => resolveEnvMock(`${ctx.sample?.code || ''}|${ctx.item?.name || ''}`, { forceGuard: method === 'auto' }),
-    [ctx.sample?.code, ctx.item?.name, method],
-  );
 
-  /** 环境信息刷新时，同步回填试验参数中的 wd/sd */
+  /** 环境信息刷新时，有传感器则同步回填 wd/sd */
   React.useEffect(() => {
-    if (!hasEnvSyncFields || fieldsReadOnly) return;
+    if (!hasEnvFields || fieldsReadOnly) return;
     setVals((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      if (fields.some((f) => f.key === 'wd') && next.wd !== env.wd) { next.wd = env.wd; changed = true; }
-      if (fields.some((f) => f.key === 'sd') && next.sd !== env.sd) { next.sd = env.sd; changed = true; }
-      return changed ? next : prev;
+      const merged = mergeRecordEnvVals(prev, env, envMock);
+      if (merged.wd === prev.wd && merged.sd === prev.sd) return prev;
+      return merged;
     });
-  }, [env.wd, env.sd, hasEnvSyncFields, fieldsReadOnly, fields]);
+  }, [env.wd, env.sd, hasEnvFields, fieldsReadOnly, envMock]);
 
   function guardHandInputRequired() {
     if (method !== 'manual' && method !== 'ble') return true;
@@ -217,10 +216,22 @@ function CollectLite({ ctx, onBack, onDone }) {
                     placeholder="请输入"
                     onChange={(e) => setField(f.key, e.target.value)} />
             ))}
+            {hasEnvFields && (
+              <AnnotatedWrapper id="recordEnvFields" layout="block">
+                <RecordEnvFields
+                  env={env}
+                  envMock={envMock}
+                  vals={vals}
+                  readOnly={fieldsReadOnly || uploading}
+                  handInputBlocked={handInputBlocked}
+                  onReadOnlyInteract={guardStartForManual}
+                  onChange={(key, value) => setField(key, value)}
+                  FieldRow={FieldRow}
+                />
+              </AnnotatedWrapper>
+            )}
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              {hasEnvSyncFields
-                ? '轻量版：室温/湿度由上方「环境信息」自动写入，本区不重复展示；暂未配置是否必填，暂不做必填约束'
-                : '轻量版：展示全部试验参数；暂未配置是否必填，暂不做必填约束'}
+              暂未配置是否必填，暂不做必填约束
             </div>
           </div>
         </Card>

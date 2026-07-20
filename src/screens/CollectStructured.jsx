@@ -17,7 +17,7 @@ import {
   toCellMap,
   updateCell,
 } from './collect-model.js';
-import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
+import { EnvInfoSection, getOcrReferenceAttachments, mergeRecordEnvVals, RecordEnvFields, resolveEnvMock } from './collect-env.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 import { useTestItemTiming } from './useTestItemTiming.js';
@@ -190,8 +190,23 @@ function CollectStructured({ ctx, onBack, onDone }) {
     const index = cellIndexFor(cell);
     const vals = {};
     sub.fields.forEach((field) => { vals[field.key] = genVal(field, index); });
-    return vals;
+    return mergeRecordEnvVals(vals, env, envMock);
   }
+
+  /** 环境信息刷新时，有传感器则同步回填各条已采数据的室温/湿度 */
+  React.useEffect(() => {
+    setCells((prev) => {
+      let next = prev;
+      Object.values(prev).forEach((cell) => {
+        if (cell.status === 'idle') return;
+        next = updateCell(next, cell.key, (cur) => ({
+          ...cur,
+          vals: mergeRecordEnvVals(cur.vals, env, envMock),
+        }));
+      });
+      return next;
+    });
+  }, [env.wd, env.sd, envMock]);
 
   function captureSub(sub) {
     const device = deviceForSub(sub);
@@ -585,6 +600,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       flowReturned={flowReturned}
                       currentDevice={activeDevice}
                       deviceCatalog={deviceCatalog}
+                      env={env}
+                      envMock={envMock}
                       handInputBlocked={handInputBlocked}
                       onHandInputBlocked={guardStartForManual}
                       onCollect={() => collectOne(activeSub, activeCell)}
@@ -903,7 +920,7 @@ function CheckBox({ on }) {
   );
 }
 
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, handInputBlocked = false, onHandInputBlocked, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, env, envMock, handInputBlocked = false, onHandInputBlocked, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
@@ -952,6 +969,19 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
                 onReadOnlyInteract={handInputBlocked ? onHandInputBlocked : undefined}
                 onChange={(event) => onChange(cell.key, field, event.target.value)} />;
             })}
+
+            <AnnotatedWrapper id="recordEnvFields" layout="block">
+              <RecordEnvFields
+                env={env}
+                envMock={envMock}
+                vals={cell.vals}
+                readOnly={readOnly || ocrLocked}
+                handInputBlocked={handInputBlocked}
+                onReadOnlyInteract={onHandInputBlocked}
+                onChange={(key, value) => onChange(cell.key, { key, label: key }, value)}
+                FieldRow={FieldRow}
+              />
+            </AnnotatedWrapper>
 
             {ocrField && filled && !flowLocked && (
               <OcrEditBar

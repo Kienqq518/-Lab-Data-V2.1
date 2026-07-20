@@ -30,8 +30,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     else if (view === 'about') screen = <AboutPage onBack={() => setView('settings')} onService={() => setView('service')} />;
     else if (view === 'service') screen = <ServiceAgreementPage onBack={() => setView('about')} />;
     else if (view === 'password') screen = <PasswordPage onBack={() => setView('main')} onToast={showToast} />;
-    else if (view === 'help') screen = <HelpPage onBack={() => setView('main')} onFeedback={() => setView('feedback')} onToast={showToast} />;
-    else if (view === 'feedback') screen = <FeedbackPage onBack={() => setView('help')} onToast={showToast} />;
+    else if (view === 'help') screen = <HelpPage onBack={() => setView('main')} onToast={showToast} />;
     else screen = (
       <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-section)' }}>
         {/* 用户信息头（点击进入个人资料） */}
@@ -356,7 +355,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
   }
 
   /* ===== 帮助与反馈 ===== */
-  function HelpPage({ onBack, onFeedback, onToast }) {
+  function HelpPage({ onBack, onToast }) {
     const [openIdx, setOpenIdx] = React.useState(null);
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
@@ -381,80 +380,11 @@ import { AnnotatedWrapper } from '../annotation/index.js';
           </div>
 
           <Card padding="0">
-            <Row icon="edit" label="意见反馈" onClick={onFeedback} />
+            <AnnotatedWrapper id="feedbackEmail" layout="block">
+              <Row icon="edit" label="意见反馈" note="feedback@labdata.cn" static />
+            </AnnotatedWrapper>
             <Row icon="phone" label="联系客服" note="400-800-1234" onClick={() => onToast('客服电话 400-800-1234（占位）')} last />
           </Card>
-        </div>
-      </div>
-    );
-  }
-
-  /* ===== 意见反馈表单 ===== */
-  function FeedbackPage({ onBack, onToast }) {
-    const TYPES = ['功能异常', '体验建议', '数据问题', '其他'];
-    const [type, setType] = React.useState(TYPES[0]);
-    const [text, setText] = React.useState('');
-    const [contact, setContact] = React.useState('');
-
-    function submit() {
-      if (!text.trim()) { onToast('请填写反馈内容'); return; }
-      onToast('反馈已提交，感谢你的反馈');
-      onBack();
-    }
-
-    return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
-        <AppBar title="意见反馈" onBack={onBack} />
-        <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>反馈类型</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {TYPES.map((t) => {
-                const on = t === type;
-                return (
-                  <button key={t} onClick={() => setType(t)} style={{
-                    minHeight: 34, padding: '6px 14px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
-                    border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                    background: on ? 'var(--surface-selected)' : 'var(--white)', color: on ? 'var(--brand-action)' : 'var(--text-body)',
-                    fontSize: 'var(--fs-sm)', fontWeight: on ? 600 : 400,
-                  }}>{t}</button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>反馈内容</div>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="请描述你遇到的问题或建议（不少于 5 个字）" rows={5} style={{
-              width: '100%', boxSizing: 'border-box', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
-              background: 'var(--white)', font: 'var(--font-sans)', fontSize: 'var(--fs-base)', color: 'var(--text-title)', resize: 'none', outline: 'none',
-            }} />
-          </div>
-
-          <AnnotatedWrapper id="feedbackImages" layout="block">
-            <div>
-              <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>图片（选填）</div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {[0, 1, 2].map((k) => (
-                  <div key={k} style={{ width: 72, height: 72, borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-strong)', background: 'var(--surface-sunken,#f5f6f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-placeholder)' }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14 M5 12h14"/></svg>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </AnnotatedWrapper>
-
-          <div>
-            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>联系方式（选填）</div>
-            <Input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="手机号或邮箱，便于我们回访" />
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
-            <span>反馈提交后由后台数据库统一收集，Web 端反馈查看功能正在建设中，敬请期待。</span>
-          </div>
-
-          <Button block size="lg" onClick={submit}>提交反馈</Button>
         </div>
       </div>
     );
@@ -511,7 +441,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     );
   }
 
-  function Row({ icon, label, note, badge, danger, onClick, last }) {
+  function Row({ icon, label, note, badge, danger, onClick, last, static: isStatic }) {
     const paths = {
       key: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4',
       bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0',
@@ -526,16 +456,17 @@ import { AnnotatedWrapper } from '../annotation/index.js';
       settings: 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
     };
     const color = danger ? 'var(--danger)' : 'var(--text-body)';
+    const Tag = isStatic ? 'div' : 'button';
     return (
-      <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '15px 16px', border: 'none', borderBottom: last ? 'none' : '1px solid var(--divider)', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+      <Tag onClick={isStatic ? undefined : onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '15px 16px', border: 'none', borderBottom: last ? 'none' : '1px solid var(--divider)', background: 'transparent', cursor: isStatic ? 'default' : 'pointer', textAlign: 'left' }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
         <span style={{ flex: 1, fontSize: 'var(--fs-base)', color }}>{label}</span>
         {note && <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', flex: 'none' }}>{note}</span>}
         {badge > 0 && (
           <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: 'var(--danger,#e23b3b)', color: '#fff', fontSize: 11, fontWeight: 700, lineHeight: '18px', textAlign: 'center', flex: 'none' }}>{badge}</span>
         )}
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-placeholder)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-      </button>
+        {!isStatic && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-placeholder)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>}
+      </Tag>
     );
   }
 

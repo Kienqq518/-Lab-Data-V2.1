@@ -7,7 +7,7 @@ import { isCompositeItem, isFlowReturned, resolveInspectStampState } from './col
 import { useTestItemTiming } from './useTestItemTiming.js';
 import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
 import { TimingToast } from '../../components/data-display/TimingToast.jsx';
-import { EnvInfoSection, getOcrReferenceAttachments, resolveEnvMock } from './collect-env.jsx';
+import { EnvInfoSection, getOcrReferenceAttachments, mergeRecordEnvVals, RecordEnvFields, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
@@ -146,8 +146,16 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
       const fields = fieldsForSyzjz(syzjzVal || BASE.syzjz);
       const v = {};
       fields.forEach((f) => { v[f.key] = valAt(f.key, i, syzjzVal || BASE.syzjz); });
-      return v;
+      return mergeRecordEnvVals(v, env, envMock);
     }
+
+    /** 环境信息刷新时，有传感器则同步回填各条已采数据的室温/湿度 */
+    React.useEffect(() => {
+      setTimes((prev) => prev.map((t) => {
+        if (t.status === 'idle') return t;
+        return { ...t, vals: mergeRecordEnvVals(t.vals, env, envMock) };
+      }));
+    }, [env.wd, env.sd, envMock]);
 
     /** 退回复测：用户修改或重置后标记，用于展示右上角状态水印 */
     function touchReturn() {
@@ -583,6 +591,18 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                                     onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
                                     onChange={(e) => setField(i, f.key, e.target.value)} />
                             ))}
+                            <AnnotatedWrapper id="recordEnvFields" layout="block">
+                              <RecordEnvFields
+                                env={env}
+                                envMock={envMock}
+                                vals={t.vals}
+                                readOnly={isFieldReadOnly({ ocrField, locked, serialUploaded: isSerial && t.uploaded })}
+                                handInputBlocked={handInputBlocked}
+                                onReadOnlyInteract={guardStartForManual}
+                                onChange={(key, value) => setField(i, key, value)}
+                                FieldRow={FieldRow}
+                              />
+                            </AnnotatedWrapper>
                             {method === 'auto' && (
                               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--collect-auto,#1d54c4)', display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
@@ -676,6 +696,18 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
                                     onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
                                     onChange={(e) => setField(i, f.key, e.target.value)} />
                             ))}
+                            <AnnotatedWrapper id="recordEnvFields" layout="block">
+                              <RecordEnvFields
+                                env={env}
+                                envMock={envMock}
+                                vals={t.vals}
+                                readOnly={isFieldReadOnly({ ocrField, locked, serialUploaded: isSerial && t.uploaded })}
+                                handInputBlocked={handInputBlocked}
+                                onReadOnlyInteract={guardStartForManual}
+                                onChange={(key, value) => setField(i, key, value)}
+                                FieldRow={FieldRow}
+                              />
+                            </AnnotatedWrapper>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
                               <span>{method === 'ocr' ? (ocrReady ? '字段待采集 · 点击右上「拍照识别」拍摄读数屏自动填入' : '该试验项识别规则未通过验证 · 请在上方字段手动输入') : method === 'ble' ? '字段待采集 · 点击右上「连接采集」同步，或直接在上方手动输入' : method === 'auto' ? '字段待采集 · 等待上位机写库回填（原型可用上方演示「一键采集」）' : isExternal ? '字段待采集 · 等待平板外部程序写库，或在上方手输补录' : isSerial ? '字段待采集 · 等待外部程序·串口写库（原型可用上方演示「一键采集」），或手输兜底' : '字段待采集 · 请在上方手动输入'}</span>
