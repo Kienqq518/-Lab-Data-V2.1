@@ -443,7 +443,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
             <Section title="基础信息" icon="info">
               <Grid items={[
                 ['任务编号', ctx.task?.code || MOCK.taskCodeFromSample(ctx.sample)],
-                ['样品编号', ctx.sample.code],
+                ['样品编号', MOCK.formatSampleCodeDisplay(ctx.sample)],
                 ['样品名称', ctx.sample.name],
                 ['型号规格', MOCK.sampleSpec(ctx.sample)],
                 ['试验名称', ctx.item.name],
@@ -564,7 +564,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
                             {statusText(cell.status)}
                           </div>
                           <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-tertiary,#9aa3b2)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                            {sampleCodeForCell(ctx.sample.code, index)}
+                            {MOCK.sampleCodeForCell(ctx.sample, index)}
                           </div>
                         </div>
                       </button>
@@ -1230,11 +1230,6 @@ function cellLabel(sub, cell) {
     return repeats > 1 ? `${cell.phase}相 · 第${cell.repeatIndex + 1}次` : `${cell.phase}相`;
   }
   return `第 ${cell.repeatIndex + 1} 次`;
-}
-
-function sampleCodeForCell(sampleCode, index) {
-  const base = String(sampleCode || 'SC2026/01001-01').replace(/-\d+$/, '');
-  return `${base}-${String(index + 1).padStart(2, '0')}`;
 }
 
 function enrichDevice(device, method) {

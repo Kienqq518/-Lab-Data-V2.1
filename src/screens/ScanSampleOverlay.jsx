@@ -31,9 +31,11 @@ export function ScanSampleOverlay({ onCancel, onScan }) {
 
 /** 根据样品解析所属任务（mock 扫码跳转用） */
 export function resolveTaskForSample(sample, tasks) {
-  return tasks.find((tk) => sample.code.startsWith(tk.code))
+  return tasks.find((tk) =>
+    (sample.taskCode && sample.taskCode === tk.code) || sample.code.startsWith(tk.code),
+  )
     || {
-      code: sample.code.replace(/-\d+$/, ''),
+      code: sample.taskCode || sample.code.replace(/-\d+$/, ''),
       sampleName: sample.name,
       client: sample.client,
       time: '',

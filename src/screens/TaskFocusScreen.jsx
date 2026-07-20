@@ -152,7 +152,7 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
   if (view === 'task' && task) {
     const tSamples = visibleSamples(task);
     const getBaseTests = (sample) => visibleTests(sample);
-    const { samples: filteredSamples, getTests } = filterL3View(tSamples, getBaseTests, q);
+    const { samples: filteredSamples, getTests } = filterL3View(tSamples, getBaseTests, q, (s, kw) => M.sampleCodeMatchesKeyword(s, kw));
     const cur = filteredSamples.find((s) => s.id === taskSample) || filteredSamples[0];
     const its = cur ? getTests(cur) : [];
 
@@ -206,7 +206,7 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
                       <span style={{ fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 400, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums' }}>序号:{i + 1}</span>
                     </div>
                   </div>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{s.code}</span>
+                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{M.formatSampleCodeDisplay(s)}</span>
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.35, color: 'var(--text-title)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.name}</span>
                 </button>
               );
