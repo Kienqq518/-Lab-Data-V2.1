@@ -192,12 +192,7 @@
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
               <span style="font-size:13.5px; color:#5b6677; flex:none;">场景</span>
-              <select class="lk-sel" value="{{ ruleFilterDraft.scenario }}" onChange="{{ onRuleFilterScenario }}" style="width:140px; height:34px; border:1px solid #e5e8ee; border-radius:7px; padding:0 28px 0 12px; font-size:13px; color:{{ ruleFilterScenarioColor }}; background-color:#fff; cursor:pointer;">
-                <option value="">全部</option>
-                <sc-for list="{{ ruleScenarioOptions }}" as="o" hint-placeholder-count="0">
-                  <option value="{{ o }}">{{ o }}</option>
-                </sc-for>
-              </select>
+              <input type="text" value="{{ ruleFilterDraft.scenario }}" onInput="{{ onRuleFilterScenario }}" placeholder="请输入" style="width:140px; height:34px; border:1px solid #e5e8ee; border-radius:7px; padding:0 12px; font-size:13px; color:{{ ruleFilterScenarioColor }}; background-color:#fff; outline:none;" />
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
               <span style="font-size:13.5px; color:#5b6677; flex:none;">验证状态</span>
@@ -851,12 +846,11 @@ class Component extends DCLogic {
     });
 
     // ----- rule rows -----
-    const ruleScenarioOptions = [...new Set(s.ruleRows.map((r) => r.scenario).filter(Boolean))].sort();
     const filteredRuleSource = s.ruleRows
       .map((r, i) => ({ ...r, _idx: i }))
       .filter((r) => {
         const f = s.ruleFilter || {};
-        if (f.scenario && r.scenario !== f.scenario) return false;
+        if (f.scenario && !(r.scenario || '').includes(f.scenario.trim())) return false;
         if (f.status && r.status !== f.status) return false;
         if (f.table && r.table !== f.table) return false;
         if (f.device && r.device !== f.device) return false;
@@ -926,7 +920,6 @@ class Component extends DCLogic {
       // rules
       ruleRows, ruleTotal: filteredRuleSource.length,
       ruleFilterDraft: s.ruleFilterDraft,
-      ruleScenarioOptions,
       ruleFilterScenarioColor: s.ruleFilterDraft.scenario ? '#1a2233' : '#aab2bf',
       onRuleFilterScenario: (e) => this.setState((p) => ({ ruleFilterDraft: { ...p.ruleFilterDraft, scenario: e.target.value } })),
       applyRuleFilter: () => this.setState((p) => ({ ruleFilter: { ...p.ruleFilterDraft } })),

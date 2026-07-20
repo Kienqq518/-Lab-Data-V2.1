@@ -1107,6 +1107,7 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
                 cell={cell}
                 method={method}
                 flowLocked={flowLocked}
+                ocrScenarios={ocrScenarios}
                 selectedScenario={selectedScenario}
                 onRemove={(id) => onRemoveAttach(cell.key, id)}
                 onPreview={onPreviewAttach}
@@ -1217,12 +1218,12 @@ function OcrEditBar({ locked, hasPhoto, busy, onReRecognize, onEdit, onDone }) {
   );
 }
 
-function AttachmentList({ cell, method, flowLocked, selectedScenario, onAdd, onRemove, onPreview }) {
+function AttachmentList({ cell, method, flowLocked, ocrScenarios, selectedScenario, onAdd, onRemove, onPreview }) {
   const title = method === 'ocr' ? '识别参照图' : '参照图';
   const hint = method === 'ocr' ? '· 按场景 · 同场景新拍覆盖旧图' : '· 随数据一起上传归档';
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
   const displayAttachments = method === 'ocr'
-    ? sortAttachmentsByScenario(getOcrReferenceAttachments(cell.attachments, { filled, flowLocked, isOcr: true }))
+    ? sortAttachmentsByScenario(getOcrReferenceAttachments(cell.attachments, { filled, isOcr: true, ocrScenarios }))
     : cell.attachments;
   return (
     <div style={{ paddingTop: 10, borderTop: '1px dashed var(--divider)' }}>

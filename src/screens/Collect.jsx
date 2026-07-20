@@ -669,6 +669,7 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
                         ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'ble' ? '正在连接设备…' : '正在识别读数…'}</div></div>
                         : filled
                         ? <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <CellDeviceTrace filled={filled} method={method} device={dev} />
                             {isCable && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)' }}>相别</label>
@@ -744,7 +745,7 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
                                 识别参照图 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>· 按场景 · 同场景新拍覆盖旧图</span>
                               </div>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                                {sortAttachmentsByScenario(getOcrReferenceAttachments(attachments[i], { filled, flowLocked, isOcr: true })).map((a) => (
+                                {sortAttachmentsByScenario(getOcrReferenceAttachments(attachments[i], { filled, isOcr: true, ocrScenarios })).map((a) => (
                                   <OcrAttachmentThumb
                                     key={a.id}
                                     attachment={a}
@@ -769,6 +770,7 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
                             </div>
                           </div>
                         : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <CellDeviceTrace filled={filled} method={method} device={dev} />
                             {isCable && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)' }}>相别</label>
@@ -1031,6 +1033,33 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'lk-spin 0.9s linear infinite' }}>
         <path d="M21 12a9 9 0 1 1-6.219-8.56" />
       </svg>
+    );
+  }
+
+  function methodColor(method) {
+    return { auto: 'var(--collect-auto,#1d54c4)', ble: 'var(--collect-ble,#0a8a96)', manual: 'var(--collect-manual,#828c9c)', ocr: 'var(--collect-ocr,#b06a00)', external: 'var(--collect-ble,#0a8a96)' }[method] || 'var(--text-secondary)';
+  }
+
+  function methodLabel(method) {
+    return { auto: '设备直采', ble: '蓝牙采集', manual: '手工录入', ocr: '拍照识别', external: '外部程序' }[method] || '采集';
+  }
+
+  function CollectDot({ method, on }) {
+    return <span style={{ width: 8, height: 8, borderRadius: '50%', background: methodColor(method), flex: 'none', opacity: on ? 1 : 0.7 }} />;
+  }
+
+  function CellDeviceTrace({ filled, method, device }) {
+    const traceDevice = device || {};
+    return (
+      <AnnotatedWrapper id="cellDeviceTrace" layout="block">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 34, padding: '7px 10px', borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken,#f5f6f8)', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', minWidth: 0 }}>
+          <CollectDot method={method} on />
+          <span style={{ flex: 'none' }}>{filled ? '采集于' : '待采设备'}</span>
+          {filled && <span style={{ flex: 'none', color: methodColor(method), fontWeight: 600 }}>{methodLabel(method)}</span>}
+          <span style={{ color: 'var(--text-title)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traceDevice.name || '—'}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{traceDevice.code || '—'}</span>
+        </div>
+      </AnnotatedWrapper>
     );
   }
 

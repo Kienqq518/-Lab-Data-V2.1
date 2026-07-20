@@ -90,11 +90,20 @@ export function RecordEnvFields({ env, envMock, vals, readOnly, handInputBlocked
   );
 }
 
-export function getOcrReferenceAttachments(attachments, { filled, flowLocked, isOcr }) {
+export function getOcrReferenceAttachments(attachments, { filled, isOcr, ocrScenarios }) {
   const list = Array.isArray(attachments) ? attachments : [];
   if (!isOcr || !filled) return list;
   if (list.length > 0) return list;
-  return flowLocked ? [MOCK_OCR_REFERENCE] : list;
+  const passed = (ocrScenarios || []).filter((s) => s.status === 'passed');
+  if (passed.length > 0) {
+    return passed.map((s, idx) => ({
+      id: `__mock_ocr_ref_${idx}_${s.name}__`,
+      kind: 'photo',
+      mock: true,
+      scenario: s.name,
+    }));
+  }
+  return [{ ...MOCK_OCR_REFERENCE }];
 }
 
 export function EnvInfoSection({ envMock, env, onRefresh, Section, Grid }) {
