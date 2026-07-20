@@ -181,6 +181,11 @@ export function formatSampleCodeDisplay(sample, config) {
   return resolveSampleCode(sample, config).displayCode;
 }
 
+/** L3 样品左栏：仅展示标准编号（转换后或原编号），不附带括号内原编号 */
+export function formatSampleCodeSidebar(sample, config) {
+  return resolveSampleCode(sample, config).standardCode;
+}
+
 /** 上位机/系统交互用 ID */
 export function sampleSystemId(sample, config) {
   return resolveSampleCode(sample, config).systemId;
