@@ -11,10 +11,8 @@ const STORAGE_KEY = 'labdata_sample_code_conversion_enabled';
 /** 默认转换规则（数采 Web「系统设置」维护，App 通过 API 同步） */
 export const DEFAULT_CONVERSION_RULES = [
   { id: 'r1', name: '去除非法字符', type: 'sanitize', pattern: '', replacement: '', priority: 1,
-    desc: '仅保留 A-Z、a-z、0-9、-、_，其余替换为 _' },
-  { id: 'r2', name: '统一前缀', type: 'prefix', pattern: '', replacement: 'SC2026TP', priority: 2,
-    desc: '为标准化编号添加系统前缀' },
-  { id: 'r3', name: '长度截断', type: 'max_length', pattern: '', replacement: '32', priority: 3,
+    desc: '仅保留 A-Z、a-z、0-9、/、-、_，其余替换为 _' },
+  { id: 'r2', name: '长度截断', type: 'max_length', pattern: '', replacement: '32', priority: 2,
     desc: '标准化编号最大 32 字符（上位机兼容）' },
 ];
 
@@ -68,7 +66,7 @@ export function convertSampleCode(originalCode, config = DEFAULT_CONVERSION_CONF
   for (const rule of rules) {
     switch (rule.type) {
       case 'sanitize':
-        result = result.replace(/[^A-Za-z0-9_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        result = result.replace(/[^A-Za-z0-9/_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
         break;
       case 'regex_replace':
         if (rule.pattern) {
@@ -92,7 +90,7 @@ export function convertSampleCode(originalCode, config = DEFAULT_CONVERSION_CONF
     }
   }
 
-  if (!result) result = 'SC' + hashCode(originalCode);
+  if (!result) result = hashCode(originalCode);
   return result;
 }
 

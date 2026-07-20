@@ -343,7 +343,7 @@
           <sc-if value="{{ codeConversionEnabled }}" hint-placeholder-val="{{ true }}">
             <div style="display:flex; align-items:flex-start; gap:10px; background:#eef4ff; border:1px solid #cfe0ff; color:#1d54c4; border-radius:8px; padding:11px 16px; margin-bottom:16px; font-size:13px; line-height:1.6;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-              <span>规则按优先级顺序执行：<b>去除非法字符 → 统一前缀 → 长度截断</b>。标准化编号用于上位机/设备交互；App 端同时展示原编号便于现场核对。</span>
+              <span>规则按优先级顺序执行：<b>去除非法字符 → 长度截断</b>。允许字符含 <b>/</b>（如 SC2026/01001-01）；标准化编号用于上位机/设备交互，App 端同时展示原编号便于现场核对。</span>
             </div>
 
             <div style="background:#fff; border:1px solid #e5e8ee; border-radius:10px; overflow:hidden; margin-bottom:16px;">
@@ -646,9 +646,8 @@ class Component extends DCLogic {
     // 系统设置 · 样品编号转换
     codeConversionEnabled: true,
     codeRules: [
-      { id: 'r1', name: '去除非法字符', type: 'sanitize', desc: '仅保留 A-Z、a-z、0-9、-、_，其余替换为 _', priority: 1, on: true },
-      { id: 'r2', name: '统一前缀', type: 'prefix', replacement: 'SC2026TP', desc: '为标准化编号添加系统前缀', priority: 2, on: true },
-      { id: 'r3', name: '长度截断', type: 'max_length', replacement: '32', desc: '标准化编号最大 32 字符（上位机兼容）', priority: 3, on: true },
+      { id: 'r1', name: '去除非法字符', type: 'sanitize', desc: '仅保留 A-Z、a-z、0-9、/、-、_，其余替换为 _', priority: 1, on: true },
+      { id: 'r2', name: '长度截断', type: 'max_length', replacement: '32', desc: '标准化编号最大 32 字符（上位机兼容）', priority: 2, on: true },
     ],
     codePreviewSamples: [
       '第三方委托#2026-电缆-A001（杭州）',
@@ -714,15 +713,13 @@ class Component extends DCLogic {
     const active = rules.filter((r) => r.on).sort((a, b) => a.priority - b.priority);
     for (const rule of active) {
       if (rule.type === 'sanitize') {
-        result = result.replace(/[^A-Za-z0-9_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-      } else if (rule.type === 'prefix' && rule.replacement && !result.startsWith(rule.replacement)) {
-        result = rule.replacement + this.hashCode(original);
+        result = result.replace(/[^A-Za-z0-9/_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
       } else if (rule.type === 'max_length') {
         const max = parseInt(rule.replacement, 10) || 32;
         if (result.length > max) result = result.slice(0, max);
       }
     }
-    return result || ('SC' + this.hashCode(original));
+    return result || this.hashCode(original);
   }
 
   componentDidMount() {
