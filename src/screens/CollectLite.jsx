@@ -136,7 +136,6 @@ function CollectLite({ ctx, onBack, onDone }) {
               {M.overdueTagLabel[ctx.item.overdueTag]}
             </div>
           )}
-          <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>试验次数随任务下发 · 不可修改</div>
           <SampleLabelQrLink sample={ctx.sample} />
         </Section>
 

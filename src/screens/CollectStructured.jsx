@@ -437,7 +437,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
                 ['试验次数', `${mainTimes} 次`],
               ]} />
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
-                含 {subs.length} 个试验子项 · 采集单元 {summary.total} 个 · 试验次数随任务下发，不可修改 · 物资版多子项
+                含 {subs.length} 个试验子项 · 采集单元 {summary.total} 个 · 物资版多子项
               </div>
               <SampleLabelQrLink sample={ctx.sample} />
             </Section>
