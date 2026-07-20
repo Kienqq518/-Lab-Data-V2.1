@@ -1,9 +1,14 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 
 /** 样品标签二维码 payload：与扫码入口一致，编码样品编号 */
 export function sampleLabelPayload(sample) {
   return sample?.code || '';
+}
+
+function getModalRoot() {
+  return document.querySelector('.screen') || document.body;
 }
 
 function QrGlyph({ size = 18, color = 'var(--brand-action)' }) {
@@ -17,29 +22,48 @@ function QrGlyph({ size = 18, color = 'var(--brand-action)' }) {
   );
 }
 
-/** 样品标签二维码弹窗 */
+/** 样品标签二维码弹窗（挂载到 .screen，覆盖整页居中） */
 export function SampleLabelQrModal({ sample, onClose }) {
-  if (!sample) return null;
+  const [root, setRoot] = React.useState(null);
+
+  React.useEffect(() => {
+    setRoot(getModalRoot());
+  }, []);
+
+  React.useEffect(() => {
+    if (!sample) return undefined;
+    const onKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [sample, onClose]);
+
+  if (!sample || !root) return null;
   const payload = sampleLabelPayload(sample);
 
-  return (
+  return createPortal(
     <React.Fragment>
       <div
         role="presentation"
         onClick={onClose}
-        style={{ position: 'absolute', inset: 0, zIndex: 200, background: 'rgba(15,23,42,0.45)' }}
+        style={{
+          position: 'absolute', inset: 0, zIndex: 250,
+          background: 'rgba(15,23,42,0.52)', backdropFilter: 'blur(2px)',
+        }}
       />
       <div
         role="dialog"
         aria-labelledby="sample-label-qr-title"
         style={{
           position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-          zIndex: 210, width: 'min(320px, calc(100% - 48px))',
+          zIndex: 260, width: 'min(300px, calc(100% - 40px))',
           background: 'var(--white)', borderRadius: 'var(--radius-lg, 16px)',
-          boxShadow: '0 20px 48px rgba(15,23,42,0.22)', overflow: 'hidden',
+          boxShadow: '0 24px 56px rgba(15,23,42,0.28)', overflow: 'hidden',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--divider)' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 16px', borderBottom: '1px solid var(--divider)',
+        }}>
           <span id="sample-label-qr-title" style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>样品标签</span>
           <button
             type="button"
@@ -48,29 +72,61 @@ export function SampleLabelQrModal({ sample, onClose }) {
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 28, height: 28, border: 'none', borderRadius: 'var(--radius-sm)',
-              background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0,
+              background: 'var(--surface-subtle, #f3f5f8)', cursor: 'pointer',
+              color: 'var(--text-secondary)', padding: 0,
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18 M6 6l12 12" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18 M6 6l12 12" /></svg>
           </button>
         </div>
-        <div style={{ padding: '20px 16px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+
+        <div style={{ padding: '16px 16px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           <div style={{ textAlign: 'center', width: '100%' }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)', fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>{sample.code}</div>
-            <div style={{ marginTop: 4, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.45 }}>{sample.name}</div>
+            <div style={{
+              fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)',
+              fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all', lineHeight: 1.35,
+            }}>{sample.code}</div>
+            <div style={{
+              marginTop: 6, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.45,
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            }}>{sample.name}</div>
           </div>
+
           <div style={{
-            padding: 12, borderRadius: 'var(--radius-md)', background: 'var(--white)',
-            border: '1px solid var(--divider)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.6)',
+            padding: 10, borderRadius: 'var(--radius-md)', background: '#fff',
+            border: '1px solid var(--border-default, #e2e8f0)',
+            boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
           }}>
-            <QRCodeSVG value={payload} size={176} level="M" includeMargin={false} />
+            <QRCodeSVG value={payload} size={168} level="M" includeMargin={false} />
           </div>
-          <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.5 }}>
-            请在上位机使用扫描枪扫描此二维码，以定位该样品的检测任务
-          </p>
+
+          <div style={{
+            width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)',
+            background: 'var(--blue-50, #eff6ff)', border: '1px solid var(--blue-100, #dbeafe)',
+          }}>
+            <p style={{
+              margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-title)',
+              textAlign: 'center', lineHeight: 1.55, fontWeight: 500,
+            }}>
+              请在上位机使用扫描枪扫描此二维码，以定位该样品的检测任务
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              width: '100%', height: 40, border: 'none', borderRadius: 'var(--radius-md)',
+              background: 'var(--brand-action)', color: '#fff',
+              fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            关闭
+          </button>
         </div>
       </div>
-    </React.Fragment>
+    </React.Fragment>,
+    root,
   );
 }
 
