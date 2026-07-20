@@ -246,7 +246,7 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
                     ? fTasks.map((t, i) => (
                         <AnnotatedWrapper key={t.code} id={i === 0 ? 'taskList' : undefined} layout="block" placement="right">
                           <TaskCard code={t.code} sampleName={t.sampleName} client={t.client}
-                            time={t.time} status={t.status} detectDeadline={t.detectDeadline}
+                            time={t.time} status={t.status} detectDeadline={t.detectDeadline} thirdParty={t.thirdParty}
                             onClick={() => openTask(t, 'task')} />
                         </AnnotatedWrapper>
                       ))
@@ -298,7 +298,8 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
                   {dtasks.map((t) => (
                     <TaskCard key={t.code} code={t.code} sampleName={t.sampleName} client={t.client}
-                      time={t.time} status={t.status} detectDeadline={t.detectDeadline} onClick={() => openTask(t, 'device')} />
+                      time={t.time} status={t.status} detectDeadline={t.detectDeadline} thirdParty={t.thirdParty}
+                      onClick={() => openTask(t, 'device')} />
                   ))}
                 </div>
               ) : (

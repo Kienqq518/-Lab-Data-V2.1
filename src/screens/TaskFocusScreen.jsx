@@ -255,7 +255,8 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
           {filtered.length ? filtered.map((t, i) => (
             <AnnotatedWrapper key={t.code} id={i === 0 ? (kind === 'returned' ? 'taskCard' : 'focusL2List') : undefined} layout="block" placement="right">
               <TaskCard code={t.code} sampleName={t.sampleName} client={t.client}
-                time={t.time} status={kind === 'returned' ? 'testing' : t.status} detectDeadline={t.detectDeadline} onClick={() => openTask(t)} />
+                time={t.time} status={kind === 'returned' ? 'testing' : t.status} detectDeadline={t.detectDeadline}
+                thirdParty={t.thirdParty} onClick={() => openTask(t)} />
             </AnnotatedWrapper>
           )) : (
             <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
