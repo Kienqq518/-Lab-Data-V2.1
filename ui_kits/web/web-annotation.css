@@ -1,0 +1,131 @@
+/* 数采 Web 原型 · 批注模式（需求评审） */
+
+.web-annotation-toggle {
+  position: fixed;
+  top: 12px;
+  right: 20px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #e5e8ee;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a2233;
+  user-select: none;
+}
+
+.web-annotation-toggle--on {
+  border-color: #7c3aed;
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.web-annotation-toggle__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9aa3b2;
+}
+
+.web-annotation-toggle--on .web-annotation-toggle__dot {
+  background: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+}
+
+.web-annotation-rail {
+  position: fixed;
+  top: 54px;
+  bottom: 0;
+  width: 300px;
+  z-index: 900;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.web-annotation-rail--left { left: 220px; padding-right: 8px; }
+.web-annotation-rail--right { right: 0; padding-left: 8px; }
+
+.web-annotation-rail__body {
+  position: relative;
+  min-height: 100%;
+  padding-bottom: 120px;
+}
+
+.web-annotation-rail__item {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  pointer-events: auto;
+}
+
+.web-annotation-card {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 58, 237, 0.28);
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: #3c465c;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  cursor: default;
+}
+
+.web-annotation-card--highlight {
+  border-color: #7c3aed;
+  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.22);
+  transform: scale(1.01);
+}
+
+.web-annotation-card--dimmed {
+  opacity: 0.42;
+}
+
+.web-annotation-card__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a2233;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e5e8ee;
+}
+
+.web-annotation-card__section { margin-top: 8px; }
+.web-annotation-card__section:first-of-type { margin-top: 0; }
+
+.web-annotation-card__label {
+  font-weight: 700;
+  font-size: 11.5px;
+  margin-bottom: 4px;
+}
+
+.web-annotation-card__label--req { color: #b45309; }
+.web-annotation-card__label--display { color: #0369a1; }
+.web-annotation-card__label--interaction { color: #6d28d9; }
+
+.web-annotation-card__text {
+  color: #5b6677;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.web-annotated-anchor.web-annotated-anchor--on {
+  outline: 1.5px dashed rgba(124, 58, 237, 0.55);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.web-annotated-anchor.web-annotated-anchor--on.web-annotated-anchor--active {
+  outline: 2px solid #7c3aed;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14);
+}
+
+body.web-annotation-mode-on .web-annotated-anchor {
+  pointer-events: auto;
+}
