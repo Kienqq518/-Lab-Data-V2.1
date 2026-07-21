@@ -9,7 +9,7 @@ window.WEB_ANNOTATION_REGISTRY['web-settings'] = {
     displayRule:
       '入口：侧边栏「系统设置 → 系统参数」→ Tab「参数设置」。表单项位于「图采压缩开关」下方：左列标签「启用样品编号转换」，右列 Switch + 状态文案「开启/关闭」（开启蓝色 #2563eb，关闭灰色 #9aa3b2）；标签下 12.5px 灰字一行说明转换目的与 App 展示格式。开启后在同一 Tab 内下方展开「转换预览」区（见 sampleCodePreview 批注）。',
     interactionLogic:
-      'Toggle 切换后立即保存（原型持久化 localStorage 键 labdata_sample_code_conversion_enabled；生产为 PUT 系统参数接口）。保存成功后 App 在下次拉取任务列表 / 采集上下文时同步该开关；已打开页面需刷新或重新进入 L3/L4 才更新展示。开启/关闭无需二次确认；关闭后不再对新入库样品做转换，历史映射保留。与「数蚕lims直连」独立：直连关闭第三方编号转换仍可单独启用。批注模式：表单项右上角显示序号打点，点击打点后加载批注卡片，再次点击或点击空白处关闭。',
+      'Toggle 切换后立即保存（原型持久化 localStorage 键 labdata_sample_code_conversion_enabled；生产为 PUT 系统参数接口）。保存成功后 App 在下次拉取任务列表 / 采集上下文时同步该开关；已打开页面需刷新或重新进入 L3/L4 才更新展示。开启/关闭无需二次确认；关闭后不再对新入库样品做转换，历史映射保留。与「数蚕lims直连」独立：直连关闭第三方编号转换仍可单独启用。',
   },
   sampleCodePreview: {
     title: '转换预览',
