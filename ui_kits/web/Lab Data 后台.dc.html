@@ -16,9 +16,9 @@
   @keyframes lk-pop-in { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
   select.lk-sel { -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23828c9c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 12px center; }
 </style>
-<link rel="stylesheet" href="./web-annotation.css">
+<link rel="stylesheet" href="./web-annotation.css?v=3">
 <script src="./annotations/settings.js"></script>
-<script src="./web-annotation.js"></script>
+<script src="./web-annotation.js?v=3"></script>
 </helmet>
 <div style="display:flex; height:100vh; width:100%; overflow:hidden; font-family:'PingFang SC','Microsoft YaHei','Noto Sans SC',-apple-system,sans-serif; color:#1a2233; background:#f4f6f9;">
 
@@ -766,8 +766,10 @@ class Component extends DCLogic {
     } catch { /* ignore */ }
   }
 
-  componentDidUpdate() {
-    window.WebAnnotation?.refresh?.();
+  componentDidUpdate(_prevProps, _prevState) {
+    if (this.state.page === 'settings') {
+      window.WebAnnotation?.refresh?.();
+    }
   }
 
   toggleCodeConversion() {

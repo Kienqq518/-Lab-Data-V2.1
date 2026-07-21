@@ -14,11 +14,12 @@
   let cardHost = null;
   let refreshTimer = null;
   let suppressObserver = false;
+  let observerAttached = false;
   /** @type {Map<string, { anchor: HTMLElement, dot: HTMLElement }>} */
   const anchorMap = new Map();
 
   function getAnnotationId(el) {
-    return el.getAttribute('data-annotation-id') || el.dataset.annotationId || '';
+    return el.getAttribute('data-annotation-id') || el.dataset?.annotationId || '';
   }
 
   function loadEnabled() {
@@ -70,17 +71,23 @@
     cardHost = document.createElement('div');
     cardHost.className = 'web-annotation-card-host';
     cardHost.style.display = 'none';
-    cardHost.addEventListener('click', (e) => e.stopPropagation());
-    cardHost.addEventListener('mousedown', (e) => e.stopPropagation());
 
     document.body.appendChild(markerHost);
     document.body.appendChild(cardHost);
 
-    document.addEventListener('mousedown', (e) => {
+    markerHost.addEventListener('click', (e) => {
+      const dot = e.target.closest('.web-annotation-marker');
+      if (!dot) return;
+      e.stopPropagation();
+      const id = dot.dataset.annotationId;
+      if (id) toggleCard(id);
+    });
+
+    document.addEventListener('click', (e) => {
       if (!enabled || !openedId) return;
-      if (e.target.closest('.web-annotation-marker, .web-annotation-card-host, .web-annotation-toggle')) return;
+      if (e.target.closest('.web-annotation-markers, .web-annotation-card-host, .web-annotation-toggle')) return;
       closeCard();
-    }, true);
+    });
   }
 
   function applyEnabled() {
@@ -200,12 +207,12 @@
 
   function positionDot(dot, anchor) {
     const rect = anchor.getBoundingClientRect();
-    const size = 22;
-    let top = rect.top + 8;
-    let left = rect.right - size - 6;
+    const size = 28;
+    let top = rect.top + 6;
+    let left = rect.right + 6;
 
     if (left + size > window.innerWidth - VIEWPORT_PAD) {
-      left = Math.max(VIEWPORT_PAD, rect.right - size - 6);
+      left = rect.right - size - 8;
     }
     if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
     if (top < HEADER_HEIGHT + 4) top = HEADER_HEIGHT + 4;
@@ -263,16 +270,7 @@
         dot.title = spec.title;
         dot.setAttribute('aria-label', `查看批注：${spec.title}`);
         dot.innerHTML = `<span class="web-annotation-marker__pulse"></span><span class="web-annotation-marker__core">${index + 1}</span>`;
-
-        dot.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        });
-        dot.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleCard(id);
-        });
+        if (id === prevOpenedId) dot.classList.add('web-annotation-marker--active');
 
         positionDot(dot, anchor);
         markerHost.appendChild(dot);
@@ -290,22 +288,31 @@
     });
   }
 
+  function attachObserver() {
+    if (observerAttached) return;
+    const root = document.getElementById('dc-root');
+    if (!root) return;
+    new MutationObserver(() => {
+      if (suppressObserver || !enabled) return;
+      refresh();
+    }).observe(root, { childList: true, subtree: true });
+    observerAttached = true;
+  }
+
   function boot() {
     createToggle();
     createHosts();
     enabled = loadEnabled();
     applyEnabled();
-
-    const root = document.getElementById('dc-root');
-    if (root) {
-      new MutationObserver(() => {
-        if (suppressObserver || !enabled) return;
-        refresh();
-      }).observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
-    }
+    attachObserver();
     window.addEventListener('resize', refresh);
     document.addEventListener('scroll', refresh, true);
-    setTimeout(refresh, 300);
+    const retry = () => {
+      attachObserver();
+      refresh();
+    };
+    setTimeout(retry, 300);
+    setTimeout(retry, 1200);
   }
 
   window.WebAnnotation = {
