@@ -204,6 +204,7 @@ import {
   const visualInspectionDevice = { id: 'visual', name: '目测', code: '—', model: '不连接设备', station: null, method: 'manual', visual: true };
   const rodAcDrawerDevices = [
     rodAcDevice, rodAcDeviceAlt,
+    devices.find((d) => d.id === 'dcr'),
     { id: 'ny-power', name: '工频耐压试验装置', code: 'NY-10K-01', model: 'YD-15kVA/50kV', station: 'ny', method: 'auto' },
     { id: 'ny-leak', name: '泄漏电流采集器', code: 'LC-308', model: 'LCM-4', station: 'ny', method: 'ble' },
     { id: 'rodhv-daq', name: '耐压数据采集单元', code: 'DAQ-NY-01', model: 'USB-6010', station: 'ny', method: 'serial' },
@@ -444,6 +445,10 @@ import {
   const testItemTableMap = {
     '导体直流电阻': 'sc_zldz',
     'XLPE绝缘的热延伸试验': 't_rsy',
+    '绝缘操作杆 - 交流耐压试验': 'rod_ac',
+    '绝缘操作杆 - 外观及尺寸': 'rod_app',
+    '绝缘操作杆 - 抗弯动负荷试验': 'rod_bd',
+    '绝缘操作杆 - 抗弯静负荷试验': 'rod_bs',
   };
 
   // 数据识别规则（Web 图片采集配置 · 按 试验表 + 设备 + 场景 唯一）
@@ -460,6 +465,21 @@ import {
     { table: 't_rsy', device: '热延伸试验箱|YRSC-200I', scenario: '屏幕界面',
       rule: 'l0-施加负荷前标距-1-Reg(\\d*\\.?\\d+),l1-施加负荷15min后-2-Reg(\\d*\\.?\\d+)',
       status: 'pending' },
+    { table: 'rod_ac', device: '智能型数字电桥|QJ36-ZS', scenario: '屏幕界面',
+      rule: 'syz-试验值-1-Reg(\\d*\\.?\\d+),sj-时间-2-Reg(\\d*\\.?\\d+),ztms-状态描述-3-Reg(.+)',
+      status: 'passed', passedAt: '2026-06-20T10:00:00+08:00' },
+    { table: 'rod_ac', device: '智能型数字电桥|QJ36-ZS', scenario: '纸质报表',
+      rule: 'bzz-标称值-1-Reg(\\d*\\.?\\d+),syz-试验值-2-Reg(\\d*\\.?\\d+),sj-时间-3-Reg(\\d*\\.?\\d+)',
+      status: 'passed', passedAt: '2026-06-22T14:30:00+08:00' },
+    { table: 'rod_app', device: '数显卡尺|(0~300)mm/0.01mm', scenario: '屏幕界面',
+      rule: 'yxjccd-有效绝缘长度-1-Reg(\\d*\\.?\\d+)',
+      status: 'passed', passedAt: '2026-06-18T09:00:00+08:00' },
+    { table: 'rod_bd', device: '安全工器具力学试验机|YWL-10', scenario: '屏幕界面',
+      rule: 'syz-试验值-1-Reg(\\d*\\.?\\d+),ztms-状态描述-2-Reg(.+)',
+      status: 'passed', passedAt: '2026-06-19T11:00:00+08:00' },
+    { table: 'rod_bs', device: '安全工器具力学试验机|YWL-10', scenario: '屏幕界面',
+      rule: 'syz-试验值-1-Reg(\\d*\\.?\\d+),sj-时间-2-Reg(\\d*\\.?\\d+),ztms-状态描述-3-Reg(.+)',
+      status: 'passed', passedAt: '2026-06-19T11:00:00+08:00' },
   ];
 
   function parseRuleFieldKeys(rule) {

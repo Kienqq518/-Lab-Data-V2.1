@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppBar, Button, Card, CollectBadge, FieldRow } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
-import { EnvInfoSection, mergeRecordEnvVals, RecordEnvFields, resolveEnvMock } from './collect-env.jsx';
+import { EnvInfoSection, getOcrReferenceAttachments, mergeRecordEnvVals, RecordEnvFields, resolveEnvMock } from './collect-env.jsx';
 import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
 import { resolveInspectStampState } from './collect-model.js';
 import { AnnotatedWrapper } from '../annotation/index.js';
@@ -9,6 +9,15 @@ import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 import { useTestItemTiming } from './useTestItemTiming.js';
 import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
 import { TimingToast } from '../../components/data-display/TimingToast.jsx';
+import { OcrCaptureBar } from './OcrCaptureBar.jsx';
+import { OcrImagePreview } from './OcrImagePreview.jsx';
+import { OcrAttachmentThumb } from './OcrAttachmentThumb.jsx';
+import {
+  clearScenarioFields, getAttachmentForScenario, getDefaultScenario, getPassedScenarios,
+  mergeOcrFields, removeScenarioAttachment, sortAttachmentsByScenario, upsertScenarioAttachment,
+} from './ocr-scenario.js';
+import { getCameraOrientationConfig } from '../camera-orientation-config.js';
+import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
 
 /* 轻量 LIMS 试验项 L4：参数平铺展示，数采仅采集实测值 */
 
@@ -21,6 +30,14 @@ const DEMO_FLOWS = {
 
 /** 轻量版：wd/sd 在试验参数区展示，有传感器时由环境信息回填，无传感器时手输 */
 const ENV_FIELD_KEYS = new Set(['wd', 'sd']);
+
+/** 原型演示：OCR / 直采回填用的轻量版字段基准值 */
+const LITE_DEMO_VALS = {
+  bzz: '45', syz: '45', sj: '1', ztms: '无异常',
+  wg: '完好', yxjccd: '0.70',
+  syc: '1.0',
+  wd: '21.0', qy: '1013', sd: '30.7', beizhu: '',
+};
 
 function CollectLite({ ctx, onBack, onDone }) {
   const fields = ctx.item?.fields || [];
@@ -37,6 +54,25 @@ function CollectLite({ ctx, onBack, onDone }) {
   const [dev, setDev] = React.useState(initialDev);
   const [devSwitchOpen, setDevSwitchOpen] = React.useState(false);
   const method = dev.method || ctx.method || ctx.item?.method || 'manual';
+
+  const ocrScenarios = React.useMemo(() => M.resolveOcrScenarios(ctx.item, dev), [ctx.item, dev]);
+  const passedScenarios = getPassedScenarios(ocrScenarios);
+  const hasPassedRule = passedScenarios.length > 0;
+  const ocrReady = method === 'ocr' && hasPassedRule;
+  const isExternal = method === 'external';
+  const isSerial = method === 'serial';
+  const editable = method === 'ble' || method === 'manual' || method === 'ocr' || isExternal || isSerial;
+
+  const [scene, setScene] = React.useState('');
+  const [shootOpen, setShootOpen] = React.useState(false);
+  const [shootScenario, setShootScenario] = React.useState(null);
+  const [shotPhase, setShotPhase] = React.useState('idle');
+  const [attachments, setAttachments] = React.useState([]);
+  const [previewAttach, setPreviewAttach] = React.useState(null);
+  const [editUnlocked, setEditUnlocked] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const galleryInputRef = React.useRef(null);
+  const prevDevIdRef = React.useRef(dev.id);
 
   const [demoFlow, setDemoFlow] = React.useState(null);
   const flow = demoFlow ? DEMO_FLOWS[demoFlow] : (ctx.flow || ctx.item?.flow || { node: '试验检测' });
@@ -67,10 +103,20 @@ function CollectLite({ ctx, onBack, onDone }) {
   const allUploaded = uploaded;
   const isAutoDirect = method === 'auto';
   const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
-  const { guardStartForUpload, guardStartForManual, requireStartBeforeCollect } = timingCtl;
+  const { guardStartForUpload, guardStartForOcr, guardStartForManual, requireStartBeforeCollect } = timingCtl;
   const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
+  const filled = measureFields.some((f) => String(vals[f.key] || '').trim() !== '');
+  const ocrField = method === 'ocr' && ocrReady;
+  const ocrLocked = ocrField && filled && !editUnlocked && !flowLocked && !(uploaded && !flowReturned);
   /** 已检任务 L4：流程未锁定（仍在试验检测或未进组内审核）时可编辑；进入组内审核及以后只读 */
-  const fieldsReadOnly = flowLocked || handInputBlocked || (uploaded && !flowReturned && !(isReview && !flowLocked));
+  function isFieldReadOnly({ serialUploaded = false } = {}) {
+    if (flowLocked || handInputBlocked) return true;
+    if (serialUploaded) return true;
+    if (ocrField) return ocrLocked;
+    if (uploaded && !flowReturned && !(isReview && !flowLocked)) return true;
+    return !editable;
+  }
+  const fieldsReadOnly = isFieldReadOnly();
 
   /** 环境信息刷新时，有传感器则同步回填 wd/sd */
   React.useEffect(() => {
@@ -87,6 +133,137 @@ function CollectLite({ ctx, onBack, onDone }) {
     return guardStartForManual();
   }
 
+  function scenarioMeta(name) {
+    return (ocrScenarios || []).find((s) => s.name === name) || null;
+  }
+
+  function selectedScenario() {
+    if (scene) return scene;
+    return getDefaultScenario(ocrScenarios)?.name || '';
+  }
+
+  function fillScenarioFields(fieldKeys) {
+    const v = {};
+    (fieldKeys || []).forEach((key) => { v[key] = LITE_DEMO_VALS[key] ?? '—'; });
+    return v;
+  }
+
+  function fillDemoVals() {
+    const v = {};
+    fields.forEach((f) => { v[f.key] = demoVals[f.key] ?? LITE_DEMO_VALS[f.key] ?? '—'; });
+    return mergeRecordEnvVals(v, env, envMock);
+  }
+
+  React.useEffect(() => {
+    if (method !== 'ocr' || !hasPassedRule) return;
+    const def = getDefaultScenario(ocrScenarios);
+    if (!def) return;
+    setScene((prev) => (prev && passedScenarios.some((s) => s.name === prev) ? prev : def.name));
+  }, [method, hasPassedRule, ocrScenarios, passedScenarios]);
+
+  React.useEffect(() => {
+    if (prevDevIdRef.current === dev.id) return;
+    prevDevIdRef.current = dev.id;
+    setScene('');
+    setAttachments([]);
+    setEditUnlocked(false);
+    setShootOpen(false);
+    setShootScenario(null);
+    setShotPhase('idle');
+    setBusy(false);
+  }, [dev.id]);
+
+  function openOcrShoot() {
+    if (!guardStartForOcr()) return;
+    const scenario = selectedScenario();
+    if (!scenario) return;
+    setShootScenario(scenario);
+    setShootOpen(true);
+    setShotPhase('idle');
+  }
+
+  async function doShoot(file) {
+    const scenario = shootScenario || selectedScenario();
+    const meta = scenarioMeta(scenario);
+    if (!meta) return;
+    touchReturn();
+    setShotPhase('recognizing');
+    try {
+      const { prepared } = await runOcrCapturePipeline({ file: file || null, mockDelayMs: 1100 });
+      const partial = fillScenarioFields(meta.fieldKeys);
+      setVals((prev) => mergeOcrFields(prev, partial, meta.fieldKeys));
+      setShootOpen(false);
+      setShootScenario(null);
+      setAttachments((prev) => upsertScenarioAttachment(prev, scenario, {
+        id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        kind: 'photo',
+        orientationApplied: prepared?.orientationApplied ?? getCameraOrientationConfig().enabled,
+        previewUrl: prepared?.objectUrl,
+      }));
+      setEditUnlocked(false);
+    } finally {
+      setShotPhase('idle');
+    }
+  }
+
+  function onGalleryPick(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) doShoot(file);
+  }
+
+  function reRecognize() {
+    const scenario = selectedScenario();
+    const meta = scenarioMeta(scenario);
+    if (!meta || !getAttachmentForScenario(attachments, scenario)) return;
+    touchReturn();
+    setBusy(true);
+    setTimeout(() => {
+      setVals((prev) => mergeOcrFields(prev, fillScenarioFields(meta.fieldKeys), meta.fieldKeys));
+      setEditUnlocked(false);
+      setBusy(false);
+    }, 950);
+  }
+
+  function removeAttach(id) {
+    const item = attachments.find((a) => a.id === id);
+    setAttachments((prev) => removeScenarioAttachment(prev, id));
+    if (item?.scenario) {
+      const meta = scenarioMeta(item.scenario);
+      if (meta?.fieldKeys?.length) {
+        setVals((prev) => clearScenarioFields(prev, meta.fieldKeys));
+      }
+    }
+  }
+
+  function captureBle() {
+    if (!guardHandInputRequired()) return;
+    touchReturn();
+    setBusy(true);
+    setTimeout(() => {
+      setVals(fillDemoVals());
+      setBusy(false);
+    }, 1200);
+  }
+
+  function captureAuto() {
+    touchReturn();
+    setBusy(true);
+    setTimeout(() => {
+      setVals(fillDemoVals());
+      setBusy(false);
+    }, 1100);
+  }
+
+  const methodHint = {
+    auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输',
+    ocr: ocrReady ? '逐条拍摄仪器读数屏自动识别，按场景匹配识别规则' : '该设备与试验项下不存在验证通过的识别规则，已回退手工录入',
+    ble: '蓝牙采集 · 可连接设备读数，异常时可手输兜底',
+    manual: '手工录入数据',
+    external: '外部程序代采写库（工业平板）· App 无采集按钮，可查看已采或手输补录',
+    serial: '外部程序·串口通路 · 工业平板程序代采写库，本端仅展示，异常时可手输兜底',
+  }[method];
+
   const inspectState = resolveInspectStampState({
     flowReturned,
     returnTouched,
@@ -101,7 +278,7 @@ function CollectLite({ ctx, onBack, onDone }) {
   }
 
   function setField(key, value) {
-    if (fieldsReadOnly || uploading) return;
+    if (isFieldReadOnly() || uploading) return;
     if (!guardHandInputRequired()) return;
     touchReturn();
     setVals((prev) => ({ ...prev, [key]: value }));
@@ -174,6 +351,21 @@ function CollectLite({ ctx, onBack, onDone }) {
               蓝牙采集 · 可连接设备读数，异常时可手输兜底
             </div>
           )}
+          {method === 'ocr' && !dev.visual && (
+            <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--collect-ocr,#7c5cff)', lineHeight: 1.5 }}>
+              {ocrReady ? '拍照识别 · 选择场景后拍摄，多场景图片合并识别字段' : '该设备与试验项下不存在验证通过的识别规则，已回退手工录入'}
+            </div>
+          )}
+          {isSerial && (
+            <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--collect-serial,#6d4bd1)', lineHeight: 1.5 }}>
+              外部程序·串口通路 · 工业平板程序代采写库，本端仅展示，异常时可手输兜底
+            </div>
+          )}
+          {isExternal && (
+            <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--collect-ble,#0a8a96)', lineHeight: 1.5 }}>
+              外部程序采集 · 数据由工业平板代采写库
+            </div>
+          )}
         </Section>
 
         <EnvInfoSection
@@ -205,15 +397,46 @@ function CollectLite({ ctx, onBack, onDone }) {
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>共 {N} 次</span>
           </div>
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {methodHint && (
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{methodHint}</div>
+            )}
+
+            {(method === 'auto' || isSerial) && !filled && !flowLocked && !isReview && (
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                {busy
+                  ? <div style={{ textAlign: 'center', color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>正在从数据库整批取值…</div></div>
+                  : <Button size="lg" onClick={captureAuto}>⚡ 一键采集</Button>}
+              </div>
+            )}
+
+            {method === 'ocr' && !flowLocked && (
+              <OcrCaptureBar
+                ocrScenarios={ocrScenarios}
+                value={selectedScenario()}
+                onChange={setScene}
+                onShoot={openOcrShoot}
+                busy={busy || shotPhase === 'recognizing'}
+              />
+            )}
+
+            {method === 'ble' && !filled && !flowLocked && !isReview && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button onClick={captureBle} disabled={busy}>{busy ? '连接中…' : '🔵 连接采集'}</Button>
+              </div>
+            )}
+
+            {busy && method !== 'auto' && method !== 'serial'
+              ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'ble' ? '正在连接设备…' : '正在识别读数…'}</div></div>
+              : <>
             {measureFields.map((f) => (
               f.options
-                ? <SelectField key={f.key} field={f} value={vals[f.key] || ''} readOnly={fieldsReadOnly || uploading}
+                ? <SelectField key={f.key} field={f} value={vals[f.key] || ''} readOnly={isFieldReadOnly() || uploading}
                     onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
                     onChange={(v) => setField(f.key, v)} />
                 : <FieldRow key={f.key} label={f.label} unit={f.unit} required={false}
-                    value={vals[f.key] || ''} readOnly={fieldsReadOnly || uploading}
+                    value={vals[f.key] || ''} readOnly={isFieldReadOnly() || uploading}
                     onReadOnlyInteract={handInputBlocked ? guardStartForManual : undefined}
-                    placeholder="请输入"
+                    placeholder={filled ? '' : '请输入'}
                     onChange={(e) => setField(f.key, e.target.value)} />
             ))}
             {hasEnvFields && (
@@ -222,7 +445,7 @@ function CollectLite({ ctx, onBack, onDone }) {
                   env={env}
                   envMock={envMock}
                   vals={vals}
-                  readOnly={fieldsReadOnly || uploading}
+                  readOnly={isFieldReadOnly() || uploading}
                   handInputBlocked={handInputBlocked}
                   onReadOnlyInteract={guardStartForManual}
                   onChange={(key, value) => setField(key, value)}
@@ -230,9 +453,69 @@ function CollectLite({ ctx, onBack, onDone }) {
                 />
               </AnnotatedWrapper>
             )}
+
+            {method === 'auto' && filled && (
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--collect-auto,#1d54c4)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                自动采集数据，不可修改
+              </div>
+            )}
+
+            {ocrField && !flowLocked && filled && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 'var(--radius-md)', background: ocrLocked ? 'var(--surface-sunken)' : 'rgba(176,106,0,0.08)', border: '1px solid ' + (ocrLocked ? 'var(--border-default)' : 'var(--collect-ocr,#b06a00)') }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', lineHeight: 1.5, color: ocrLocked ? 'var(--text-secondary)' : 'var(--collect-ocr,#b06a00)', minWidth: 0 }}>
+                  {ocrLocked
+                    ? <React.Fragment><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>识别结果已锁定，防止误触改动 · 如需矫正请点「编辑」</React.Fragment>
+                    : <React.Fragment><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>编辑中 · 若改乱了可「重新识别」用原照片还原</React.Fragment>}
+                </span>
+                <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
+                  <button type="button" onClick={reRecognize} disabled={!getAttachmentForScenario(attachments, selectedScenario())}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-strong)', background: 'var(--white)', color: getAttachmentForScenario(attachments, selectedScenario()) ? 'var(--text-body)' : 'var(--text-placeholder)', cursor: getAttachmentForScenario(attachments, selectedScenario()) ? 'pointer' : 'not-allowed', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
+                    重新识别
+                  </button>
+                  {ocrLocked
+                    ? <button type="button" onClick={() => setEditUnlocked(true)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--collect-ocr,#b06a00)', background: 'var(--collect-ocr-bg,#fff4e6)', color: 'var(--collect-ocr,#b06a00)', cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
+                        编辑
+                      </button>
+                    : <button type="button" onClick={() => setEditUnlocked(false)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--brand-action)', background: 'var(--brand-action)', color: '#fff', cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
+                        完成
+                      </button>}
+                </div>
+              </div>
+            )}
+
+            {ocrField && filled && (
+              <div style={{ paddingTop: 10, marginTop: 2, borderTop: '1px dashed var(--divider)' }}>
+                <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                  识别参照图 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-placeholder)' }}>· 按场景 · 同场景新拍覆盖旧图</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                  {sortAttachmentsByScenario(getOcrReferenceAttachments(attachments, { filled, isOcr: true, ocrScenarios })).map((a) => (
+                    <OcrAttachmentThumb
+                      key={a.id}
+                      attachment={a}
+                      flowLocked={flowLocked}
+                      onPreview={!a.mock ? setPreviewAttach : undefined}
+                      onRemove={!a.mock ? removeAttach : undefined}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!filled && !busy && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>
+                <span>{method === 'ocr' ? (ocrReady ? '字段待采集 · 选择场景后点击「拍照识别」，多场景图片合并识别字段' : '该设备与试验项下不存在验证通过的识别规则 · 请在上方字段手动输入') : method === 'ble' ? '字段待采集 · 点击「连接采集」同步，或直接在上方手动输入' : method === 'auto' ? '字段待采集 · 等待上位机写库回填（原型可用上方「一键采集」）' : isExternal ? '字段待采集 · 等待平板外部程序写库，或在上方手输补录' : isSerial ? '字段待采集 · 等待外部程序·串口写库（原型可用上方「一键采集」），或手输兜底' : '字段待采集 · 请在上方手动输入'}</span>
+              </div>
+            )}
+
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               暂未配置是否必填，暂不做必填约束
             </div>
+            </>}
           </div>
         </Card>
         </AnnotatedWrapper>
@@ -272,6 +555,46 @@ function CollectLite({ ctx, onBack, onDone }) {
           isBlocked={(d) => M.isDeviceBlockedForTest(ctx.item?.name, d)}
         />
       )}
+
+      {shootOpen && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 200, background: '#0b0d10', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', color: '#fff' }}>
+            <button type="button" onClick={() => { setShootOpen(false); setShotPhase('idle'); }} style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: 'var(--fs-base)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              取消
+            </button>
+            <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>拍照识别{shootScenario ? ` · ${shootScenario}` : ''}</span>
+            <span style={{ width: 56 }} />
+          </div>
+          <div style={{ flex: 1, position: 'relative', margin: '0 16px', borderRadius: 'var(--radius-lg,16px)', overflow: 'hidden', background: 'repeating-linear-gradient(135deg,#1a1d22 0 14px,#16191e 14px 28px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {shotPhase === 'recognizing' ? (
+              <div style={{ textAlign: 'center', color: '#8fd0ff' }}>
+                <Spinner />
+                <div style={{ fontSize: 'var(--fs-base)', marginTop: 12 }}>正在识别仪器读数…</div>
+              </div>
+            ) : (
+              <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.8)', fontSize: 'var(--fs-sm)' }}>将「{dev.name || '仪器'}」{shootScenario ? `· ${shootScenario}` : ''} 对准取景框</div>
+            )}
+          </div>
+          <input ref={galleryInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onGalleryPick} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '22px 24px 30px' }}>
+            <button type="button" onClick={() => galleryInputRef.current?.click()} disabled={shotPhase === 'recognizing'} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, border: 'none', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: shotPhase === 'recognizing' ? 0.4 : 1 }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              <span style={{ fontSize: 'var(--fs-sm)' }}>从相册选择</span>
+            </button>
+            <button type="button" onClick={() => doShoot(null)} disabled={shotPhase === 'recognizing'} style={{ width: 72, height: 72, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.9)', background: 'var(--brand-action)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: shotPhase === 'recognizing' ? 0.4 : 1 }}>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
+            </button>
+            <div style={{ width: 56 }} />
+          </div>
+        </div>
+      )}
+
+      <OcrImagePreview
+        open={!!previewAttach}
+        scenario={previewAttach?.scenario}
+        onClose={() => setPreviewAttach(null)}
+      />
       <TimingToast message={timingCtl.toast} />
     </div>
   );
@@ -359,6 +682,14 @@ function FlowBanner({ flow, locked, returned }) {
         )}
       </div>
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'lk-spin 0.9s linear infinite' }}>
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
   );
 }
 
