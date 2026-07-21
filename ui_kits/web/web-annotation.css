@@ -42,24 +42,25 @@
 .web-annotation-markers {
   position: fixed;
   inset: 0;
-  z-index: 950;
+  z-index: 10040;
   pointer-events: none;
 }
 
 .web-annotation-marker {
   position: fixed;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 2px solid #fff;
   border-radius: 50%;
   background: #7c3aed;
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
   pointer-events: auto;
+  z-index: 10041;
   box-shadow: 0 2px 10px rgba(124, 58, 237, 0.45);
   display: inline-flex;
   align-items: center;
