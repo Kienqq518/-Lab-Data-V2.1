@@ -169,7 +169,7 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>委托单位：{task.client || '—'}</span>
-              <span>样品数：{filteredSamples.length}</span>
+              <span>样品数量：{filteredSamples.length}</span>
               {task.time && <span style={{ fontVariantNumeric: 'tabular-nums' }}>下发时间：{task.time}</span>}
               {task.detectDeadline && (
                 <span style={{ fontVariantNumeric: 'tabular-nums', color: task.status === 'overdue' ? 'var(--status-overdue-fg,#c53030)' : 'var(--text-secondary)' }}>
@@ -254,7 +254,7 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
           {filtered.length ? filtered.map((t, i) => (
             <AnnotatedWrapper key={t.code} id={i === 0 ? (kind === 'returned' ? 'taskCard' : 'focusL2List') : undefined} layout="block" placement="right">
-              <TaskCard code={t.code} sampleName={t.sampleName} client={t.client}
+              <TaskCard code={t.code} sampleCount={M.taskSamples(t).length || t.sampleCount || 0} client={t.client}
                 time={t.time} status={kind === 'returned' ? 'testing' : t.status} detectDeadline={t.detectDeadline}
                 thirdParty={t.thirdParty} onClick={() => openTask(t)} />
             </AnnotatedWrapper>

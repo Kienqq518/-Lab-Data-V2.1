@@ -4,10 +4,10 @@ import { StatusTag } from '../feedback/StatusTag.jsx';
 
 /**
  * 任务卡。任务列表（待检/检测中/已完成/已逾期）的列表项。
- * 沿用旧 app：任务编号 / 样品名称 / 委托单位 / 下发时间 + 右上状态标签。
+ * 字段：任务编号 / 样品数量 / 委托单位 / 下发时间 + 右上状态标签。
  */
 export function TaskCard({
-  code, sampleName, client, time, status = 'pending', detectDeadline, thirdParty, onClick, style,
+  code, sampleCount, client, time, status = 'pending', detectDeadline, thirdParty, onClick, style,
 }) {
   const Row = ({ label, value }) => (
     <div style={{ display: 'flex', gap: 8, fontSize: 'var(--fs-sm)', lineHeight: 1.7 }}>
@@ -31,7 +31,7 @@ export function TaskCard({
         </div>
         <StatusTag status={status} />
       </div>
-      <Row label="样品名称" value={sampleName} />
+      <Row label="样品数量" value={sampleCount} />
       <Row label="委托单位" value={client} />
       <Row label="下发时间" value={time} />
       {detectDeadline && <Row label="检测时效" value={detectDeadline} />}

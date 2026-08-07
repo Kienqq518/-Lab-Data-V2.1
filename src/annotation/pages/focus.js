@@ -23,7 +23,7 @@ export const focusAnnotations = {
   focusL3Summary: {
     title: '聚焦 L3 任务摘要',
     requirementLogic: '与检测模块 L3 相同，展示当前任务元信息。通知深链进入时返回直接退出聚焦页回通知中心。',
-    displayRule: 'Card + StatusTag + 委托信息网格。',
+    displayRule: 'Card + StatusTag + 委托信息网格（含样品数量）。',
     interactionLogic: '只读；返回逻辑受 fromNotify 控制。',
   },
   focusL3Search: {

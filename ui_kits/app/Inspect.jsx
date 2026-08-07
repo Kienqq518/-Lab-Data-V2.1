@@ -143,7 +143,7 @@
               {dtasks.length ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
                   {dtasks.map((t) => (
-                    <TaskCard key={t.code} code={t.code} sampleName={t.sampleName} client={t.client}
+                    <TaskCard key={t.code} code={t.code} sampleCount={M.samples.filter((s) => s.code.startsWith(t.code)).length || t.sampleCount || 0} client={t.client}
                       time={t.time} status={t.status} onClick={() => openTask(t)} />
                   ))}
                 </div>

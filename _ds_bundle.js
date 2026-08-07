@@ -1732,11 +1732,11 @@ Object.assign(__ds_scope, { SampleListItem });
 try { (() => {
 /**
  * 任务卡。任务列表（待检/检测中/已完成/已逾期）的列表项。
- * 沿用旧 app：任务编号 / 样品名称 / 委托单位 / 下发时间 + 右上状态标签。
+ * 字段：任务编号 / 样品数量 / 委托单位 / 下发时间 + 右上状态标签。
  */
 function TaskCard({
   code,
-  sampleName,
+  sampleCount,
   client,
   time,
   status = 'pending',
@@ -1789,8 +1789,8 @@ function TaskCard({
   }, "\u4EFB\u52A1\u7F16\u53F7 ", code), /*#__PURE__*/React.createElement(__ds_scope.StatusTag, {
     status: status
   })), /*#__PURE__*/React.createElement(Row, {
-    label: "\u6837\u54C1\u540D\u79F0",
-    value: sampleName
+    label: "\u6837\u54C1\u6570\u91CF",
+    value: sampleCount
   }), /*#__PURE__*/React.createElement(Row, {
     label: "\u59D4\u6258\u5355\u4F4D",
     value: client
@@ -7262,7 +7262,7 @@ try { (() => {
       }, dtasks.map(t => /*#__PURE__*/React.createElement(TaskCard, {
         key: t.code,
         code: t.code,
-        sampleName: t.sampleName,
+        sampleCount: M.samples.filter(s => s.code.startsWith(t.code)).length || t.sampleCount || 0,
         client: t.client,
         time: t.time,
         status: t.status,

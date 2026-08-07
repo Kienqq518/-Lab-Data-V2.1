@@ -106,7 +106,7 @@ function DoneTasks({ onBack, onCollect }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>委托单位：{task.client || '—'}</span>
-              <span>样品数：{tSamples.length}</span>
+              <span>样品数量：{tSamples.length}</span>
               {task.time && <span style={{ fontVariantNumeric: 'tabular-nums' }}>下发时间：{task.time}</span>}
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>完成于：{task.doneAt}</span>
               {task.detectDeadline && <span style={{ fontVariantNumeric: 'tabular-nums' }}>检测时效：{task.detectDeadline}</span>}

@@ -245,7 +245,7 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
                 : (fTasks.length
                     ? fTasks.map((t, i) => (
                         <AnnotatedWrapper key={t.code} id={i === 0 ? 'taskList' : undefined} layout="block" placement="right">
-                          <TaskCard code={t.code} sampleName={t.sampleName} client={t.client}
+                          <TaskCard code={t.code} sampleCount={M.taskSamples(t).length || t.sampleCount || 0} client={t.client}
                             time={t.time} status={t.status} detectDeadline={t.detectDeadline} thirdParty={t.thirdParty}
                             onClick={() => openTask(t, 'task')} />
                         </AnnotatedWrapper>
@@ -297,7 +297,7 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
               {dtasks.length ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
                   {dtasks.map((t) => (
-                    <TaskCard key={t.code} code={t.code} sampleName={t.sampleName} client={t.client}
+                    <TaskCard key={t.code} code={t.code} sampleCount={M.taskSamples(t).length || t.sampleCount || 0} client={t.client}
                       time={t.time} status={t.status} detectDeadline={t.detectDeadline} thirdParty={t.thirdParty}
                       onClick={() => openTask(t, 'device')} />
                   ))}
@@ -340,7 +340,7 @@ import { SampleLabelQrIcon } from './SampleLabelQr.jsx';
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>委托单位：{task.client || '—'}</span>
-                <span>样品数：{visibleSamples.length}</span>
+                <span>样品数量：{visibleSamples.length}</span>
                 {task.time && <span style={{ fontVariantNumeric: 'tabular-nums' }}>下发时间：{task.time}</span>}
                 {task.detectDeadline && (
                   <span style={{ fontVariantNumeric: 'tabular-nums', color: task.status === 'overdue' ? 'var(--status-overdue-fg,#c53030)' : 'var(--text-secondary)' }}>
