@@ -162,18 +162,24 @@ function App() {
   const [notifyReturn, setNotifyReturn] = React.useState(false);
   const [sheet, setSheet] = React.useState(false);
 
-  /** 退回复测通知「去处理」：直达 L3，仅展示对应样品与试验项 */
-  function goReturnedFromNotify(notification) {
-    const { task, sample } = MOCK.resolveReturnNotification(notification);
-    if (!task || !sample) return;
-    setFocusKind('returned');
+  /** 通知「去处理」：按委托任务直达对应维度 L3，展示分配给当前检测员的样品试验项 */
+  function goProcessFromNotify(notification) {
+    const task = MOCK.resolveNotificationTask(notification);
+    if (!task) return;
+    const kind = notification.type === 'returned'
+      ? 'returned'
+      : notification.type === 'overdue'
+        ? 'overdue'
+        : (MOCK.isTestingTask(task) ? 'testing' : 'pending');
+    const firstSample = kind === 'returned'
+      ? (MOCK.taskReturnedSamples(task)[0] || MOCK.taskSamples(task)[0])
+      : MOCK.taskSamples(task)[0];
+    setFocusKind(kind);
     setNotifyReturn(true);
     setFocusRestore({
       view: 'task',
       task,
-      taskSample: sample.id,
-      targetTestName: notification.testName,
-      narrowReturn: true,
+      taskSample: firstSample?.id || null,
       fromNotify: true,
     });
     setOverlay('focus');
@@ -281,7 +287,7 @@ function App() {
               <div className="overlay-screen">
                 <Notifications
                   onBack={() => setOverlay(null)}
-                  onGoReturned={goReturnedFromNotify}
+                  onGoProcess={goProcessFromNotify}
                 />
               </div>
             )}

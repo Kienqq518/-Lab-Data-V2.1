@@ -28,19 +28,19 @@ export const focusAnnotations = {
   },
   focusL3Search: {
     title: '聚焦 L3 搜索',
-    requirementLogic: '同检测 L3：样品名称、样品编号、试验项名称联合过滤；搜样品收窄左栏，搜试验项收窄左右栏。退回复测/通知深链场景下样品与试验项可能已预过滤。无扫码。',
+    requirementLogic: '同检测 L3：样品名称、样品编号、试验项名称联合过滤；搜样品收窄左栏，搜试验项收窄左右栏。退回复测维度下样品与试验项已按退回过滤。无扫码。',
     displayRule: 'placeholder 含样品名称与编号；无扫码按钮。',
     interactionLogic: '实时过滤；不支持扫码。',
   },
   focusL3Samples: {
     title: '聚焦 L3 样品栏',
-    requirementLogic: '退回复测仅展示含退回试验项的样品；通知「去处理」深链可窄到单样品。受搜索过滤影响。',
+    requirementLogic: '退回复测仅展示含退回试验项的样品；通知「去处理」深链进入任务 L3 后展示该任务下分配给当前检测员的样品（退回复测维度再叠加退回过滤），不再窄到单样品。受搜索过滤影响。',
     displayRule: '同检测 L3 样品左栏样式与选中/高亮规则。',
     interactionLogic: '切换样品刷新右侧试验项列表。',
   },
   focusL3Tests: {
     title: '聚焦 L3 试验项',
-    requirementLogic: '退回复测过滤退回试验项；通知深链可窄到单项。逾期试验项展示三态 overdueTag。点击进入 L4。',
+    requirementLogic: '退回复测过滤退回试验项；通知深链进入后展示该任务下分配给当前检测员的试验项（退回复测维度再叠加退回过滤），不再窄到单项。逾期试验项展示三态 overdueTag。点击进入 L4。',
     displayRule: 'TestItemCard 列表；逾期标签与 StatusTag 并存。',
     interactionLogic: '点击采集；空态「无匹配试验项」。',
   },

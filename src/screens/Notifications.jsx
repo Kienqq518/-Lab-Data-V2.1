@@ -4,8 +4,8 @@ import { MOCK as M } from '../mock.js';
 import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 消息通知中心（首页铃铛 / 我的·消息通知 共用）
-   L1 通知列表（退回复测 / 任务下发 / 逾期预警）→ L2 通知详情
-   退回复测类详情提供「去处理」深链到退回复测聚焦页。 */
+   按委托任务为单位聚合提醒（退回复测 / 任务下发 / 逾期预警）
+   L1 通知列表 → L2 通知详情 →「去处理」深链到对应任务 L3（展示分配给当前检测员的样品试验项）。 */
 
 // 通知类型元数据：图标、主题色、标签
 const TYPE_META = {
@@ -26,7 +26,7 @@ function TypeIcon({ type, size = 20 }) {
   );
 }
 
-function Notifications({ onBack, onGoReturned }) {
+function Notifications({ onBack, onGoProcess }) {
   const [items, setItems] = React.useState(() => M.notifications.map((n) => ({ ...n })));
   const [activeId, setActiveId] = React.useState(null);
   const unread = items.filter((n) => !n.read).length;
@@ -65,16 +65,10 @@ function Notifications({ onBack, onGoReturned }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 14, borderTop: '1px solid var(--divider)' }}>
               {active.taskCode && <DetailLine label="任务编号" value={active.taskCode} />}
-              {active.sampleCode && (
-                <DetailLine
-                  label="样品编号"
-                  value={(() => {
-                    const s = M.samples.find((x) => x.code === active.sampleCode || x.originalCode === active.sampleCode);
-                    return s ? M.formatSampleCodeDisplay(s) : active.sampleCode;
-                  })()}
-                />
-              )}
-              {active.testName && <DetailLine label="试验项" value={active.testName} />}
+              {(() => {
+                const task = M.resolveNotificationTask(active);
+                return task?.sampleName ? <DetailLine label="样品名称" value={task.sampleName} /> : null;
+              })()}
               {active.type === 'returned' && active.returnNode && <DetailLine label="退回节点" value={active.returnNode} />}
               {active.type === 'returned' && active.returnBy && (
                 <DetailLine label="退回人" value={`${active.returnBy}${active.returnDept ? `（${active.returnDept}）` : ''}`} />
@@ -88,11 +82,9 @@ function Notifications({ onBack, onGoReturned }) {
           </div>
           </AnnotatedWrapper>
 
-          {active.type === 'returned' && (
-            <AnnotatedWrapper id="returnedGoProcess" layout="block" placement="top">
-              <Button block size="lg" onClick={() => onGoReturned?.(active)}>去处理</Button>
-            </AnnotatedWrapper>
-          )}
+          <AnnotatedWrapper id="returnedGoProcess" layout="block" placement="top">
+            <Button block size="lg" onClick={() => onGoProcess?.(active)}>去处理</Button>
+          </AnnotatedWrapper>
         </div>
       </div>
     );
