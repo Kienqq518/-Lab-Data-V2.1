@@ -67,7 +67,9 @@ function Notifications({ onBack, onGoProcess }) {
               {active.taskCode && <DetailLine label="任务编号" value={active.taskCode} />}
               {(() => {
                 const task = M.resolveNotificationTask(active);
-                return task?.sampleName ? <DetailLine label="样品名称" value={task.sampleName} /> : null;
+                if (!task) return null;
+                const sampleCount = M.taskSamples(task).length || task.sampleCount || 0;
+                return <DetailLine label="样品数" value={String(sampleCount)} />;
               })()}
               {active.type === 'returned' && active.returnNode && <DetailLine label="退回节点" value={active.returnNode} />}
               {active.type === 'returned' && active.returnBy && (
