@@ -70,14 +70,14 @@ function TaskFocusScreen({ kind, stationId, onBack, onCollect, restore }) {
     || (t.sampleName && t.sampleName.toLowerCase().includes(ql))
     || (t.client && t.client.toLowerCase().includes(ql))), taskSort);
 
-  /** 取任务在当前维度下应展示的样品（退回复测只展示含退回项的样品；通知深链仅展示目标样品） */
+  /** 取任务在当前维度下应展示的样品（退回复测只展示含退回项的样品；历史窄过滤仍兼容 narrowReturn） */
   function visibleSamples(t) {
     let list = cfg.sampleFilter ? M.taskSamples(t).filter(cfg.sampleFilter) : M.taskSamples(t);
     if (narrowReturn && taskSample) list = list.filter((s) => s.id === taskSample);
     return list;
   }
 
-  /** 取样品下应展示的试验项（通知深链仅展示目标退回试验项） */
+  /** 取样品下应展示的试验项（历史窄过滤仍兼容 narrowReturn + targetTestName） */
   function visibleTests(sample) {
     let list = cfg.testFilter ? sample.tests.filter(cfg.testFilter) : sample.tests;
     if (narrowReturn && targetTestName) list = list.filter((t) => t.name === targetTestName);
