@@ -1,8 +1,14 @@
 /** 通知中心批注配置 */
 export const notifyAnnotations = {
+  notifyFilterTab: {
+    title: '未读 / 已读切换',
+    requirementLogic: '消息列表按读状态分栏：默认「未读」；切换「已读」仅展示已读消息。打开详情会将该条标为已读，返回后若仍在未读 Tab 则该条不再出现于当前列表。',
+    displayRule: 'AppBar 下方全宽 SegmentedSwitch：「未读」「已读」。',
+    interactionLogic: '切换即时过滤列表；空态分别文案「暂无未读消息」「暂无已读消息」。',
+  },
   notifyList: {
     title: '通知列表',
-    requirementLogic: '按委托任务为单位聚合退回复测、任务下发、逾期预警等消息（同一任务同一类型合并为一条）。未读条数回写首页铃铛角标。列表按时间倒序，已读/未读影响行背景色。',
+    requirementLogic: '按委托任务为单位聚合退回复测、任务下发、逾期预警等消息（同一任务同一类型合并为一条）。未读条数回写首页铃铛角标。列表受未读/已读 Tab 过滤，按时间倒序；已读/未读影响行背景色。',
     displayRule: '每行：类型图标圆底、标题、未读红点、类型标签、任务级摘要两行、时间。未读浅蓝底，已读白底。',
     interactionLogic: '点击进详情并标记该条已读；不支持批量删除。',
   },
@@ -10,7 +16,7 @@ export const notifyAnnotations = {
     title: '全部已读',
     requirementLogic: '存在未读时提供一键全部已读，用于快速清零角标。',
     displayRule: 'AppBar 右侧文字按钮；unread=0 时不渲染。',
-    interactionLogic: '点击后全部 read=true，铃铛角标归零。',
+    interactionLogic: '点击后全部 read=true，铃铛角标归零；若当前在未读 Tab 则列表变空。',
   },
   notifyDetail: {
     title: '通知详情卡片',

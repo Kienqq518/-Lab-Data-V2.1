@@ -5,10 +5,13 @@ import { collectAnnotations } from './pages/collect.js';
 import { notifyAnnotations } from './pages/notify.js';
 import { doneAnnotations } from './pages/done.js';
 import { meAnnotations } from './pages/me.js';
+import { loginAnnotations } from './pages/login.js';
 
 /** 按页面 key 聚合批注配置 */
 const REGISTRY = {
   home: homeAnnotations,
+  login: loginAnnotations,
+  'login-ip': loginAnnotations,
   'inspect-l1': inspectAnnotations,
   'inspect-l2-device': inspectAnnotations,
   'inspect-l3': inspectAnnotations,

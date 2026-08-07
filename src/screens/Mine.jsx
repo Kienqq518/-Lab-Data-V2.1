@@ -1,8 +1,7 @@
 import React from 'react';
-import { AppBar, Button, Card, Input, SectionTitle } from '../design-system.js';
+import { AppBar, Card, SectionTitle } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import logoMark from '../../assets/logo-mark.png';
-import { getApiBaseUrl, setApiBaseUrl } from '../api-config.js';
 import {
   CAMERA_ROTATION_OPTIONS,
   getCameraOrientationConfig,
@@ -11,7 +10,8 @@ import {
 import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 我的 — 用户信息 / 消息通知 / 设置 / 帮助与反馈
-   采用「我的」Tab 内部页面栈：main → 各详情页（AppBar 返回）。 */
+   采用「我的」Tab 内部页面栈：main → 各详情页（AppBar 返回）。
+   修改密码已移除；头像只读；IP 配置改由登录页双击「欢迎来访」进入。 */
 
   function Mine({ onLogout, onOpenNotify }) {
     const [view, setView] = React.useState('main');
@@ -29,12 +29,11 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     React.useEffect(() => () => timer.current && clearTimeout(timer.current), []);
 
     let screen;
-    if (view === 'profile') screen = <ProfilePage user={U} onBack={() => setView('main')} onToast={showToast} />;
+    if (view === 'profile') screen = <ProfilePage user={U} onBack={() => setView('main')} />;
     else if (view === 'settings') screen = <SettingsPage onBack={() => setView('main')} onPrivacy={() => setView('privacy')} onAbout={() => setView('about')} onToast={showToast} />;
     else if (view === 'privacy') screen = <PrivacyPage onBack={() => setView('settings')} />;
     else if (view === 'about') screen = <AboutPage onBack={() => setView('settings')} onService={() => setView('service')} />;
     else if (view === 'service') screen = <ServiceAgreementPage onBack={() => setView('about')} />;
-    else if (view === 'password') screen = <PasswordPage onBack={() => setView('main')} onToast={showToast} />;
     else if (view === 'help') screen = <HelpPage onBack={() => setView('main')} onToast={showToast} />;
     else screen = (
       <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-section)' }}>
@@ -60,7 +59,6 @@ import { AnnotatedWrapper } from '../annotation/index.js';
           <Card padding="0">
             <Row icon="bell" label="消息通知" badge={unread} onClick={onOpenNotify} />
             <Row icon="settings" label="设置" onClick={() => setView('settings')} />
-            <Row icon="key" label="修改密码" onClick={() => setView('password')} />
             <Row icon="help" label="帮助与反馈" onClick={() => setView('help')} />
             <Row icon="logout" label="退出登录" danger onClick={onLogout} last />
           </Card>
@@ -80,22 +78,15 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     );
   }
 
-  /* ===== 个人资料 ===== */
-  function ProfilePage({ user, onBack, onToast }) {
-    const [avatarOpen, setAvatarOpen] = React.useState(false);
+  /* ===== 个人资料（头像与账号字段只读，统一在数采 Web / TestOS 维护） ===== */
+  function ProfilePage({ user, onBack }) {
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', position: 'relative' }}>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="个人资料" onBack={onBack} />
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '8px 0 4px' }}>
-              <button onClick={() => setAvatarOpen(true)} style={{ position: 'relative', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-                <div style={{ width: 76, height: 76, borderRadius: '50%', background: 'var(--blue-700)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 700 }}>{user.initial}</div>
-                <span style={{ position: 'absolute', right: -2, bottom: -2, width: 26, height: 26, borderRadius: '50%', background: 'var(--brand-action)', border: '2px solid var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
-                </span>
-              </button>
-              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>点击更换头像</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0 4px' }}>
+              <div style={{ width: 76, height: 76, borderRadius: '50%', background: 'var(--blue-700)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 700 }}>{user.initial}</div>
             </div>
           </Card>
 
@@ -107,19 +98,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
             <FieldRow label="手机号" value={user.phone} />
             <FieldRow label="邮箱" value={user.email} last />
           </Card>
-
         </div>
-
-        {avatarOpen && (
-          <ActionSheet
-            title="更换头像"
-            actions={[
-              { label: '拍照', onClick: () => { setAvatarOpen(false); onToast('头像已更新（演示）'); } },
-              { label: '从相册选择', onClick: () => { setAvatarOpen(false); onToast('头像已更新（演示）'); } },
-            ]}
-            onClose={() => setAvatarOpen(false)}
-          />
-        )}
       </div>
     );
   }
@@ -129,7 +108,6 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     const [push, setPush] = React.useState(true);
     const [overdue, setOverdue] = React.useState(true);
     const [returned, setReturned] = React.useState(true);
-    const [apiBaseUrl, setApiBaseUrlInput] = React.useState(() => getApiBaseUrl());
     const [cameraOrient, setCameraOrient] = React.useState(() => getCameraOrientationConfig());
 
     function saveCameraOrient(patch) {
@@ -138,46 +116,10 @@ import { AnnotatedWrapper } from '../annotation/index.js';
       onToast('相机方向设置已保存');
     }
 
-    /** 保存数采 Web 端连接地址 */
-    function saveApiBaseUrl() {
-      const value = apiBaseUrl.trim();
-      if (!value) {
-        onToast('请输入数采 Web 端地址');
-        return;
-      }
-      try {
-        const saved = setApiBaseUrl(value);
-        setApiBaseUrlInput(saved);
-        onToast('连接地址已保存');
-      } catch {
-        onToast('地址格式无效，请检查后重试');
-      }
-    }
-
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
         <AppBar title="设置" onBack={onBack} />
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <AnnotatedWrapper id="settingsIp" layout="block">
-            <div>
-              <SectionTitle style={{ marginBottom: 10 }}>IP</SectionTitle>
-              <Card>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Input
-                    value={apiBaseUrl}
-                    onChange={(e) => setApiBaseUrlInput(e.target.value)}
-                    placeholder="请设置"
-                    style={{ flex: 1 }}
-                  />
-                  <Button variant="secondary" onClick={saveApiBaseUrl} style={{ flex: 'none', minWidth: 72, height: 44, padding: '0 16px' }}>设置</Button>
-                </div>
-                <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  配置当前连接的数采 Web 端环境
-                </div>
-              </Card>
-            </div>
-          </AnnotatedWrapper>
-
           <AnnotatedWrapper id="settingsCameraOrientation" layout="block">
             <div>
               <SectionTitle style={{ marginBottom: 10 }}>拍照识别</SectionTitle>
@@ -306,7 +248,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     const sections = [
       ['一、协议范围', '本服务协议（以下简称“本协议”）由你（检测员用户）与杭州数蚕科技有限公司（以下简称“我们”）就数蚕 Lab Data 移动端应用的使用所订立。使用本应用即表示你已阅读并同意本协议。'],
       ['二、服务内容', '本应用为实验室检测业务提供任务查看、试验数据采集与上传、设备连接、消息通知等功能。具体功能以实际发布版本及你所属检测机构在 TestOS 底座中的配置为准。'],
-      ['三、账号与安全', '你应使用机构分配的账号登录，并妥善保管密码。账号相关信息统一在数采系统 Web 端 的TestOS 底座维护，移动端不支持修改部门、手机号、邮箱等账号信息。'],
+      ['三、账号与安全', '你应使用机构分配的账号登录，并妥善保管密码。账号相关信息（含头像）统一在数采系统 Web 端的 TestOS 底座维护，移动端个人资料只读，不支持修改。'],
       ['四、数据与知识产权', '你在检测过程中产生的试验数据归你所属检测机构所有。本应用的界面、程序及相关知识产权归我们所有，未经授权不得复制或用于其他用途。'],
       ['五、免责声明', '因网络、设备故障或不可抗力导致的数据延迟、丢失，我们将在合理范围内协助排查，但不承担超出法律法规规定范围的责任。'],
       ['六、协议变更', '我们可能适时修订本协议，修订后将通过应用内通知或版本更新说明告知。若你继续使用本应用，即视为接受修订后的协议。'],
@@ -326,87 +268,6 @@ import { AnnotatedWrapper } from '../annotation/index.js';
             ))}
           </Card>
         </div>
-      </div>
-    );
-  }
-
-  /* ===== 修改密码 ===== */
-  function PasswordPage({ onBack, onToast }) {
-    const [oldPwd, setOldPwd] = React.useState('');
-    const [newPwd, setNewPwd] = React.useState('');
-    const [confirm, setConfirm] = React.useState('');
-    const [show, setShow] = React.useState(false);
-    const [err, setErr] = React.useState('');
-
-    // 密码强度：长度 + 字符种类
-    const strength = React.useMemo(() => {
-      if (!newPwd) return 0;
-      let s = 0;
-      if (newPwd.length >= 8) s += 1;
-      if (/[A-Z]/.test(newPwd) && /[a-z]/.test(newPwd)) s += 1;
-      if (/\d/.test(newPwd)) s += 1;
-      if (/[^A-Za-z0-9]/.test(newPwd)) s += 1;
-      return Math.min(s, 3);
-    }, [newPwd]);
-    const strengthText = ['', '弱', '中', '强'][strength];
-    const strengthColor = ['var(--border-default)', 'var(--danger,#e23b3b)', 'var(--status-pending-fg,#97640f)', 'var(--status-done-fg,#1b8a5a)'][strength];
-
-    function submit() {
-      if (!oldPwd || !newPwd || !confirm) { setErr('请填写完整的密码信息'); return; }
-      if (newPwd.length < 8) { setErr('新密码长度不少于 8 位'); return; }
-      if (newPwd === oldPwd) { setErr('新密码不能与原密码相同'); return; }
-      if (newPwd !== confirm) { setErr('两次输入的新密码不一致'); return; }
-      setErr('');
-      onToast('密码修改成功（演示）');
-      onBack();
-    }
-
-    const eye = (
-      <button onClick={() => setShow((v) => !v)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: 0 }}>
-        {show
-          ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-          : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a13.16 13.16 0 0 1-1.67 2.68 M6.61 6.61A13.5 13.5 0 0 0 2 12s3 8 10 8a9.12 9.12 0 0 0 5.39-1.61 M2 2l20 20"/></svg>}
-      </button>
-    );
-
-    return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
-        <AppBar title="修改密码" onBack={onBack} />
-        <AnnotatedWrapper id="changePassword" layout="block">
-        <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>原密码</label>
-            <Input value={oldPwd} onChange={(e) => setOldPwd(e.target.value)} placeholder="请输入原密码" type={show ? 'text' : 'password'} suffix={eye} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>新密码</label>
-            <Input value={newPwd} onChange={(e) => setNewPwd(e.target.value)} placeholder="至少 8 位，建议含大小写与数字" type={show ? 'text' : 'password'} suffix={eye} />
-            {newPwd && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ flex: 1, display: 'flex', gap: 4 }}>
-                  {[1, 2, 3].map((n) => (
-                    <span key={n} style={{ flex: 1, height: 4, borderRadius: 2, background: n <= strength ? strengthColor : 'var(--border-default)' }} />
-                  ))}
-                </div>
-                <span style={{ fontSize: 'var(--fs-xs)', color: strengthColor, fontWeight: 600, minWidth: 16 }}>{strengthText}</span>
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>确认新密码</label>
-            <Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="请再次输入新密码" type={show ? 'text' : 'password'} suffix={eye} />
-          </div>
-
-          {err && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', color: 'var(--danger,#e23b3b)' }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4 M12 16h.01"/></svg>
-              {err}
-            </div>
-          )}
-
-          <Button block size="lg" onClick={submit} style={{ marginTop: 4 }}>确认修改</Button>
-        </div>
-        </AnnotatedWrapper>
       </div>
     );
   }
@@ -456,22 +317,6 @@ import { AnnotatedWrapper } from '../annotation/index.js';
         background: 'rgba(255,255,255,0.22)', border: '1px solid rgba(255,255,255,0.35)',
         fontSize: 11, fontWeight: 600, color: '#fff', lineHeight: 1.4,
       }}>{label}</span>
-    );
-  }
-
-  function ActionSheet({ title, actions, onClose }) {
-    return (
-      <React.Fragment>
-        <div onClick={onClose} style={{ position: 'absolute', inset: 0, zIndex: 80, background: 'rgba(15,23,42,0.28)' }} />
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 90, background: 'var(--white)', borderRadius: '18px 18px 0 0', boxShadow: '0 -14px 34px rgba(15,23,42,0.20)', overflow: 'hidden' }}>
-          <div style={{ width: 44, height: 4, borderRadius: 'var(--radius-pill)', background: 'var(--border-strong,#cfd6e2)', margin: '10px auto 6px' }} />
-          {title && <div style={{ textAlign: 'center', padding: '6px 16px 10px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--divider)' }}>{title}</div>}
-          {actions.map((a) => (
-            <button key={a.label} onClick={a.onClick} style={{ display: 'block', width: '100%', padding: '15px 16px', border: 'none', borderBottom: '1px solid var(--divider)', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--text-title)' }}>{a.label}</button>
-          ))}
-          <button onClick={onClose} style={{ display: 'block', width: '100%', padding: '15px 16px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontWeight: 600 }}>取消</button>
-        </div>
-      </React.Fragment>
     );
   }
 

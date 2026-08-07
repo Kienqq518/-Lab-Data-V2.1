@@ -1,11 +1,11 @@
 import React from 'react';
-import { AppBar, Button } from '../design-system.js';
+import { AppBar, Button, SegmentedSwitch } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import { AnnotatedWrapper } from '../annotation/index.js';
 
 /* 消息通知中心（首页铃铛 / 我的·消息通知 共用）
    按委托任务为单位聚合提醒（退回复测 / 任务下发 / 逾期预警）
-   L1 通知列表 → L2 通知详情 →「去处理」深链到对应任务 L3（展示分配给当前检测员的样品试验项）。 */
+   L1 通知列表（未读 / 已读 Tab）→ L2 通知详情 →「去处理」深链到对应任务 L3。 */
 
 // 通知类型元数据：图标、主题色、标签
 const TYPE_META = {
@@ -16,6 +16,11 @@ const TYPE_META = {
   overdue: { label: '逾期预警', color: 'var(--status-pending-fg,#97640f)', bg: 'var(--status-pending-bg,#fdf3df)',
     icon: 'M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01' },
 };
+
+const FILTER_OPTIONS = [
+  { value: 'unread', label: '未读' },
+  { value: 'read', label: '已读' },
+];
 
 function TypeIcon({ type, size = 20 }) {
   const meta = TYPE_META[type] || TYPE_META.assigned;
@@ -29,8 +34,10 @@ function TypeIcon({ type, size = 20 }) {
 function Notifications({ onBack, onGoProcess }) {
   const [items, setItems] = React.useState(() => M.notifications.map((n) => ({ ...n })));
   const [activeId, setActiveId] = React.useState(null);
+  const [filter, setFilter] = React.useState('unread');
   const unread = items.filter((n) => !n.read).length;
   const active = items.find((n) => n.id === activeId) || null;
+  const visible = items.filter((n) => (filter === 'unread' ? !n.read : n.read));
 
   /** 打开详情并标记已读 */
   function openDetail(id) {
@@ -101,9 +108,19 @@ function Notifications({ onBack, onGoProcess }) {
           <button type="button" onClick={markAllRead} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--brand-action)', fontSize: 'var(--fs-sm)', fontWeight: 600, whiteSpace: 'nowrap', padding: '0 4px' }}>全部已读</button>
           </AnnotatedWrapper>
         ) : null} />
+      <div style={{ padding: '10px var(--gap-page) 0' }}>
+        <AnnotatedWrapper id="notifyFilterTab" layout="block">
+          <SegmentedSwitch
+            value={filter}
+            onChange={setFilter}
+            options={FILTER_OPTIONS}
+            style={{ width: '100%' }}
+          />
+        </AnnotatedWrapper>
+      </div>
       <AnnotatedWrapper id="notifyList" layout="block">
       <div style={{ flex: 1, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-list)' }}>
-        {items.length ? items.map((n) => {
+        {visible.length ? visible.map((n) => {
           const meta = TYPE_META[n.type] || TYPE_META.assigned;
           return (
             <button key={n.id} type="button" onClick={() => openDetail(n.id)} style={{
@@ -125,7 +142,7 @@ function Notifications({ onBack, onGoProcess }) {
           );
         }) : (
           <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <div style={{ fontSize: 'var(--fs-base)' }}>暂无消息通知</div>
+            <div style={{ fontSize: 'var(--fs-base)' }}>{filter === 'unread' ? '暂无未读消息' : '暂无已读消息'}</div>
           </div>
         )}
       </div>
