@@ -258,9 +258,9 @@ function Modal({ title, onClose, children, footer, wide, narrow, centerFooter, a
   );
 }
 
-function FormRow({ label, children, error, annotationId }) {
+function FormRow({ label, children, error, annotationId, locked }) {
   return (
-    <div className="adm-form-row" data-annotation-id={annotationId || undefined}>
+    <div className={`adm-form-row${locked ? ' is-locked' : ''}`} data-annotation-id={annotationId || undefined}>
       <div className="adm-form-label">{label}</div>
       <div className="adm-form-control">
         {children}
@@ -1021,23 +1021,11 @@ export default function SafetyAdmin() {
             </>
           )}
         >
-          <FormRow label="安全管家" error={modal.errors.managerId}>
-            <Select value={modal.managerId} options={managerOptions} error={!!modal.errors.managerId} onChange={(managerId) => setModal({ ...modal, managerId })} />
+          <FormRow label="安全管家" locked error={modal.errors.managerId}>
+            <Select value={modal.managerId} options={managerOptions} disabled error={!!modal.errors.managerId} onChange={() => {}} />
           </FormRow>
-          <FormRow label="试验设备" error={modal.errors.equipmentId}>
-            <Select
-              value={modal.equipmentId}
-              options={equipmentOptions}
-              error={!!modal.errors.equipmentId}
-              onChange={(equipmentId) => {
-                const item = itemMap[modal.itemId];
-                setModal({
-                  ...modal,
-                  equipmentId,
-                  itemId: item && item.equipmentId !== equipmentId ? '' : modal.itemId,
-                });
-              }}
-            />
+          <FormRow label="试验设备" locked error={modal.errors.equipmentId}>
+            <Select value={modal.equipmentId} options={equipmentOptions} disabled error={!!modal.errors.equipmentId} onChange={() => {}} />
           </FormRow>
           <FormRow label="试验项" error={modal.errors.itemId}>
             <Select

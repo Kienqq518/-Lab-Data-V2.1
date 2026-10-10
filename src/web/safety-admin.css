@@ -956,6 +956,10 @@ button {
   color: #1e2226;
 }
 
+.adm-form-row.is-locked .adm-form-label {
+  color: #bfbfbf;
+}
+
 .adm-form-control {
   flex: 1;
   min-width: 0;
@@ -1199,7 +1203,7 @@ button {
 .lk-filters, .lk-table, .lk-settings { background: #fff; border: 1px solid #e5e8ee; border-radius: 10px; }
 .lk-filters { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 14px 16px; }
 .lk-filters label, .lk-dialog label, .lk-drawer-bd > label { display: flex; align-items: center; gap: 8px; color: #5b6677; font-size: 13px; }
-.lk-filters input, .lk-filters select, .lk-dialog input, .lk-dialog select, .lk-setting-row input {
+.lk-filters input, .lk-filters select, .lk-dialog input, .lk-dialog select, .lk-setting-row input, .lk-setting-row select {
   height: 32px; border: 1px solid #e5e8ee; border-radius: 6px; padding: 0 10px; color: #1e2226; background: #fff; min-width: 160px;
 }
 .lk-table { overflow: hidden; }
@@ -1249,6 +1253,7 @@ button {
 .lk-drawer-bd, .lk-dialog-bd { padding: 18px 20px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
 .lk-drawer-bd > label, .lk-block { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
 .lk-readonly { height: 36px; border: 1px solid #e5e8ee; border-radius: 7px; background: #f7f9fc; display: flex; align-items: center; padding: 0 12px; color: #1e2226; }
+.lk-drawer-bd input { height: 36px; width: 100%; border: 1px solid #e5e8ee; border-radius: 7px; padding: 0 12px; color: #1e2226; background: #fff; }
 .lk-drawer-bd label.is-locked,
 .lk-split label.is-locked { color: #bfbfbf; }
 .lk-drawer-bd label.is-locked .lk-readonly { background: #f5f5f5; color: #bfbfbf; border-color: #d9d9d9; cursor: not-allowed; }
@@ -1286,8 +1291,8 @@ button {
 .lk-setting-row.is-top { align-items: flex-start; padding-top: 16px; }
 .lk-setting-row em { font-style: normal; color: #9aa3b2; }
 .lk-setting-row em.is-on { color: #006aff; }
-.lk-setting-row input { max-width: 520px; width: 100%; }
-.lk-setting-row input:disabled { background: #f4f6f9; }
+.lk-setting-row input, .lk-setting-row select { max-width: 520px; width: 100%; }
+.lk-setting-row input:disabled, .lk-setting-row select:disabled { background: #f4f6f9; color: #bfbfbf; }
 .lk-empty { padding: 48px; text-align: center; color: #9aa3b2; }
 .lk-preview { margin-top: 16px; }
 .lk-preview-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }

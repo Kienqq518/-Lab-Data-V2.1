@@ -59,14 +59,61 @@ function Badge({ meta }) {
   );
 }
 
+const LIMS_DIRECT_KEY = 'labdata_lims_direct';
+const LIMS_ADDRESS_KEY = 'labdata_lims_address';
+const LIMS_MODE_EVENT = 'labdata-lims-mode';
+export const DEFAULT_LIMS_ADDRESS = 'http://test.lims.shucantech.cn/prod-api';
+export const LIMS_ADDRESS_OPTIONS = [
+  DEFAULT_LIMS_ADDRESS,
+  'http://127.0.0.1:28086',
+];
+
+export function readLimsMode() {
+  let direct = true;
+  let address = DEFAULT_LIMS_ADDRESS;
+  try {
+    const storedDirect = localStorage.getItem(LIMS_DIRECT_KEY);
+    const storedAddress = localStorage.getItem(LIMS_ADDRESS_KEY);
+    if (storedDirect !== null) direct = storedDirect === '1';
+    if (storedAddress !== null) address = storedAddress;
+  } catch { /* ignore */ }
+  return { direct, address, active: direct && address.trim().length > 0 };
+}
+
+export function writeLimsMode({ direct, address }) {
+  try {
+    localStorage.setItem(LIMS_DIRECT_KEY, direct ? '1' : '0');
+    localStorage.setItem(LIMS_ADDRESS_KEY, address);
+  } catch { /* ignore */ }
+  window.dispatchEvent(new Event(LIMS_MODE_EVENT));
+}
+
+function useLimsMode() {
+  const [mode, setMode] = useState(readLimsMode);
+  useEffect(() => {
+    const sync = () => setMode(readLimsMode());
+    window.addEventListener(LIMS_MODE_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(LIMS_MODE_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+  return mode;
+}
+
+function emptyDevice() {
+  return { index: null, name: '', model: '', code: '', area: '', dept: '', method: 'direct', external: false, error: '' };
+}
+
 export function DevicePage() {
   const [rows, setRows] = useState(INITIAL_DEVICES);
-  const [mode, setMode] = useState('standalone');
+  const lims = useLimsMode();
+  const direct = lims.active;
   const [draft, setDraft] = useState({ code: '', name: '', method: '' });
   const [query, setQuery] = useState({ code: '', name: '', method: '' });
   const [drawer, setDrawer] = useState(null);
   const [notice, setNotice] = useState('');
-  const direct = mode === 'direct';
 
   const filtered = rows.filter((row) => {
     if (query.code && !row.code.toLowerCase().includes(query.code.trim().toLowerCase())) return false;
@@ -75,45 +122,80 @@ export function DevicePage() {
     return true;
   });
 
+  useEffect(() => {
+    if (!direct) return;
+    setDrawer((current) => (current?.index == null ? null : current));
+  }, [direct]);
+
   const openEdit = (index) => {
     const row = rows[index];
-    setDrawer({ index, method: row.method, external: !!row.external });
+    setDrawer({
+      index,
+      name: row.name,
+      model: row.model,
+      code: row.code,
+      area: row.area,
+      dept: row.dept,
+      method: row.method,
+      external: !!row.external,
+      error: '',
+    });
   };
 
   const saveDrawer = () => {
-    if (!drawer || drawer.index == null) {
+    if (!drawer) return;
+    const external = drawer.method === 'serial' ? !!drawer.external : false;
+    if (direct) {
+      if (drawer.index == null) {
+        setDrawer(null);
+        return;
+      }
+      const previous = rows[drawer.index];
+      const changed = previous.method !== drawer.method || !!previous.external !== external;
+      setRows((current) => current.map((row, index) => (index === drawer.index
+        ? { ...row, method: drawer.method, external }
+        : row)));
       setDrawer(null);
+      setNotice(changed ? `「${previous.name}」的采集方式已与 LIMS 双向同步` : '采集方式未变更，未向 LIMS 同步');
+      window.setTimeout(() => setNotice(''), 4000);
       return;
     }
-    const previous = rows[drawer.index];
-    const external = drawer.method === 'serial' ? drawer.external : false;
-    const changed = previous.method !== drawer.method || !!previous.external !== external;
-    setRows((current) => current.map((row, index) => (index === drawer.index
-      ? { ...row, method: drawer.method, external }
-      : row)));
-    setDrawer(null);
-    if (direct) {
-      setNotice(changed ? `「${previous.name}」的采集方式已同步至 LIMS` : '采集方式未变更，未向 LIMS 同步');
-      window.setTimeout(() => setNotice(''), 4000);
+    const name = drawer.name.trim();
+    const model = drawer.model.trim();
+    const code = drawer.code.trim();
+    const area = drawer.area.trim();
+    const dept = drawer.dept.trim();
+    if (!name || !code) {
+      setDrawer({ ...drawer, error: '请填写设备名称和设备编号' });
+      return;
     }
+    if (rows.some((row, index) => row.code === code && index !== drawer.index)) {
+      setDrawer({ ...drawer, error: '设备编号已存在' });
+      return;
+    }
+    const next = { name, model, code, area, dept, method: drawer.method, external, on: drawer.index == null ? true : rows[drawer.index].on };
+    setRows((current) => (
+      drawer.index == null
+        ? [...current, next]
+        : current.map((row, index) => (index === drawer.index ? { ...row, ...next } : row))
+    ));
+    setDrawer(null);
   };
 
   const editing = drawer?.index != null ? rows[drawer.index] : null;
+  const identity = (field) => (direct ? (editing?.[field] || '—') : (drawer?.[field] ?? ''));
+  const setIdentity = (field) => (value) => setDrawer((current) => (current ? { ...current, [field]: value, error: '' } : current));
 
   return (
     <div className="lk-page" data-annotation-page="web-devices">
-      {direct && (
-        <div className="lk-banner lk-banner-warn">
-          数蚕 LIMS 直连模式下，设备信息由 LIMS 同步，<b>不允许在此新增、导入或启停</b>。操作列仍可编辑，<b>仅可修改采集方式</b>，确定后同步回 LIMS。
-        </div>
-      )}
+      <div className={`lk-banner${direct ? ' lk-banner-warn' : ''}`} data-annotation-id="directMode">
+        {direct
+          ? '当前为数蚕 LIMS 直连（来源：系统设置 → 系统参数）。设备基本信息请在 LIMS 修改。本页不可新增、导入或启停；采集方式可改，并与 LIMS 双向同步。'
+          : '当前未直连（系统参数未开启直连，或未选择数蚕 LIMS 地址）。设备信息和采集方式在本页维护，不同步 LIMS。'}
+      </div>
       {notice && <div className="lk-banner">{notice}</div>}
       <PageHead title="设备管理">
-        <div className="lk-seg" data-annotation-id="directMode">
-          <button type="button" className={!direct ? 'is-on' : ''} onClick={() => setMode('standalone')}>非直连·可操作</button>
-          <button type="button" className={direct ? 'is-on is-warn' : ''} onClick={() => { setMode('direct'); setDrawer((current) => (current?.index == null ? null : current)); }}>LIMS 直连</button>
-        </div>
-        <button type="button" className="lk-btn lk-btn-primary" disabled={direct} onClick={() => { if (!direct) setDrawer({ index: null, method: 'direct', external: false }); }}>+ 新增</button>
+        <button type="button" className="lk-btn lk-btn-primary" disabled={direct} onClick={() => { if (!direct) setDrawer(emptyDevice()); }}>+ 新增</button>
         <button type="button" className="lk-btn lk-btn-navy" disabled={direct}>导入</button>
       </PageHead>
       <div className="lk-filters">
@@ -171,14 +253,30 @@ export function DevicePage() {
               <button type="button" onClick={() => setDrawer(null)}>×</button>
             </div>
             <div className="lk-drawer-bd">
-              <label className={direct ? 'is-locked' : ''} data-annotation-id="lockedIdentity">设备名称<div className="lk-readonly">{editing?.name || '—'}</div></label>
-              <label className={direct ? 'is-locked' : ''}>设备型号<div className="lk-readonly">{editing?.model || '—'}</div></label>
+              <label className={direct ? 'is-locked' : ''} data-annotation-id="lockedIdentity">
+                设备名称
+                {direct ? <div className="lk-readonly">{identity('name')}</div> : <input value={identity('name')} onChange={(event) => setIdentity('name')(event.target.value)} />}
+              </label>
+              <label className={direct ? 'is-locked' : ''}>
+                设备型号
+                {direct ? <div className="lk-readonly">{identity('model')}</div> : <input value={identity('model')} onChange={(event) => setIdentity('model')(event.target.value)} />}
+              </label>
               <div className="lk-split">
-                <label className={direct ? 'is-locked' : ''}>设备编号<div className="lk-readonly">{editing?.code || '—'}</div></label>
-                <label className={direct ? 'is-locked' : ''}>所在区域（工位）<div className="lk-readonly">{editing?.area || '—'}</div></label>
+                <label className={direct ? 'is-locked' : ''}>
+                  设备编号
+                  {direct ? <div className="lk-readonly">{identity('code')}</div> : <input value={identity('code')} onChange={(event) => setIdentity('code')(event.target.value)} />}
+                </label>
+                <label className={direct ? 'is-locked' : ''}>
+                  所在区域（工位）
+                  {direct ? <div className="lk-readonly">{identity('area')}</div> : <input value={identity('area')} onChange={(event) => setIdentity('area')(event.target.value)} />}
+                </label>
               </div>
-              <label className={direct ? 'is-locked' : ''}>所属部门<div className="lk-readonly">{editing?.dept || '—'}</div></label>
-              <div className="lk-label" data-annotation-id="deviceEdit">采集方式 <span>{direct ? '直连下仅此项可改，确定后同步至 LIMS' : '决定 App 检测员采集页的录入交互'}</span></div>
+              <label className={direct ? 'is-locked' : ''}>
+                所属部门
+                {direct ? <div className="lk-readonly">{identity('dept')}</div> : <input value={identity('dept')} onChange={(event) => setIdentity('dept')(event.target.value)} />}
+              </label>
+              {drawer.error && <div className="lk-error">{drawer.error}</div>}
+              <div className="lk-label" data-annotation-id="deviceEdit">采集方式 <span>{direct ? '两边都可改，并与 LIMS 双向同步' : '可直接修改，不同步 LIMS'}</span></div>
               {Object.entries(METHODS).map(([key, method]) => (
                 <button type="button" key={key} className={`lk-method${drawer.method === key ? ' is-on' : ''}`} onClick={() => setDrawer({ ...drawer, method: key })}>
                   <i className={drawer.method === key ? 'is-on' : ''} />
@@ -425,11 +523,15 @@ export function RelationsPage() {
 const CODE_KEY = 'labdata_sample_code_conversion_enabled';
 
 export function SettingsPage() {
+  const initialLims = readLimsMode();
   const [tab, setTab] = useState('params');
-  const [limsDirect, setLimsDirect] = useState(true);
-  const [limsAddress, setLimsAddress] = useState('http://test.lims.shucantech.cn/prod-api');
+  const [limsDirect, setLimsDirect] = useState(initialLims.direct);
+  const [limsAddress, setLimsAddress] = useState(initialLims.address);
   const [imageCompress, setImageCompress] = useState(false);
   const [codeOn, setCodeOn] = useState(true);
+  const addressOptions = limsAddress && !LIMS_ADDRESS_OPTIONS.includes(limsAddress)
+    ? [limsAddress, ...LIMS_ADDRESS_OPTIONS]
+    : LIMS_ADDRESS_OPTIONS;
 
   useEffect(() => {
     try {
@@ -459,11 +561,32 @@ export function SettingsPage() {
           <div data-annotation-page="web-settings" className="lk-settings-body">
             <div className="lk-setting-row">
               <span>数蚕lims直连</span>
-              <div><Switch wide on={limsDirect} onClick={() => setLimsDirect((value) => !value)} /><em className={limsDirect ? 'is-on' : ''}>{limsDirect ? '开启' : '关闭'}</em></div>
+              <div>
+                <Switch wide on={limsDirect} onClick={() => {
+                  const next = !limsDirect;
+                  setLimsDirect(next);
+                  writeLimsMode({ direct: next, address: limsAddress });
+                }} />
+                <em className={limsDirect ? 'is-on' : ''}>{limsDirect ? '开启' : '关闭'}</em>
+              </div>
             </div>
-            <div className="lk-setting-row">
+            <div className="lk-setting-row is-top">
               <span>数蚕lims地址</span>
-              <input value={limsAddress} disabled={!limsDirect} onChange={(event) => setLimsAddress(event.target.value)} />
+              <div>
+                <select
+                  value={limsAddress}
+                  disabled={!limsDirect}
+                  onChange={(event) => {
+                    const address = event.target.value;
+                    setLimsAddress(address);
+                    writeLimsMode({ direct: limsDirect, address });
+                  }}
+                >
+                  <option value="">请选择</option>
+                  {addressOptions.map((address) => <option key={address} value={address}>{address}</option>)}
+                </select>
+                <p>打开直连并选择地址后，设备管理进入直连模式。直连不可改设备基本信息，采集方式双向同步；关闭或未选地址时，本页直接改设备信息和采集方式，不同步 LIMS。</p>
+              </div>
             </div>
             <div className="lk-setting-row">
               <span>图采压缩开关</span>
