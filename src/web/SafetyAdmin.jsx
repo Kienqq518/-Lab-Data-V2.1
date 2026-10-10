@@ -239,11 +239,12 @@ function Select({
   );
 }
 
-function Modal({ title, onClose, children, footer, wide, narrow, centerFooter }) {
+function Modal({ title, onClose, children, footer, wide, narrow, centerFooter, annotationPage }) {
   return (
     <div className="adm-mask" onMouseDown={onClose}>
       <div
         className={`adm-modal${wide ? ' is-wide' : ''}${narrow ? ' is-narrow' : ''}`}
+        data-annotation-page={annotationPage || undefined}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="adm-modal-hd">
@@ -257,9 +258,9 @@ function Modal({ title, onClose, children, footer, wide, narrow, centerFooter })
   );
 }
 
-function FormRow({ label, children, error }) {
+function FormRow({ label, children, error, annotationId }) {
   return (
-    <div className="adm-form-row">
+    <div className="adm-form-row" data-annotation-id={annotationId || undefined}>
       <div className="adm-form-label">{label}</div>
       <div className="adm-form-control">
         {children}
@@ -902,6 +903,7 @@ export default function SafetyAdmin() {
       {modal?.type === 'add' && (
         <Modal
           title="新增配置"
+          annotationPage="web-safety-add"
           onClose={() => setModal(null)}
           footer={(
             <>
@@ -918,7 +920,7 @@ export default function SafetyAdmin() {
               onChange={(managerId) => setModal({ ...modal, managerId, errors: { ...modal.errors, managerId: '' } })}
             />
           </FormRow>
-          <FormRow label="试验设备" error={modal.errors.equipmentId}>
+          <FormRow label="试验设备" annotationId="addEquipment" error={modal.errors.equipmentId}>
             <Select
               value={modal.equipmentId}
               options={equipmentOptions}
@@ -940,7 +942,7 @@ export default function SafetyAdmin() {
               .filter((item) => item.equipmentId === modal.equipmentId)
               .map((item) => ({ value: item.id, label: itemLabel(item) }));
             return (
-              <div key={block.key}>
+              <div key={block.key} data-annotation-id={index === 0 ? 'addBlock' : undefined}>
                 <div className="adm-step">
                   <span className="adm-step-line" />
                   <span className="adm-step-no">{index + 1}</span>
@@ -1000,6 +1002,7 @@ export default function SafetyAdmin() {
           <button
             type="button"
             className="adm-btn adm-btn-dashed"
+            data-annotation-id="addMore"
             onClick={() => setModal({ ...modal, blocks: [...modal.blocks, emptyBlock()] })}
           >
             + 新增

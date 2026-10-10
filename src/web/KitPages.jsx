@@ -101,7 +101,7 @@ export function DevicePage() {
   const editing = drawer?.index != null ? rows[drawer.index] : null;
 
   return (
-    <div className="lk-page">
+    <div className="lk-page" data-annotation-page="web-devices">
       {direct && (
         <div className="lk-banner lk-banner-warn">
           数蚕 LIMS 直连模式下，设备信息由 LIMS 同步，<b>不允许在此新增、导入或启停</b>。操作列仍可编辑，<b>仅可修改采集方式</b>，确定后同步回 LIMS。
@@ -109,7 +109,7 @@ export function DevicePage() {
       )}
       {notice && <div className="lk-banner">{notice}</div>}
       <PageHead title="设备管理">
-        <div className="lk-seg">
+        <div className="lk-seg" data-annotation-id="directMode">
           <button type="button" className={!direct ? 'is-on' : ''} onClick={() => setMode('standalone')}>非直连·可操作</button>
           <button type="button" className={direct ? 'is-on is-warn' : ''} onClick={() => { setMode('direct'); setDrawer((current) => (current?.index == null ? null : current)); }}>LIMS 直连</button>
         </div>
@@ -134,7 +134,7 @@ export function DevicePage() {
         <div className="lk-tr lk-th">
           <span className="w-no">序号</span><span className="w-code">设备编号</span><span className="w-grow">设备名称</span>
           <span className="w-model">型号</span><span className="w-dept">所属部门</span><span className="w-area">所在区域（工位）</span>
-          <span className="w-method">采集方式</span><span className="w-switch">启用状态</span><span className="w-op">操作</span>
+          <span className="w-method">采集方式</span><span className="w-switch" data-annotation-id="deviceEnable">启用状态</span><span className="w-op" data-annotation-id="deviceEdit">操作</span>
         </div>
         {filtered.map((row, index) => {
           const sourceIndex = rows.indexOf(row);
@@ -171,14 +171,14 @@ export function DevicePage() {
               <button type="button" onClick={() => setDrawer(null)}>×</button>
             </div>
             <div className="lk-drawer-bd">
-              <label className={direct ? 'is-locked' : ''}>设备名称<div className="lk-readonly">{editing?.name || '—'}</div></label>
+              <label className={direct ? 'is-locked' : ''} data-annotation-id="lockedIdentity">设备名称<div className="lk-readonly">{editing?.name || '—'}</div></label>
               <label className={direct ? 'is-locked' : ''}>设备型号<div className="lk-readonly">{editing?.model || '—'}</div></label>
               <div className="lk-split">
                 <label className={direct ? 'is-locked' : ''}>设备编号<div className="lk-readonly">{editing?.code || '—'}</div></label>
                 <label className={direct ? 'is-locked' : ''}>所在区域（工位）<div className="lk-readonly">{editing?.area || '—'}</div></label>
               </div>
               <label className={direct ? 'is-locked' : ''}>所属部门<div className="lk-readonly">{editing?.dept || '—'}</div></label>
-              <div className="lk-label">采集方式 <span>{direct ? '直连下仅此项可改，确定后同步至 LIMS' : '决定 App 检测员采集页的录入交互'}</span></div>
+              <div className="lk-label" data-annotation-id="deviceEdit">采集方式 <span>{direct ? '直连下仅此项可改，确定后同步至 LIMS' : '决定 App 检测员采集页的录入交互'}</span></div>
               {Object.entries(METHODS).map(([key, method]) => (
                 <button type="button" key={key} className={`lk-method${drawer.method === key ? ' is-on' : ''}`} onClick={() => setDrawer({ ...drawer, method: key })}>
                   <i className={drawer.method === key ? 'is-on' : ''} />

@@ -43,8 +43,17 @@ export default function WebAnnotation() {
         });
         return;
       }
-      const page = document.querySelector('[data-annotation-page]');
+      const pages = [...document.querySelectorAll('[data-annotation-page]')];
+      const page = pages[pages.length - 1] || null;
       const pageKey = page?.getAttribute('data-annotation-page');
+      const masks = [...document.querySelectorAll('.adm-root .lk-mask, .adm-root .adm-mask')]
+        .filter((mask) => mask.getBoundingClientRect().width > 0);
+      const topMask = masks[masks.length - 1] || null;
+      let scope = page;
+      if (page && topMask) {
+        if (page.contains(topMask)) scope = topMask;
+        else if (!topMask.contains(page)) scope = page;
+      }
       const config = pageKey ? WEB_ANNOTATION_REGISTRY[pageKey] : null;
       document.querySelectorAll('.web-annotated-anchor').forEach((element) => {
         element.classList.remove('web-annotated-anchor', 'web-annotated-anchor--on', 'web-annotated-anchor--active');
@@ -55,10 +64,10 @@ export default function WebAnnotation() {
         return;
       }
       const next = [];
-      [...page.querySelectorAll('[data-annotation-id]')].forEach((element) => {
+      [...scope.querySelectorAll('[data-annotation-id]')].forEach((element) => {
         const id = element.getAttribute('data-annotation-id');
         const spec = config[id];
-        if (!spec) return;
+        if (!spec || next.some((item) => item.id === id)) return;
         const rect = element.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) return;
         element.classList.add('web-annotated-anchor', 'web-annotated-anchor--on');
@@ -75,7 +84,7 @@ export default function WebAnnotation() {
       if (openedId && !next.some((item) => item.id === openedId)) setOpenedId(null);
     };
     measure();
-    const root = document.querySelector('.adm-content');
+    const root = document.querySelector('.adm-root');
     const observer = new MutationObserver(measure);
     if (root) observer.observe(root, { childList: true, subtree: true });
     window.addEventListener('resize', measure);

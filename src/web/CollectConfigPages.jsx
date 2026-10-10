@@ -155,8 +155,8 @@ export function CollectConfigPage() {
   const catalog = hostFields(editor?.tableId);
 
   return (
-    <div className="lk-page">
-      <div className="lk-banner">
+    <div className="lk-page" data-annotation-page="web-collect">
+      <div className="lk-banner" data-annotation-id="collectMapping">
         这里勾选的是上位机采集字段。中文名与上位机一致才能完成映射。勾选之后，用「筛选排序」决定数采 App 保留哪些字段，以及它们的展示顺序。
       </div>
       <div className="lk-head">
@@ -200,7 +200,7 @@ export function CollectConfigPage() {
       <div className="cc-table">
         <div className="cc-tr cc-th">
           <span>序号</span><span>试验设备</span><span>采集表名</span><span>第三方试验表</span>
-          <span>试验次数</span><span>试验字段</span><span>备注</span><span>操作</span>
+          <span>试验次数</span><span>试验字段</span><span>备注</span><span data-annotation-id="collectEdit">操作</span>
         </div>
         {filtered.map((row, index) => (
           <div className="cc-tr" key={row.id}>
@@ -298,7 +298,7 @@ export function CollectConfigPage() {
                 />
                 {editor.errors.times && <em>{editor.errors.times}</em>}
               </label>
-              <div className="cc-fields">
+              <div className="cc-fields" data-annotation-id="collectMapping">
                 <div className="cc-fields-hd">
                   <span>试验字段</span>
                   <span className="cc-fields-actions">
@@ -322,6 +322,7 @@ export function CollectConfigPage() {
                     <button
                       type="button"
                       className="lk-link"
+                      data-annotation-id="filterSort"
                       disabled={!editor.fieldKeys.length}
                       onClick={() => {
                         setSortQuery('');
@@ -420,7 +421,7 @@ function FilterSortDialog({ editor, sorter, query, onQuery, onClose, onToggle, o
           <button type="button" onClick={onClose}>×</button>
         </div>
         <div className="cc-sort-bd">
-          <section className="cc-sort-col">
+          <section className="cc-sort-col" data-annotation-id="filterPick">
             <div className="cc-sort-tools">
               <h3>选择字段<span>{pool.length}</span></h3>
               <label className="cc-sort-all">
@@ -448,7 +449,7 @@ function FilterSortDialog({ editor, sorter, query, onQuery, onClose, onToggle, o
               {!filtered.length && <div className="cc-empty">{pool.length ? '没有匹配的字段' : '请先勾选上位机字段'}</div>}
             </div>
           </section>
-          <section className="cc-sort-col">
+          <section className="cc-sort-col" data-annotation-id="filterPreview">
             <h3>预览<span>{sorter.length}</span></h3>
             <div className="cc-sort-table">
               <div className="cc-sort-tr is-head">
