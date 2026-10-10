@@ -202,7 +202,8 @@ export function CollectConfigPage() {
               <button type="button" onClick={() => setEditor(null)}>×</button>
             </div>
             <div className="lk-dialog-bd">
-              <label className="cc-req">试验设备
+              <label>
+                <span className="cc-req">试验设备</span>
                 <select
                   value={editor.equipmentId}
                   onChange={(event) => setEditor({ ...editor, equipmentId: event.target.value, errors: { ...editor.errors, equipmentId: '' } })}
@@ -212,7 +213,8 @@ export function CollectConfigPage() {
                 </select>
                 {editor.errors.equipmentId && <em>{editor.errors.equipmentId}</em>}
               </label>
-              <label className="cc-req">采集表名
+              <label>
+                <span className="cc-req">采集表名</span>
                 <select
                   value={editor.tableId}
                   onChange={(event) => {
@@ -232,7 +234,8 @@ export function CollectConfigPage() {
                 </select>
                 {editor.errors.tableId && <em>{editor.errors.tableId}</em>}
               </label>
-              <label className="cc-req">第三方试验表
+              <label>
+                <span className="cc-req">第三方试验表</span>
                 <select
                   value={editor.thirdId}
                   onChange={(event) => setEditor({ ...editor, thirdId: event.target.value, errors: { ...editor.errors, thirdId: '' } })}
@@ -242,7 +245,8 @@ export function CollectConfigPage() {
                 </select>
                 {editor.errors.thirdId && <em>{editor.errors.thirdId}</em>}
               </label>
-              <label className="cc-req">试验次数
+              <label>
+                <span className="cc-req">试验次数</span>
                 <input
                   type="number"
                   min="1"
