@@ -108,6 +108,17 @@ export function createInitialConfigs() {
   });
 }
 
+export function createInitialBindings() {
+  const seen = new Set();
+  return createInitialConfigs().reduce((bindings, row) => {
+    const key = `${row.managerId}:${row.equipmentId}`;
+    if (seen.has(key)) return bindings;
+    seen.add(key);
+    bindings.push({ managerId: row.managerId, equipmentId: row.equipmentId });
+    return bindings;
+  }, []);
+}
+
 export function equipmentLabel(equipment, withModel = false) {
   if (!equipment) return '';
   const model = withModel && equipment.model ? ` ${equipment.model}` : '';

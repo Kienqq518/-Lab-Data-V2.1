@@ -8,6 +8,7 @@ import {
   NODE_TYPES,
   TEST_ITEMS,
   buildNodes,
+  createInitialBindings,
   createInitialConfigs,
   createInitialManagers,
   equipmentLabel,
@@ -27,6 +28,12 @@ let idSeq = 20;
 function uid(prefix) {
   idSeq += 1;
   return `${prefix}${idSeq}`;
+}
+
+function rememberBinding(bindings, managerId, equipmentId) {
+  if (!managerId || !equipmentId) return bindings;
+  if (bindings.some((item) => item.managerId === managerId && item.equipmentId === equipmentId)) return bindings;
+  return [...bindings, { managerId, equipmentId }];
 }
 
 function Icon({ name }) {
@@ -275,6 +282,7 @@ export default function SafetyAdmin() {
   ]);
   const [pageKey, setPageKey] = useState('safety');
   const [managers, setManagers] = useState(createInitialManagers);
+  const [bindings, setBindings] = useState(createInitialBindings);
   const [configs, setConfigs] = useState(createInitialConfigs);
   const [activeManagerId, setActiveManagerId] = useState('sm01');
   const [hoverManagerId, setHoverManagerId] = useState('');
@@ -414,6 +422,7 @@ export default function SafetyAdmin() {
     }
     if (confirm.action === 'unbind-manager') {
       setManagers((current) => current.filter((item) => item.id !== confirm.id));
+      setBindings((current) => current.filter((item) => item.managerId !== confirm.id));
       setConfigs((current) => current.filter((row) => row.managerId !== confirm.id));
       setActiveManagerId((current) => {
         if (current !== confirm.id) return current;
@@ -424,8 +433,9 @@ export default function SafetyAdmin() {
       showToast('已解绑安全管家');
     }
     if (confirm.action === 'unbind-equipment') {
+      setBindings((current) => current.filter((item) => !(item.managerId === confirm.managerId && item.equipmentId === confirm.equipmentId)));
       setConfigs((current) => current.filter((row) => !(row.managerId === confirm.managerId && row.equipmentId === confirm.equipmentId)));
-      setModal(null);
+      setModal(confirm.keepList ? { type: 'bound', managerId: confirm.managerId } : null);
       showToast('已解除设备绑定');
     }
     setConfirm(null);
@@ -462,6 +472,7 @@ export default function SafetyAdmin() {
       fields: [...block.fields],
     }));
     setConfigs((current) => [...current, ...created]);
+    setBindings((current) => rememberBinding(current, modal.managerId, modal.equipmentId));
     setActiveManagerId(modal.managerId);
     setPage(1);
     setModal(null);
@@ -489,6 +500,7 @@ export default function SafetyAdmin() {
       nodeType: modal.nodeType,
       fields: [...modal.fields],
     } : row)));
+    setBindings((current) => rememberBinding(current, modal.managerId, modal.equipmentId));
     setActiveManagerId(modal.managerId);
     setModal(null);
     showToast('保存成功');
@@ -536,6 +548,13 @@ export default function SafetyAdmin() {
   const equipmentOptions = EQUIPMENT.map((item) => ({ value: item.id, label: equipmentLabel(item, true) }));
   const nodeOptions = NODE_TYPES.map((item) => ({ value: item, label: item }));
   const fieldOptions = FIELD_OPTIONS.map((item) => ({ value: item, label: item }));
+  const boundEquipment = bindings
+    .filter((item) => item.managerId === activeManagerId)
+    .map((item) => ({
+      ...item,
+      equipment: equipmentMap[item.equipmentId],
+      configCount: configs.filter((row) => row.managerId === item.managerId && row.equipmentId === item.equipmentId).length,
+    }));
 
   const renderSafety = () => (
     <>
@@ -613,6 +632,15 @@ export default function SafetyAdmin() {
             </button>
           </div>
         </div>
+        <button
+          type="button"
+          className="adm-bound-entry"
+          disabled={!activeManager}
+          onClick={() => activeManager && setModal({ type: 'bound', managerId: activeManager.id })}
+        >
+          已绑试验设备
+          <span>{boundEquipment.length}</span>
+        </button>
       </div>
       <div className="adm-table-wrap">
         <table className="adm-table">
@@ -633,7 +661,13 @@ export default function SafetyAdmin() {
           <tbody>
             {groups.length === 0 && (
               <tr>
-                <td className="adm-empty" colSpan={4}>{activeManager ? '暂无数据' : '请先绑定安全管家'}</td>
+                <td className="adm-empty" colSpan={4}>
+                  {!activeManager
+                    ? '请先绑定安全管家'
+                    : boundEquipment.length
+                      ? '当前没有可展示的试验项参数。设备绑定仍保留，可从「已绑试验设备」继续新增配置或解绑。'
+                      : '暂无数据'}
+                </td>
               </tr>
             )}
             {groups.map((group) => {
@@ -1151,6 +1185,65 @@ export default function SafetyAdmin() {
           </div>
         </Modal>
       )}
+
+      {modal?.type === 'bound' && (() => {
+        const boundManager = managers.find((item) => item.id === modal.managerId);
+        const rows = bindings
+          .filter((item) => item.managerId === modal.managerId)
+          .map((item) => ({
+            ...item,
+            equipment: equipmentMap[item.equipmentId],
+            configCount: configs.filter((row) => row.managerId === item.managerId && row.equipmentId === item.equipmentId).length,
+          }));
+        return (
+          <Modal wide title="已绑定试验设备" onClose={() => setModal(null)}>
+            <p className="adm-bound-note">
+              {boundManager ? `${boundManager.name} 下已绑定 ${rows.length} 台试验设备。` : ''}
+              主列表只展示仍有试验项参数的设备。参数全部删除后，设备不会从绑定关系里消失，可在这里继续新增配置或解绑。
+            </p>
+            {rows.length === 0 ? (
+              <div className="adm-bound-empty">当前安全管家还没有绑定试验设备。新增配置并选择试验设备后，会记入此列表。</div>
+            ) : (
+              <div className="adm-bound-table">
+                <div className="adm-bound-tr is-head">
+                  <span>设备名称</span>
+                  <span>设备编号</span>
+                  <span>试验项参数</span>
+                  <span>操作</span>
+                </div>
+                {rows.map((row) => (
+                  <div className="adm-bound-tr" key={row.equipmentId}>
+                    <span>
+                      <b>{row.equipment?.name || '—'}</b>
+                      {row.equipment?.model ? <small>{row.equipment.model}</small> : null}
+                    </span>
+                    <span>{row.equipment?.code || '—'}</span>
+                    <span className={row.configCount === 0 ? 'is-zero' : ''}>{row.configCount === 0 ? '0 条 · 列表中不展示' : `${row.configCount} 条`}</span>
+                    <span className="adm-bound-ops">
+                      <button type="button" className="adm-btn-link" onClick={() => openAdd(row.equipmentId)}>新增配置</button>
+                      <button
+                        type="button"
+                        className="adm-btn-link is-danger"
+                        onClick={() => setConfirm({
+                          action: 'unbind-equipment',
+                          managerId: modal.managerId,
+                          equipmentId: row.equipmentId,
+                          keepList: true,
+                          title: '解除设备绑定',
+                          content: '确认解绑该设备与当前安全管家的绑定？解绑后，该设备下剩余的试验项参数也会一并移除。',
+                          danger: true,
+                        })}
+                      >
+                        解绑
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Modal>
+        );
+      })()}
 
       {modal?.type === 'manage' && manageEquipment && manageManager && (
         <Modal
