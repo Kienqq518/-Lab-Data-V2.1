@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 import { EQUIPMENT } from './safety-data.js';
 import {
   COLLECT_TABLES,
@@ -15,19 +15,9 @@ import {
 
 const CollectConfigContext = createContext(null);
 
-export function CollectConfigProvider({ children, onNavigate }) {
+export function CollectConfigProvider({ children }) {
   const [rows, setRows] = useState(INITIAL_COLLECT_CONFIGS);
-  const [focusId, setFocusId] = useState('');
-  const value = useMemo(() => ({
-    rows,
-    setRows,
-    focusId,
-    setFocusId,
-    openL4: (id) => {
-      setFocusId(id || '');
-      onNavigate?.('l4-fields');
-    },
-  }), [rows, focusId, onNavigate]);
+  const value = useMemo(() => ({ rows, setRows }), [rows]);
   return <CollectConfigContext.Provider value={value}>{children}</CollectConfigContext.Provider>;
 }
 
@@ -49,11 +39,16 @@ function nextId() {
   return `cc${seq}`;
 }
 
+function keptOnApp(fieldKeys, l4Visible) {
+  return (l4Visible || []).filter((key) => fieldKeys.includes(key));
+}
+
 export function CollectConfigPage() {
-  const { rows, setRows, openL4 } = useCollectConfigs();
+  const { rows, setRows } = useCollectConfigs();
   const [draft, setDraft] = useState({ equipmentId: '', table: '', third: '' });
   const [query, setQuery] = useState(draft);
   const [editor, setEditor] = useState(null);
+  const [sorter, setSorter] = useState(null);
   const [confirmId, setConfirmId] = useState('');
 
   const filtered = rows.filter((row) => {
@@ -87,7 +82,7 @@ export function CollectConfigPage() {
           times: editor.times,
           remark: editor.remark.trim(),
           fieldKeys,
-          l4Visible: [...fieldKeys],
+          l4Visible: keptOnApp(fieldKeys, editor.l4Visible),
         }];
       }
       return current.map((row) => (row.id === editor.id ? {
@@ -98,17 +93,38 @@ export function CollectConfigPage() {
         times: editor.times,
         remark: editor.remark.trim(),
         fieldKeys,
-        l4Visible: syncL4Visible(fieldKeys, row.fieldKeys, row.l4Visible),
+        l4Visible: keptOnApp(fieldKeys, editor.l4Visible),
       } : row));
     });
-    setEditor(null);
+    closeEditor();
   };
 
   const toggleField = (key) => {
-    const fieldKeys = editor.fieldKeys.includes(key)
+    const selected = editor.fieldKeys.includes(key);
+    const fieldKeys = selected
       ? editor.fieldKeys.filter((item) => item !== key)
       : [...editor.fieldKeys, key];
-    setEditor({ ...editor, fieldKeys, errors: { ...editor.errors, fieldKeys: '' } });
+    const l4Visible = selected
+      ? editor.l4Visible.filter((item) => item !== key)
+      : editor.l4Visible.includes(key) ? editor.l4Visible : [...editor.l4Visible, key];
+    setEditor({ ...editor, fieldKeys, l4Visible, errors: { ...editor.errors, fieldKeys: '' } });
+  };
+
+  const closeEditor = () => {
+    setEditor(null);
+    setSorter(null);
+  };
+
+  const moveSorter = (key, direction) => {
+    setSorter((current) => {
+      const order = [...current];
+      const index = order.indexOf(key);
+      const next = index + direction;
+      if (index < 0 || next < 0 || next >= order.length) return current;
+      const [item] = order.splice(index, 1);
+      order.splice(next, 0, item);
+      return order;
+    });
   };
 
   const catalog = hostFields(editor?.tableId);
@@ -116,7 +132,7 @@ export function CollectConfigPage() {
   return (
     <div className="lk-page">
       <div className="lk-banner">
-        这里勾选的是上位机采集字段。字段中文名与上位机保持一致，数采才能完成映射。App L4 显示哪些、按什么顺序，在「L4 字段展示」里单独配置，不会改这里的映射。
+        这里勾选的是上位机采集字段。中文名与上位机一致才能完成映射。勾选之后，用「筛选排序」决定数采 App 保留哪些字段，以及它们的展示顺序。
       </div>
       <div className="lk-head">
         <h1 className="lk-title"><span className="lk-title-bar" />设备采集配置</h1>
@@ -131,6 +147,7 @@ export function CollectConfigPage() {
             times: 1,
             remark: '',
             fieldKeys: [],
+            l4Visible: [],
             errors: {},
           })}
         >
@@ -181,12 +198,12 @@ export function CollectConfigPage() {
                   times: row.times,
                   remark: row.remark,
                   fieldKeys: [...row.fieldKeys],
+                  l4Visible: keptOnApp(row.fieldKeys, row.l4Visible),
                   errors: {},
                 })}
               >
                 编辑
               </button>
-              <button type="button" className="lk-link" onClick={() => openL4(row.id)}>L4展示</button>
               <button type="button" className="lk-link is-danger" onClick={() => setConfirmId(row.id)}>删除</button>
             </span>
           </div>
@@ -195,11 +212,11 @@ export function CollectConfigPage() {
         <div className="lk-pager"><span>共 {filtered.length} 条</span></div>
       </div>
       {editor && (
-        <div className="lk-mask is-center" onMouseDown={() => setEditor(null)}>
+        <div className="lk-mask is-center" onMouseDown={closeEditor}>
           <div className="cc-dialog" onMouseDown={(event) => event.stopPropagation()}>
             <div className="lk-drawer-hd">
               <b>{editor.id ? '编辑详情' : '新增详情'}</b>
-              <button type="button" onClick={() => setEditor(null)}>×</button>
+              <button type="button" onClick={closeEditor}>×</button>
             </div>
             <div className="lk-dialog-bd">
               <label>
@@ -225,6 +242,7 @@ export function CollectConfigPage() {
                       tableId: event.target.value,
                       thirdId: table?.thirdId || editor.thirdId,
                       fieldKeys: editor.fieldKeys.filter((key) => allowed.has(key)),
+                      l4Visible: editor.l4Visible.filter((key) => allowed.has(key)),
                       errors: { ...editor.errors, tableId: '', thirdId: '' },
                     });
                   }}
@@ -258,20 +276,35 @@ export function CollectConfigPage() {
               <div className="cc-fields">
                 <div className="cc-fields-hd">
                   <span>试验字段</span>
-                  <button
-                    type="button"
-                    className="lk-link"
-                    disabled={!catalog.length}
-                    onClick={() => setEditor({
-                      ...editor,
-                      fieldKeys: editor.fieldKeys.length === catalog.length ? [] : catalog.map((field) => field.key),
-                      errors: { ...editor.errors, fieldKeys: '' },
-                    })}
-                  >
-                    全选
-                  </button>
+                  <span className="cc-fields-actions">
+                    <button
+                      type="button"
+                      className="lk-link"
+                      disabled={!catalog.length}
+                      onClick={() => {
+                        const all = catalog.map((field) => field.key);
+                        const clear = editor.fieldKeys.length === catalog.length;
+                        setEditor({
+                          ...editor,
+                          fieldKeys: clear ? [] : all,
+                          l4Visible: clear ? [] : syncL4Visible(all, editor.fieldKeys, editor.l4Visible),
+                          errors: { ...editor.errors, fieldKeys: '' },
+                        });
+                      }}
+                    >
+                      全选
+                    </button>
+                    <button
+                      type="button"
+                      className="lk-link"
+                      disabled={!editor.fieldKeys.length}
+                      onClick={() => setSorter(keptOnApp(editor.fieldKeys, editor.l4Visible))}
+                    >
+                      筛选排序
+                    </button>
+                  </span>
                 </div>
-                <p>只能勾选该采集表里的上位机字段。中文名不可改，须与上位机一致。勾选与否决定能否映射，不决定 App 展示顺序。</p>
+                <p>只能勾选该采集表里的上位机字段。中文名不可改，须与上位机一致。勾选决定能否映射；数采 App 留哪些、按什么顺序，点「筛选排序」。</p>
                 <div className="cc-chips">
                   {catalog.map((field) => {
                     const on = editor.fieldKeys.includes(field.key);
@@ -297,8 +330,56 @@ export function CollectConfigPage() {
               </label>
             </div>
             <div className="lk-drawer-ft">
-              <button type="button" className="lk-btn" onClick={() => setEditor(null)}>取消</button>
+              <button type="button" className="lk-btn" onClick={closeEditor}>取消</button>
               <button type="button" className="lk-btn lk-btn-primary" onClick={save}>确定</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editor && sorter && (
+        <div className="lk-mask is-center is-front" onMouseDown={() => setSorter(null)}>
+          <div className="cc-sort" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="lk-drawer-hd">
+              <b>筛选排序</b>
+              <button type="button" onClick={() => setSorter(null)}>×</button>
+            </div>
+            <p className="cc-sort-note">只处理当前已勾选的上位机字段。移到右边表示数采 App 保留，从上到下即展示顺序。移回左边后映射仍在，App 不再展示。</p>
+            <div className="cc-sort-bd">
+              <SortColumn
+                title="未在 App 展示"
+                keys={editor.fieldKeys.filter((key) => !sorter.includes(key))}
+                tableId={editor.tableId}
+                empty="已勾选字段都在右边"
+                action={(key) => (
+                  <button type="button" onClick={() => setSorter([...sorter, key])}>右移</button>
+                )}
+              />
+              <SortColumn
+                title="数采 App 保留"
+                keys={sorter}
+                tableId={editor.tableId}
+                empty="右边暂无字段，App 不展示"
+                action={(key, index) => (
+                  <>
+                    <button type="button" disabled={index === 0} onClick={() => moveSorter(key, -1)}>上移</button>
+                    <button type="button" disabled={index === sorter.length - 1} onClick={() => moveSorter(key, 1)}>下移</button>
+                    <button type="button" onClick={() => setSorter(sorter.filter((item) => item !== key))}>左移</button>
+                  </>
+                )}
+              />
+            </div>
+            <div className="lk-drawer-ft">
+              <button type="button" className="lk-btn" onClick={() => setSorter(null)}>取消</button>
+              <button
+                type="button"
+                className="lk-btn lk-btn-primary"
+                onClick={() => {
+                  setEditor({ ...editor, l4Visible: sorter });
+                  setSorter(null);
+                }}
+              >
+                确定
+              </button>
             </div>
           </div>
         </div>
@@ -307,7 +388,7 @@ export function CollectConfigPage() {
         <div className="lk-mask is-center" onMouseDown={() => setConfirmId('')}>
           <div className="lk-dialog" onMouseDown={(event) => event.stopPropagation()}>
             <div className="lk-drawer-hd"><b>删除采集配置</b><button type="button" onClick={() => setConfirmId('')}>×</button></div>
-            <div className="lk-dialog-bd">删除后，该设备采集表的上位机字段映射和 L4 展示配置会一起去掉。</div>
+            <div className="lk-dialog-bd">删除后，该设备采集表的上位机字段映射和数采 App 展示配置会一起去掉。</div>
             <div className="lk-drawer-ft">
               <button type="button" className="lk-btn" onClick={() => setConfirmId('')}>取消</button>
               <button
@@ -328,133 +409,25 @@ export function CollectConfigPage() {
   );
 }
 
-export function L4FieldPage() {
-  const { rows, setRows, focusId, setFocusId } = useCollectConfigs();
-  const [activeId, setActiveId] = useState('');
-
-  useEffect(() => {
-    if (!focusId) return;
-    setActiveId(focusId);
-    setFocusId('');
-  }, [focusId, setFocusId]);
-
-  const active = rows.find((row) => row.id === activeId) || null;
-
-  const move = (key, direction) => {
-    setRows((current) => current.map((row) => {
-      if (row.id !== activeId) return row;
-      const order = [...row.l4Visible];
-      const index = order.indexOf(key);
-      const next = index + direction;
-      if (index < 0 || next < 0 || next >= order.length) return row;
-      const [item] = order.splice(index, 1);
-      order.splice(next, 0, item);
-      return { ...row, l4Visible: order };
-    }));
-  };
-
-  const hide = (key) => {
-    setRows((current) => current.map((row) => (row.id === activeId
-      ? { ...row, l4Visible: row.l4Visible.filter((item) => item !== key) }
-      : row)));
-  };
-
-  const show = (key) => {
-    setRows((current) => current.map((row) => (row.id === activeId && !row.l4Visible.includes(key)
-      ? { ...row, l4Visible: [...row.l4Visible, key] }
-      : row)));
-  };
-
+function SortColumn({ title, keys, tableId, empty, action }) {
   return (
-    <div className="lk-page">
-      <div className="lk-head">
-        <h1 className="lk-title"><span className="lk-title-bar" />L4 字段展示</h1>
-      </div>
-      <div className="lk-banner">
-        只控制数采 App L4 试验字段的显示和顺序。可选范围是「设备采集配置」里已经勾选、且中文名与上位机一致的字段。在这里隐藏或排序，不会改变上位机映射。
-      </div>
-      <div className="cc-table">
-        <div className="cc-tr l4-tr cc-th">
-          <span>试验设备</span><span>采集表名</span><span>L4 展示字段</span><span>隐藏</span><span>操作</span>
+    <section className="cc-sort-col">
+      <h3>{title}<span>{keys.length}</span></h3>
+      <div className="cc-sort-table">
+        <div className="cc-sort-tr is-head">
+          <span>序号</span>
+          <span>试验字段</span>
+          <span>操作</span>
         </div>
-        {rows.map((row) => {
-          const hidden = row.fieldKeys.filter((key) => !row.l4Visible.includes(key));
-          const names = row.l4Visible.map((key) => fieldByKey(row.tableId, key)?.name).filter(Boolean);
-          return (
-            <div className="cc-tr l4-tr" key={row.id}>
-              <span>{equipmentName(row.equipmentId)}</span>
-              <span>{tableById(row.tableId)?.label}</span>
-              <span className="cc-keys" title={names.join('、')}>{names.join('、') || '全部隐藏'}</span>
-              <span>{hidden.length ? `${hidden.length} 个` : '—'}</span>
-              <span className="cc-ops">
-                <button type="button" className="lk-link" onClick={() => setActiveId(row.id)}>调整</button>
-              </span>
-            </div>
-          );
-        })}
+        {keys.map((key, index) => (
+          <div className="cc-sort-tr" key={key}>
+            <span className="is-muted">{index + 1}</span>
+            <span>{fieldChip(fieldByKey(tableId, key))}</span>
+            <span className="cc-sort-ops">{action(key, index)}</span>
+          </div>
+        ))}
+        {!keys.length && <div className="cc-empty">{empty}</div>}
       </div>
-      {active && (
-        <div className="lk-mask" onMouseDown={() => setActiveId('')}>
-          <aside className="lk-drawer l4-drawer" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="lk-drawer-hd">
-              <b>调整 L4 展示</b>
-              <button type="button" onClick={() => setActiveId('')}>×</button>
-            </div>
-            <div className="lk-drawer-bd">
-              <div className="lk-note">
-                {equipmentName(active.equipmentId)} · {tableById(active.tableId)?.label}
-                <br />
-                映射字段 {active.fieldKeys.length} 个，当前展示 {active.l4Visible.length} 个。
-              </div>
-              <div className="l4-block-title">展示中 · 上到下即 App 顺序</div>
-              {active.l4Visible.map((key, index) => {
-                const field = fieldByKey(active.tableId, key);
-                return (
-                  <div className="l4-row" key={key}>
-                    <span className="l4-index">{index + 1}</span>
-                    <span>
-                      <b>{field?.name}</b>
-                      <small>{fieldChip(field)}</small>
-                    </span>
-                    <span className="l4-row-ops">
-                      <button type="button" disabled={index === 0} onClick={() => move(key, -1)}>上移</button>
-                      <button type="button" disabled={index === active.l4Visible.length - 1} onClick={() => move(key, 1)}>下移</button>
-                      <button type="button" onClick={() => hide(key)}>隐藏</button>
-                    </span>
-                  </div>
-                );
-              })}
-              {!active.l4Visible.length && <div className="cc-empty">当前没有展示字段</div>}
-              <div className="l4-block-title">不在 L4 展示</div>
-              {active.fieldKeys.filter((key) => !active.l4Visible.includes(key)).map((key) => {
-                const field = fieldByKey(active.tableId, key);
-                return (
-                  <div className="l4-row is-hidden" key={key}>
-                    <span />
-                    <span>
-                      <b>{field?.name}</b>
-                      <small>{fieldChip(field)}</small>
-                    </span>
-                    <span className="l4-row-ops">
-                      <button type="button" onClick={() => show(key)}>展示</button>
-                    </span>
-                  </div>
-                );
-              })}
-              {active.fieldKeys.every((key) => active.l4Visible.includes(key)) && <div className="cc-empty">映射字段已全部展示</div>}
-              <div className="l4-preview">
-                <div className="l4-block-title">App L4 预览</div>
-                {active.l4Visible.map((key) => (
-                  <div className="l4-preview-row" key={key}>
-                    <span>{fieldByKey(active.tableId, key)?.name}</span>
-                    <i>请输入</i>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
