@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DevicePage, RelationsPage, RulesPage, SettingsPage } from './KitPages.jsx';
-import { CollectConfigPage, CollectConfigProvider, L4FieldPage } from './CollectConfigPages.jsx';
+import { CollectConfigPage, CollectConfigProvider } from './CollectConfigPages.jsx';
 import WebAnnotation from './WebAnnotation.jsx';
 import {
   EQUIPMENT,
@@ -790,8 +790,8 @@ export default function SafetyAdmin() {
         </div>
         <div className="adm-placeholder-body">
           {pageKey === 'home'
-            ? '实验室数智化系统 Web 管理后台。可进入设备管理、设备采集配置、L4 字段展示、关系配置、数据识别规则、安全管家配置和系统参数。'
-            : '该菜单为原型占位。可交互页面包括设备管理、设备采集配置、L4 字段展示、关系配置、数据识别规则、安全管家配置和系统参数。'}
+            ? '实验室数智化系统 Web 管理后台。可进入设备管理、设备采集配置、关系配置、数据识别规则、安全管家配置和系统参数。'
+            : '该菜单为原型占位。可交互页面包括设备管理、设备采集配置、关系配置、数据识别规则、安全管家配置和系统参数。'}
           {pageKey !== 'safety' && (
             <div style={{ marginTop: 16 }}>
               <button type="button" className="adm-btn adm-btn-primary" onClick={() => openPage('safety')}>进入安全管家配置</button>
@@ -811,7 +811,7 @@ export default function SafetyAdmin() {
   const nodeTabs = ['全部节点', ...NODE_TYPES.filter((type) => deviceManager?.nodes.some((node) => node.type === type))];
 
   return (
-    <CollectConfigProvider onNavigate={openPage}>
+    <CollectConfigProvider>
     <div className="adm-root">
       <aside className={`adm-side${collapsed ? ' is-collapsed' : ''}`}>
         <div className="adm-brand">
@@ -893,8 +893,7 @@ export default function SafetyAdmin() {
           {pageKey === 'rules' && <div className="adm-legacy"><RulesPage /></div>}
           {pageKey === 'settings' && <div className="adm-legacy"><SettingsPage /></div>}
           {pageKey === 'collect-config' && <div className="adm-legacy"><CollectConfigPage /></div>}
-          {pageKey === 'l4-fields' && <div className="adm-legacy"><L4FieldPage /></div>}
-          {!['safety', 'devices', 'relations', 'rules', 'settings', 'collect-config', 'l4-fields'].includes(pageKey) && (
+          {!['safety', 'devices', 'relations', 'rules', 'settings', 'collect-config'].includes(pageKey) && (
             <div className="adm-card">{renderPlaceholder()}</div>
           )}
         </div>

@@ -181,7 +181,6 @@ export const MENU = [
     icon: 'device',
     children: [
       { key: 'collect-config', label: '设备采集配置' },
-      { key: 'l4-fields', label: 'L4 字段展示' },
       { key: 'mapping', label: '数据映射配置' },
       { key: 'safety', label: '安全管家配置' },
     ],

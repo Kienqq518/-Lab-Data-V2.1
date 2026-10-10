@@ -56,7 +56,7 @@ export const INITIAL_COLLECT_CONFIGS = [
     times: 3,
     remark: '',
     fieldKeys: JYHD_KEYS,
-    l4Visible: ['jyhdwd', 'jyhdsd', 'jyhd1', 'jyhd2', 'jyhd3', 'jyhd4', 'jyhd5', 'jyhdmin', 'jyhdavg', 'jyhdpd'],
+    l4Visible: [...JYHD_KEYS],
   },
   {
     id: 'cc2',
@@ -66,7 +66,7 @@ export const INITIAL_COLLECT_CONFIGS = [
     times: 1,
     remark: '',
     fieldKeys: ['wd', 'sd', 'scdz', 'dz20'],
-    l4Visible: ['scdz', 'dz20', 'wd', 'sd'],
+    l4Visible: ['wd', 'sd', 'scdz', 'dz20'],
   },
 ];
 
