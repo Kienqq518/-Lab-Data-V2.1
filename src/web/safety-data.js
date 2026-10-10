@@ -159,8 +159,9 @@ export const MENU = [
     label: '基础数据管理',
     icon: 'base',
     children: [
-      { key: 'base-device', label: '设备管理' },
-      { key: 'base-item', label: '试验项管理' },
+      { key: 'devices', label: '设备管理' },
+      { key: 'relations', label: '关系配置' },
+      { key: 'base-third', label: '第三方试验表' },
     ],
   },
   {
@@ -178,7 +179,7 @@ export const MENU = [
     label: '图片采集配置',
     icon: 'image',
     children: [
-      { key: 'ocr-rule', label: '数据识别规则' },
+      { key: 'rules', label: '数据识别规则' },
       { key: 'ocr-debug', label: '图像识别调试' },
     ],
   },
@@ -196,8 +197,7 @@ export const MENU = [
     label: '系统设置',
     icon: 'settings',
     children: [
-      { key: 'user', label: '用户管理' },
-      { key: 'ip', label: 'IP 配置' },
+      { key: 'settings', label: '系统参数' },
     ],
   },
 ];

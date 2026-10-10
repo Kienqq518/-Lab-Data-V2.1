@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { DevicePage, RelationsPage, RulesPage, SettingsPage } from './KitPages.jsx';
+import WebAnnotation from './WebAnnotation.jsx';
 import {
   EQUIPMENT,
   FIELD_OPTIONS,
@@ -753,8 +755,8 @@ export default function SafetyAdmin() {
         </div>
         <div className="adm-placeholder-body">
           {pageKey === 'home'
-            ? '实验室数智化系统 Web 管理后台。设备配置下的「安全管家配置」可完成管家绑定、试验项映射和节点查看。'
-            : '该菜单为原型占位。当前可交互页面是「设备配置 / 安全管家配置」。'}
+            ? '实验室数智化系统 Web 管理后台。可进入设备管理、关系配置、数据识别规则、安全管家配置和系统参数。'
+            : '该菜单为原型占位。可交互页面包括设备管理、关系配置、数据识别规则、安全管家配置和系统参数。'}
           {pageKey !== 'safety' && (
             <div style={{ marginTop: 16 }}>
               <button type="button" className="adm-btn adm-btn-primary" onClick={() => openPage('safety')}>进入安全管家配置</button>
@@ -843,14 +845,20 @@ export default function SafetyAdmin() {
             ))}
           </div>
           <div className="adm-header-right">
+            <WebAnnotation />
             <span className="adm-system-name">实验室数智化系统</span>
             <span className="adm-avatar" aria-label="当前用户"><Icon name="user" /></span>
           </div>
         </header>
         <div className="adm-content">
-          <div className="adm-card">
-            {pageKey === 'safety' ? renderSafety() : renderPlaceholder()}
-          </div>
+          {pageKey === 'safety' && <div className="adm-card">{renderSafety()}</div>}
+          {pageKey === 'devices' && <div className="adm-legacy"><DevicePage /></div>}
+          {pageKey === 'relations' && <div className="adm-legacy"><RelationsPage /></div>}
+          {pageKey === 'rules' && <div className="adm-legacy"><RulesPage /></div>}
+          {pageKey === 'settings' && <div className="adm-legacy"><SettingsPage /></div>}
+          {!['safety', 'devices', 'relations', 'rules', 'settings'].includes(pageKey) && (
+            <div className="adm-card">{renderPlaceholder()}</div>
+          )}
         </div>
       </section>
 
