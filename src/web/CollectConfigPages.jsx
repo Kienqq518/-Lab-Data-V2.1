@@ -49,6 +49,7 @@ export function CollectConfigPage() {
   const [query, setQuery] = useState(draft);
   const [editor, setEditor] = useState(null);
   const [sorter, setSorter] = useState(null);
+  const [sortQuery, setSortQuery] = useState('');
   const [confirmId, setConfirmId] = useState('');
 
   const filtered = rows.filter((row) => {
@@ -113,6 +114,30 @@ export function CollectConfigPage() {
   const closeEditor = () => {
     setEditor(null);
     setSorter(null);
+    setSortQuery('');
+  };
+
+  const closeSorter = () => {
+    setSorter(null);
+    setSortQuery('');
+  };
+
+  const toggleSorter = (key) => {
+    setSorter((current) => (current.includes(key)
+      ? current.filter((item) => item !== key)
+      : [...current, key]));
+  };
+
+  const toggleSorterAll = (keys) => {
+    setSorter((current) => {
+      const allOn = keys.length > 0 && keys.every((key) => current.includes(key));
+      if (allOn) return current.filter((key) => !keys.includes(key));
+      const next = [...current];
+      keys.forEach((key) => {
+        if (!next.includes(key)) next.push(key);
+      });
+      return next;
+    });
   };
 
   const moveSorter = (key, direction) => {
@@ -298,7 +323,10 @@ export function CollectConfigPage() {
                       type="button"
                       className="lk-link"
                       disabled={!editor.fieldKeys.length}
-                      onClick={() => setSorter(keptOnApp(editor.fieldKeys, editor.l4Visible))}
+                      onClick={() => {
+                        setSortQuery('');
+                        setSorter(keptOnApp(editor.fieldKeys, editor.l4Visible));
+                      }}
                     >
                       筛选排序
                     </button>
@@ -336,52 +364,20 @@ export function CollectConfigPage() {
         </div>
       )}
       {editor && sorter && (
-        <div className="lk-mask is-center is-front" onMouseDown={() => setSorter(null)}>
-          <div className="cc-sort" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="lk-drawer-hd">
-              <b>筛选排序</b>
-              <button type="button" onClick={() => setSorter(null)}>×</button>
-            </div>
-            <p className="cc-sort-note">只处理当前已勾选的上位机字段。移到右边表示数采 App 保留，从上到下即展示顺序。移回左边后映射仍在，App 不再展示。</p>
-            <div className="cc-sort-bd">
-              <SortColumn
-                title="未在 App 展示"
-                keys={editor.fieldKeys.filter((key) => !sorter.includes(key))}
-                tableId={editor.tableId}
-                empty="已勾选字段都在右边"
-                action={(key) => (
-                  <button type="button" onClick={() => setSorter([...sorter, key])}>右移</button>
-                )}
-              />
-              <SortColumn
-                title="数采 App 保留"
-                keys={sorter}
-                tableId={editor.tableId}
-                empty="右边暂无字段，App 不展示"
-                action={(key, index) => (
-                  <>
-                    <button type="button" disabled={index === 0} onClick={() => moveSorter(key, -1)}>上移</button>
-                    <button type="button" disabled={index === sorter.length - 1} onClick={() => moveSorter(key, 1)}>下移</button>
-                    <button type="button" onClick={() => setSorter(sorter.filter((item) => item !== key))}>左移</button>
-                  </>
-                )}
-              />
-            </div>
-            <div className="lk-drawer-ft">
-              <button type="button" className="lk-btn" onClick={() => setSorter(null)}>取消</button>
-              <button
-                type="button"
-                className="lk-btn lk-btn-primary"
-                onClick={() => {
-                  setEditor({ ...editor, l4Visible: sorter });
-                  setSorter(null);
-                }}
-              >
-                确定
-              </button>
-            </div>
-          </div>
-        </div>
+        <FilterSortDialog
+          editor={editor}
+          sorter={sorter}
+          query={sortQuery}
+          onQuery={setSortQuery}
+          onClose={closeSorter}
+          onToggle={toggleSorter}
+          onToggleAll={toggleSorterAll}
+          onMove={moveSorter}
+          onConfirm={() => {
+            setEditor({ ...editor, l4Visible: sorter });
+            closeSorter();
+          }}
+        />
       )}
       {confirmId && (
         <div className="lk-mask is-center" onMouseDown={() => setConfirmId('')}>
@@ -408,25 +404,82 @@ export function CollectConfigPage() {
   );
 }
 
-function SortColumn({ title, keys, tableId, empty, action }) {
+function FilterSortDialog({ editor, sorter, query, onQuery, onClose, onToggle, onToggleAll, onMove, onConfirm }) {
+  const pool = hostFields(editor.tableId).filter((field) => editor.fieldKeys.includes(field.key));
+  const keyword = query.trim().toLowerCase();
+  const filtered = pool.filter((field) => !keyword
+    || field.key.toLowerCase().includes(keyword)
+    || field.name.toLowerCase().includes(keyword));
+  const allOn = filtered.length > 0 && filtered.every((field) => sorter.includes(field.key));
+
   return (
-    <section className="cc-sort-col">
-      <h3>{title}<span>{keys.length}</span></h3>
-      <div className="cc-sort-table">
-        <div className="cc-sort-tr is-head">
-          <span>序号</span>
-          <span>试验字段</span>
-          <span>操作</span>
+    <div className="lk-mask is-center is-front" onMouseDown={onClose}>
+      <div className="cc-sort" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="lk-drawer-hd">
+          <b>筛选排序</b>
+          <button type="button" onClick={onClose}>×</button>
         </div>
-        {keys.map((key, index) => (
-          <div className="cc-sort-tr" key={key}>
-            <span className="is-muted">{index + 1}</span>
-            <span>{fieldChip(fieldByKey(tableId, key))}</span>
-            <span className="cc-sort-ops">{action(key, index)}</span>
-          </div>
-        ))}
-        {!keys.length && <div className="cc-empty">{empty}</div>}
+        <div className="cc-sort-bd">
+          <section className="cc-sort-col">
+            <div className="cc-sort-tools">
+              <h3>选择字段<span>{pool.length}</span></h3>
+              <label className="cc-sort-all">
+                <input type="checkbox" checked={allOn} disabled={!filtered.length} onChange={() => onToggleAll(filtered.map((field) => field.key))} />
+                全选
+              </label>
+            </div>
+            <input
+              className="cc-sort-search"
+              value={query}
+              placeholder="输入中文名或英文名"
+              onChange={(event) => onQuery(event.target.value)}
+            />
+            <div className="cc-sort-table">
+              {filtered.map((field) => {
+                const on = sorter.includes(field.key);
+                return (
+                  <label className={`cc-sort-check${on ? ' is-on' : ''}`} key={field.key}>
+                    <input type="checkbox" checked={on} onChange={() => onToggle(field.key)} />
+                    <b>{field.key}</b>
+                    <span>{field.name}</span>
+                  </label>
+                );
+              })}
+              {!filtered.length && <div className="cc-empty">{pool.length ? '没有匹配的字段' : '请先勾选上位机字段'}</div>}
+            </div>
+          </section>
+          <section className="cc-sort-col">
+            <h3>预览<span>{sorter.length}</span></h3>
+            <div className="cc-sort-table">
+              <div className="cc-sort-tr is-head">
+                <span>序号</span>
+                <span>英文名</span>
+                <span>中文名</span>
+                <span>排序</span>
+              </div>
+              {sorter.map((key, index) => {
+                const field = fieldByKey(editor.tableId, key);
+                return (
+                  <div className="cc-sort-tr" key={key}>
+                    <span className="is-muted">{index + 1}</span>
+                    <b>{field?.key}</b>
+                    <span>{field?.name}</span>
+                    <span className="cc-sort-ops">
+                      <button type="button" disabled={index === 0} onClick={() => onMove(key, -1)}>上移</button>
+                      <button type="button" disabled={index === sorter.length - 1} onClick={() => onMove(key, 1)}>下移</button>
+                    </span>
+                  </div>
+                );
+              })}
+              {!sorter.length && <div className="cc-empty">勾选后在这里预览顺序</div>}
+            </div>
+          </section>
+        </div>
+        <div className="lk-drawer-ft">
+          <button type="button" className="lk-btn" onClick={onClose}>取消</button>
+          <button type="button" className="lk-btn lk-btn-primary" onClick={onConfirm}>确定</button>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
