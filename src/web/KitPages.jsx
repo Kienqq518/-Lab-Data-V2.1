@@ -171,13 +171,13 @@ export function DevicePage() {
               <button type="button" onClick={() => setDrawer(null)}>×</button>
             </div>
             <div className="lk-drawer-bd">
-              <label>设备名称<div className="lk-readonly">{editing?.name || '—'}</div></label>
-              <label>设备型号<div className="lk-readonly">{editing?.model || '—'}</div></label>
+              <label className={direct ? 'is-locked' : ''}>设备名称<div className="lk-readonly">{editing?.name || '—'}</div></label>
+              <label className={direct ? 'is-locked' : ''}>设备型号<div className="lk-readonly">{editing?.model || '—'}</div></label>
               <div className="lk-split">
-                <label>设备编号<div className="lk-readonly">{editing?.code || '—'}</div></label>
-                <label>所在区域（工位）<div className="lk-readonly">{editing?.area || '—'}</div></label>
+                <label className={direct ? 'is-locked' : ''}>设备编号<div className="lk-readonly">{editing?.code || '—'}</div></label>
+                <label className={direct ? 'is-locked' : ''}>所在区域（工位）<div className="lk-readonly">{editing?.area || '—'}</div></label>
               </div>
-              <label>所属部门<div className="lk-readonly">{editing?.dept || '—'}</div></label>
+              <label className={direct ? 'is-locked' : ''}>所属部门<div className="lk-readonly">{editing?.dept || '—'}</div></label>
               <div className="lk-label">采集方式 <span>{direct ? '直连下仅此项可改，确定后同步至 LIMS' : '决定 App 检测员采集页的录入交互'}</span></div>
               {Object.entries(METHODS).map(([key, method]) => (
                 <button type="button" key={key} className={`lk-method${drawer.method === key ? ' is-on' : ''}`} onClick={() => setDrawer({ ...drawer, method: key })}>
