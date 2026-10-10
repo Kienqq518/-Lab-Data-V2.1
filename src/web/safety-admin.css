@@ -569,8 +569,106 @@ button {
 .adm-mgr-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 0 20px 12px;
   min-width: 0;
+}
+
+.adm-bound-entry {
+  height: 36px;
+  padding: 0 12px 0 14px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #1e2226;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  flex: none;
+}
+
+.adm-bound-entry span {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #e6f4ff;
+  color: #006aff;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.adm-bound-entry:disabled {
+  color: #bfbfbf;
+  cursor: not-allowed;
+}
+
+.adm-bound-note {
+  margin: 0 0 12px;
+  color: #5b6677;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.adm-bound-empty {
+  padding: 28px 8px;
+  text-align: center;
+  color: #8c8c8c;
+}
+
+.adm-bound-table {
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.adm-bound-tr {
+  display: grid;
+  grid-template-columns: 1.4fr 110px 188px 120px;
+  gap: 8px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 12px;
+  border-top: 1px solid #f0f0f0;
+  font-size: 13px;
+}
+
+.adm-bound-tr:has(.is-zero) {
+  background: #fffbe6;
+}
+
+.adm-bound-tr.is-head {
+  min-height: 40px;
+  border-top: none;
+  background: #f5f7fa;
+  color: #8c8c8c;
+}
+
+.adm-bound-tr b,
+.adm-bound-tr small {
+  display: block;
+}
+
+.adm-bound-tr small {
+  color: #8c8c8c;
+  font-weight: 400;
+}
+
+.adm-bound-tr .is-zero {
+  color: #d48806;
+}
+
+.adm-bound-ops {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.adm-btn-link.is-danger {
+  color: #ff2526;
 }
 
 .adm-mgr-tabs {
