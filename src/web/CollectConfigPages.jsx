@@ -304,7 +304,6 @@ export function CollectConfigPage() {
                     </button>
                   </span>
                 </div>
-                <p>只能勾选该采集表里的上位机字段。中文名不可改，须与上位机一致。勾选决定能否映射；数采 App 留哪些、按什么顺序，点「筛选排序」。</p>
                 <div className="cc-chips">
                   {catalog.map((field) => {
                     const on = editor.fieldKeys.includes(field.key);
