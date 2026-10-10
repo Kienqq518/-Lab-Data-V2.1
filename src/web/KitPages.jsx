@@ -65,6 +65,7 @@ export function DevicePage() {
   const [draft, setDraft] = useState({ code: '', name: '', method: '' });
   const [query, setQuery] = useState({ code: '', name: '', method: '' });
   const [drawer, setDrawer] = useState(null);
+  const [notice, setNotice] = useState('');
   const direct = mode === 'direct';
 
   const filtered = rows.filter((row) => {
@@ -75,7 +76,6 @@ export function DevicePage() {
   });
 
   const openEdit = (index) => {
-    if (direct) return;
     const row = rows[index];
     setDrawer({ index, method: row.method, external: !!row.external });
   };
@@ -85,10 +85,17 @@ export function DevicePage() {
       setDrawer(null);
       return;
     }
+    const previous = rows[drawer.index];
+    const external = drawer.method === 'serial' ? drawer.external : false;
+    const changed = previous.method !== drawer.method || !!previous.external !== external;
     setRows((current) => current.map((row, index) => (index === drawer.index
-      ? { ...row, method: drawer.method, external: drawer.method === 'serial' ? drawer.external : false }
+      ? { ...row, method: drawer.method, external }
       : row)));
     setDrawer(null);
+    if (direct) {
+      setNotice(changed ? `「${previous.name}」的采集方式已同步至 LIMS` : '采集方式未变更，未向 LIMS 同步');
+      window.setTimeout(() => setNotice(''), 4000);
+    }
   };
 
   const editing = drawer?.index != null ? rows[drawer.index] : null;
@@ -97,13 +104,14 @@ export function DevicePage() {
     <div className="lk-page">
       {direct && (
         <div className="lk-banner lk-banner-warn">
-          数蚕 LIMS 直连模式下，设备信息由 LIMS 同步，<b>不允许在此新增、编辑或启停设备</b>。如需修改请前往 LIMS 设备管理，或在「系统设置」关闭直连。
+          数蚕 LIMS 直连模式下，设备信息由 LIMS 同步，<b>不允许在此新增、导入或启停</b>。操作列仍可编辑，<b>仅可修改采集方式</b>，确定后同步回 LIMS。
         </div>
       )}
+      {notice && <div className="lk-banner">{notice}</div>}
       <PageHead title="设备管理">
         <div className="lk-seg">
           <button type="button" className={!direct ? 'is-on' : ''} onClick={() => setMode('standalone')}>非直连·可操作</button>
-          <button type="button" className={direct ? 'is-on is-warn' : ''} onClick={() => { setMode('direct'); setDrawer(null); }}>LIMS 直连·只读</button>
+          <button type="button" className={direct ? 'is-on is-warn' : ''} onClick={() => { setMode('direct'); setDrawer((current) => (current?.index == null ? null : current)); }}>LIMS 直连</button>
         </div>
         <button type="button" className="lk-btn lk-btn-primary" disabled={direct} onClick={() => { if (!direct) setDrawer({ index: null, method: 'direct', external: false }); }}>+ 新增</button>
         <button type="button" className="lk-btn lk-btn-navy" disabled={direct}>导入</button>
@@ -149,7 +157,7 @@ export function DevicePage() {
                   }}
                 />
               </span>
-              <span className="w-op"><button type="button" className="lk-link" disabled={direct} onClick={() => openEdit(sourceIndex)}>编辑</button></span>
+              <span className="w-op"><button type="button" className="lk-link" onClick={() => openEdit(sourceIndex)}>编辑</button></span>
             </div>
           );
         })}
@@ -169,7 +177,8 @@ export function DevicePage() {
                 <label>设备编号<div className="lk-readonly">{editing?.code || '—'}</div></label>
                 <label>所在区域（工位）<div className="lk-readonly">{editing?.area || '—'}</div></label>
               </div>
-              <div className="lk-label">采集方式 <span>决定 App 检测员采集页的录入交互</span></div>
+              <label>所属部门<div className="lk-readonly">{editing?.dept || '—'}</div></label>
+              <div className="lk-label">采集方式 <span>{direct ? '直连下仅此项可改，确定后同步至 LIMS' : '决定 App 检测员采集页的录入交互'}</span></div>
               {Object.entries(METHODS).map(([key, method]) => (
                 <button type="button" key={key} className={`lk-method${drawer.method === key ? ' is-on' : ''}`} onClick={() => setDrawer({ ...drawer, method: key })}>
                   <i className={drawer.method === key ? 'is-on' : ''} />
