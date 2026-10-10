@@ -62,7 +62,7 @@ export const WEB_ANNOTATION_REGISTRY = {
     collectEdit: {
       title: '编辑采集配置',
       requirementLogic:
-        '映射字段和数采 App 展示都在本行的编辑弹窗里完成，不再使用单独的 L4 字段展示页。',
+        '映射字段和数采 App 展示都在本行的编辑弹窗里完成。',
       displayRule:
         '列表操作列有「编辑」。弹窗内试验字段以芯片展示，右侧为「全选」和「筛选排序」。',
       interactionLogic:
