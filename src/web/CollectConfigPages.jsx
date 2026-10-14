@@ -48,8 +48,9 @@ export function CollectConfigPage() {
   const [draft, setDraft] = useState({ equipmentId: '', table: '', third: '' });
   const [query, setQuery] = useState(draft);
   const [editor, setEditor] = useState(null);
-  const [sorter, setSorter] = useState(null);
-  const [sortQuery, setSortQuery] = useState('');
+  const [orderDraft, setOrderDraft] = useState(null);
+  const [filter, setFilter] = useState(null);
+  const [filterQuery, setFilterQuery] = useState('');
   const [confirmId, setConfirmId] = useState('');
 
   const filtered = rows.filter((row) => {
@@ -113,42 +114,39 @@ export function CollectConfigPage() {
 
   const closeEditor = () => {
     setEditor(null);
-    setSorter(null);
-    setSortQuery('');
+    setOrderDraft(null);
   };
 
-  const closeSorter = () => {
-    setSorter(null);
-    setSortQuery('');
+  const moveIn = (list, key, direction) => {
+    const order = [...list];
+    const index = order.indexOf(key);
+    const next = index + direction;
+    if (index < 0 || next < 0 || next >= order.length) return list;
+    const [item] = order.splice(index, 1);
+    order.splice(next, 0, item);
+    return order;
   };
 
-  const toggleSorter = (key) => {
-    setSorter((current) => (current.includes(key)
-      ? current.filter((item) => item !== key)
-      : [...current, key]));
-  };
-
-  const toggleSorterAll = (keys) => {
-    setSorter((current) => {
-      const allOn = keys.length > 0 && keys.every((key) => current.includes(key));
-      if (allOn) return current.filter((key) => !keys.includes(key));
-      const next = [...current];
-      keys.forEach((key) => {
-        if (!next.includes(key)) next.push(key);
-      });
-      return next;
+  const toggleFilter = (key) => {
+    setFilter((current) => {
+      if (!current) return current;
+      const keys = current.keys.includes(key)
+        ? current.keys.filter((item) => item !== key)
+        : [...current.keys, key];
+      return { ...current, keys };
     });
   };
 
-  const moveSorter = (key, direction) => {
-    setSorter((current) => {
-      const order = [...current];
-      const index = order.indexOf(key);
-      const next = index + direction;
-      if (index < 0 || next < 0 || next >= order.length) return current;
-      const [item] = order.splice(index, 1);
-      order.splice(next, 0, item);
-      return order;
+  const toggleFilterAll = (keys) => {
+    setFilter((current) => {
+      if (!current) return current;
+      const allOn = keys.length > 0 && keys.every((key) => current.keys.includes(key));
+      if (allOn) return { ...current, keys: current.keys.filter((key) => !keys.includes(key)) };
+      const next = [...current.keys];
+      keys.forEach((key) => {
+        if (!next.includes(key)) next.push(key);
+      });
+      return { ...current, keys: next };
     });
   };
 
@@ -157,7 +155,7 @@ export function CollectConfigPage() {
   return (
     <div className="lk-page" data-annotation-page="web-collect">
       <div className="lk-banner" data-annotation-id="collectMapping">
-        这里勾选的是上位机采集字段。中文名与上位机一致才能完成映射。勾选之后，用「筛选排序」决定数采 App 保留哪些字段，以及它们的展示顺序。
+        这里勾选的是上位机采集字段。中文名与上位机一致才能完成映射。勾选后点「排序」排列上位机字段顺序。保存后，操作列「筛选」决定数采与 LIMS 之间传输哪些字段及其顺序。
       </div>
       <div className="lk-head">
         <h1 className="lk-title"><span className="lk-title-bar" />设备采集配置</h1>
@@ -228,6 +226,17 @@ export function CollectConfigPage() {
                 })}
               >
                 编辑
+              </button>
+              <button
+                type="button"
+                className="lk-link"
+                data-annotation-id="filterSort"
+                onClick={() => {
+                  setFilterQuery('');
+                  setFilter({ id: row.id, tableId: row.tableId, fieldKeys: [...row.fieldKeys], keys: keptOnApp(row.fieldKeys, row.l4Visible) });
+                }}
+              >
+                筛选
               </button>
               <button type="button" className="lk-link is-danger" onClick={() => setConfirmId(row.id)}>删除</button>
             </span>
@@ -322,14 +331,11 @@ export function CollectConfigPage() {
                     <button
                       type="button"
                       className="lk-link"
-                      data-annotation-id="filterSort"
+                      data-annotation-id="hostSort"
                       disabled={!editor.fieldKeys.length}
-                      onClick={() => {
-                        setSortQuery('');
-                        setSorter(keptOnApp(editor.fieldKeys, editor.l4Visible));
-                      }}
+                      onClick={() => setOrderDraft([...editor.fieldKeys])}
                     >
-                      筛选排序
+                      排序
                     </button>
                   </span>
                 </div>
@@ -364,19 +370,33 @@ export function CollectConfigPage() {
           </div>
         </div>
       )}
-      {editor && sorter && (
-        <FilterSortDialog
-          editor={editor}
-          sorter={sorter}
-          query={sortQuery}
-          onQuery={setSortQuery}
-          onClose={closeSorter}
-          onToggle={toggleSorter}
-          onToggleAll={toggleSorterAll}
-          onMove={moveSorter}
+      {editor && orderDraft && (
+        <HostFieldSortDialog
+          tableId={editor.tableId}
+          order={orderDraft}
+          onMove={(key, direction) => setOrderDraft((current) => moveIn(current, key, direction))}
+          onClose={() => setOrderDraft(null)}
           onConfirm={() => {
-            setEditor({ ...editor, l4Visible: sorter });
-            closeSorter();
+            setEditor({ ...editor, fieldKeys: orderDraft });
+            setOrderDraft(null);
+          }}
+        />
+      )}
+      {filter && (
+        <FilterSortDialog
+          tableId={filter.tableId}
+          fieldKeys={filter.fieldKeys}
+          sorter={filter.keys}
+          query={filterQuery}
+          onQuery={setFilterQuery}
+          onClose={() => { setFilter(null); setFilterQuery(''); }}
+          onToggle={toggleFilter}
+          onToggleAll={toggleFilterAll}
+          onMove={(key, direction) => setFilter((current) => (current ? { ...current, keys: moveIn(current.keys, key, direction) } : current))}
+          onConfirm={() => {
+            setRows((current) => current.map((row) => (row.id === filter.id ? { ...row, l4Visible: filter.keys } : row)));
+            setFilter(null);
+            setFilterQuery('');
           }}
         />
       )}
@@ -384,7 +404,7 @@ export function CollectConfigPage() {
         <div className="lk-mask is-center" onMouseDown={() => setConfirmId('')}>
           <div className="lk-dialog" onMouseDown={(event) => event.stopPropagation()}>
             <div className="lk-drawer-hd"><b>删除采集配置</b><button type="button" onClick={() => setConfirmId('')}>×</button></div>
-            <div className="lk-dialog-bd">删除后，该设备采集表的上位机字段映射和数采 App 展示配置会一起去掉。</div>
+            <div className="lk-dialog-bd">删除后，该设备采集表的上位机字段映射和传输筛选会一起去掉。</div>
             <div className="lk-drawer-ft">
               <button type="button" className="lk-btn" onClick={() => setConfirmId('')}>取消</button>
               <button
@@ -405,8 +425,45 @@ export function CollectConfigPage() {
   );
 }
 
-function FilterSortDialog({ editor, sorter, query, onQuery, onClose, onToggle, onToggleAll, onMove, onConfirm }) {
-  const pool = hostFields(editor.tableId).filter((field) => editor.fieldKeys.includes(field.key));
+function HostFieldSortDialog({ tableId, order, onMove, onClose, onConfirm }) {
+  return (
+    <div className="lk-mask is-center is-front" onMouseDown={onClose}>
+      <div className="cc-order" data-annotation-id="hostSort" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="lk-drawer-hd">
+          <b>试验字段排序</b>
+          <button type="button" onClick={onClose}>×</button>
+        </div>
+        <div className="cc-order-bd">
+          <div className="cc-order-tr is-head">
+            <span>序号</span>
+            <span>试验字段</span>
+            <span>操作</span>
+          </div>
+          {order.map((key, index) => {
+            const field = fieldByKey(tableId, key);
+            return (
+              <div className="cc-order-tr" key={key}>
+                <span>{index + 1}</span>
+                <span>{fieldChip(field) || key}</span>
+                <span className="cc-order-ops">
+                  <button type="button" className={index === 0 ? 'is-placeholder' : ''} disabled={index === 0} aria-label="上移" onClick={() => onMove(key, -1)}>↑</button>
+                  <button type="button" className={index === order.length - 1 ? 'is-placeholder' : ''} disabled={index === order.length - 1} aria-label="下移" onClick={() => onMove(key, 1)}>↓</button>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="lk-drawer-ft">
+          <button type="button" className="lk-btn" onClick={onClose}>取消</button>
+          <button type="button" className="lk-btn lk-btn-primary" onClick={onConfirm}>确定</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterSortDialog({ tableId, fieldKeys, sorter, query, onQuery, onClose, onToggle, onToggleAll, onMove, onConfirm }) {
+  const pool = fieldKeys.map((key) => fieldByKey(tableId, key)).filter(Boolean);
   const keyword = query.trim().toLowerCase();
   const filtered = pool.filter((field) => !keyword
     || field.key.toLowerCase().includes(keyword)
@@ -417,7 +474,7 @@ function FilterSortDialog({ editor, sorter, query, onQuery, onClose, onToggle, o
     <div className="lk-mask is-center is-front" onMouseDown={onClose}>
       <div className="cc-sort" onMouseDown={(event) => event.stopPropagation()}>
         <div className="lk-drawer-hd">
-          <b>筛选排序</b>
+          <b>筛选</b>
           <button type="button" onClick={onClose}>×</button>
         </div>
         <div className="cc-sort-bd">
@@ -459,7 +516,7 @@ function FilterSortDialog({ editor, sorter, query, onQuery, onClose, onToggle, o
                 <span>排序</span>
               </div>
               {sorter.map((key, index) => {
-                const field = fieldByKey(editor.tableId, key);
+                const field = fieldByKey(tableId, key);
                 return (
                   <div className="cc-sort-tr" key={key}>
                     <span className="is-muted">{index + 1}</span>

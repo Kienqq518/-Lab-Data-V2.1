@@ -1342,19 +1342,19 @@ button {
 .cc-table { background: #fff; border: 1px solid #e5e8ee; border-radius: 10px; overflow: auto; }
 .cc-tr {
   display: grid;
-  grid-template-columns: 52px minmax(160px, 1.1fr) minmax(180px, 1.2fr) minmax(180px, 1.3fr) 72px minmax(180px, 1.4fr) 72px 96px;
+  grid-template-columns: 52px minmax(160px, 1.1fr) minmax(180px, 1.2fr) minmax(180px, 1.3fr) 72px minmax(180px, 1.4fr) 72px 148px;
   gap: 8px;
   align-items: center;
   min-height: 52px;
   padding: 8px 14px;
   border-bottom: 1px solid #f0f2f6;
   font-size: 13px;
-  min-width: 1100px;
+  min-width: 1160px;
 }
 .cc-th { min-height: 42px; background: #f7f9fc; color: #3c465c; font-weight: 600; }
 .cc-tr .is-muted { color: #828c9c; }
 .cc-keys { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #5b6677; }
-.cc-ops { display: flex; justify-content: flex-end; gap: 12px; }
+.cc-ops { display: flex; justify-content: flex-end; gap: 10px; white-space: nowrap; }
 .cc-empty { padding: 28px; text-align: center; color: #9aa3b2; }
 .cc-dialog {
   width: min(720px, calc(100vw - 48px));
@@ -1411,3 +1411,28 @@ button {
 .cc-sort-ops button { border: none; background: transparent; color: #006aff; cursor: pointer; padding: 0; font-size: 13px; white-space: nowrap; }
 .cc-sort-ops button:disabled { color: #c5cad3; cursor: not-allowed; }
 .cc-sort .cc-empty { padding: 20px 12px; }
+.cc-order {
+  width: min(640px, calc(100vw - 48px));
+  background: #fff;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+}
+.cc-order-bd { padding: 8px 20px 4px; overflow: auto; }
+.cc-order-tr {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 88px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid #f0f2f6;
+  font-size: 13px;
+  color: #1e2226;
+}
+.cc-order-tr.is-head { background: #f7f9fc; color: #3c465c; font-weight: 600; }
+.cc-order-ops { display: flex; justify-content: center; gap: 8px; }
+.cc-order-ops button {
+  width: 18px; border: none; background: transparent; color: #1677ff; cursor: pointer; font-size: 16px; line-height: 1; padding: 0;
+}
+.cc-order-ops button.is-placeholder { visibility: hidden; pointer-events: none; }

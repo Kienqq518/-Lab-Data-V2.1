@@ -1,4 +1,4 @@
-/** 设备采集配置：上位机字段映射。L4 展示顺序单独存在 l4Visible。 */
+/** 设备采集配置：fieldKeys 是上位机字段及顺序；l4Visible 是数采与 LIMS 传输时保留的字段及顺序。 */
 
 import { EQUIPMENT } from './safety-data.js';
 
