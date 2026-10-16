@@ -538,9 +538,9 @@ import {
   // 蓝牙/串口允许手输（串口异常兜底）
   const allowManualInput = (method) => method === 'ble' || method === 'serial';
 
-  // 数采 Web「设备采集配置」：试验项（采集表名）→ 已配置采集关系的「设备直连(auto)」设备 id 列表。
-  // 仅对 auto 设备生效；未配置的 auto 设备在切换设备抽屉中置灰不可选（无采集关系无法回传数据）。
-  // 切换设备抽屉：实验室扩展设备（与复合试验子项弹窗同源）
+  // 数采 Web「设备采集配置」：试验项（采集表名）→ 已关联的采集设备 id。
+  // App L4 设备区只展示这里配置过的设备（胶囊多选），不再提供切换设备。
+  // 实验室扩展设备目录，仅供设备 id 回查；L4 不再用它打开切换抽屉。
   const drawerDevices = [
     { id: 'sz-waterbath', name: '恒温水浴槽', code: 'WB-202', model: 'HH-S8', station: 'sz', method: 'auto' },
     { id: 'sz-logger', name: '水煮温度记录仪', code: 'WT-06', model: 'TLOG-8', station: 'sz', method: 'ble' },
@@ -553,15 +553,39 @@ import {
   ];
 
   const deviceCollectConfig = {
-    '结构尺寸检查—导体&绝缘厚度&金属屏蔽': ['thk', 'mech'],
-    '结构尺寸检查—非金属护套&钢带铠装': [],
+    '结构尺寸检查—导体&绝缘厚度&金属屏蔽': ['thk', 'mech', 'tmk', 'cal'],
+    '结构尺寸检查—非金属护套&钢带铠装': ['cal', 'cal2'],
     '老化前绝缘的机械性能试验': ['mech'],
-    '非金属护套老化前的机械性能试验': ['mech'],
-    'XLPE绝缘的热延伸试验': ['hext'],
+    '非金属护套老化前的机械性能试验': ['mech', 'tmk'],
+    'XLPE绝缘的热延伸试验': ['hext', 'tmk'],
     'XLPE绝缘的收缩试验': ['shr'],
-    '导体直流电阻': [],
-    '密度测量': [],
+    '导体直流电阻': ['dcr'],
+    '密度测量': ['bal', 'bal2'],
+    '绝缘操作杆 - 交流耐压试验': ['rodhv', 'rodhv2'],
+    '绝缘操作杆 - 外观及尺寸': ['visual', 'tmk'],
+    '绝缘操作杆 - 抗弯动负荷试验': ['rodbend', 'rodbend2'],
+    '绝缘操作杆 - 抗弯静负荷试验': ['rodbend', 'rodbend2'],
   };
+
+  function deviceById(id) {
+    if (!id) return null;
+    if (id === visualInspectionDevice.id) return visualInspectionDevice;
+    return devices.find((device) => device.id === id) || drawerDevices.find((device) => device.id === id) || null;
+  }
+
+  /** L4 设备胶囊：当前试验项在「设备采集配置」中关联的全部设备 */
+  function getConfiguredDevices(item) {
+    const ids = deviceCollectConfig[item?.name] || [];
+    const seen = new Set();
+    const list = [];
+    ids.forEach((id) => {
+      const device = deviceById(id);
+      if (!device || seen.has(device.id)) return;
+      seen.add(device.id);
+      list.push(device);
+    });
+    return list;
+  }
 
   function taskSamples(task) {
     return samples.filter((s) =>
@@ -915,12 +939,12 @@ import {
 
   // 帮助中心常见问题
   const faqs = [
-    { q: '设备直连的数据没有自动回传怎么办？', a: '请确认设备已开机并与上位机联网。设备直连数据由上位机采集写库，本端仅展示；若长时间未回传，可在「切换设备」中确认设备采集关系是否已在数采 Web「设备采集配置」中维护。' },
+    { q: '设备直连的数据没有自动回传怎么办？', a: '请确认设备已开机并与上位机联网。设备直连数据由上位机采集写库，本端仅展示。若采集页设备区没有这台设备，请到数采 Web「设备采集配置」为该采集表关联设备。' },
     { q: '拍照识别（OCR）识别错误可以手动修改吗？', a: '拍照识别与设备直连为保证数据溯源默认不可手输。如识别有误，请重新拍照采集；蓝牙、串口方式在异常时支持手输兜底。' },
     { q: '试验数据被退回后如何重新提交？', a: '在首页「退回复测」或消息通知中找到对应委托任务，进入该任务 L3 查看分配给你的退回试验项，按退回原因复测后重新上传即可。' },
-    { q: '为什么有的设备在切换设备时是灰色不可选？', a: '灰色表示该「设备直连」设备尚未在数采 Web「设备采集配置」中维护采集关系，无法回传数据，故不可选。' },
+    { q: '采集页设备区为什么只显示这几台设备？', a: '设备区只展示数采 Web「设备采集配置」里为当前采集表关联的设备，以胶囊多选。App 不再提供切换设备。提交试验数据时记录当时选中的设备；本样品已有任一次数据上传后，不能再改选中，除非把全部已上传数据重置清除。' },
     { q: '个人资料中的手机号、邮箱如何修改？', a: '账号相关信息（头像、部门、手机号、邮箱等）统一在数采系统 Web 端的 TestOS 底座维护，移动端个人资料只读展示，不支持修改。' },
     { q: '检测时效是如何计算的？', a: '检测时效随委托任务下发，不可在移动端修改。临近或超过时效的任务会在首页「工作概览」中以逾期 / 临期维度提醒。' },
   ];
 
-export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, testItemTableMap, ocrRecognitionRules, resolveOcrScenarios, allowManualInput, deviceCollectConfig, sampleCodeConversionConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, resolveTestItemTiming, recordTestTimingStart, recordTestTimingEnd, clearTestTimingEnd, fetchAutoTestStartTime, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, sampleSpec, resolveSampleCode, formatSampleCodeDisplay, formatSampleCodeSidebar, sampleSystemId, sampleCodeForCell, sampleCodeMatchesKeyword, convertSampleCode, isConversionEnabled, setConversionEnabled, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveNotificationTask, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };
+export const MOCK = { stations, devices, samples, tasks, fieldTpl, methodLabel, testRules, testItemTableMap, ocrRecognitionRules, resolveOcrScenarios, allowManualInput, deviceCollectConfig, sampleCodeConversionConfig, overdueTagLabel, offDevices: devices.filter((d) => !d.station), taskSamples, taskTests, isActiveTask, isPendingTask, isTestingTask, visualInspectionDevice, drawerDevices, resolveLiteDevice, resolveTestDevice, getDeviceDrawerPool, getConfiguredDevices, isDeviceBlockedForTest, testCardInfo, buildCollectCtx, resolveTestItemTiming, recordTestTimingStart, recordTestTimingEnd, clearTestTimingEnd, fetchAutoTestStartTime, testUsesDevice, sampleUsesDevice, taskSamplesForDevice, sampleTestsForDevice, sortTaskList, taskCodeFromSample, sampleSpec, resolveSampleCode, formatSampleCodeDisplay, formatSampleCodeSidebar, sampleSystemId, sampleCodeForCell, sampleCodeMatchesKeyword, convertSampleCode, isConversionEnabled, setConversionEnabled, inspectorWorkMetrics, isReturnedTest, isDueSoonTask, isOverdueTask, isReturnedTask, sampleHasReturned, taskReturnedSamples, sampleReturnedTests, taskReturnedAt, overdueTasks, dueSoonTasks, returnedTasks, currentUser, notifications, unreadNotificationCount, resolveNotificationTask, faqs, stationLabel, stationOptions: stations.map((s) => ({ id: s.id, name: s.name })) };

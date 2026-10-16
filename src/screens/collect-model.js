@@ -187,11 +187,12 @@ export function markCellFilled(cells, key, vals, options = {}) {
   }));
 }
 
-export function markCellUploaded(cells, key) {
+export function markCellUploaded(cells, key, options = {}) {
   return updateCell(cells, key, (cell) => ({
     ...cell,
     status: 'uploaded',
     uploadedAt: '2026-07-04 12:02:00',
+    submittedDevices: options.submittedDevices || cell.submittedDevices || null,
   }));
 }
 

@@ -90,6 +90,7 @@ export function TestItemTimingSection({
   confirmOverwrite,
   requireStartBeforeCollect = false,
   isAutoDirect = false,
+  hasSelectedDevice = true,
   onRecordStartClick,
   onConfirmOverwrite,
   onCancelOverwrite,
@@ -119,12 +120,14 @@ export function TestItemTimingSection({
               background: 'var(--status-pending-bg, #fff8eb)', border: '1px solid var(--status-pending-border, #f0d9a8)',
               fontSize: 'var(--fs-sm)', color: 'var(--status-pending-fg, #97640f)', lineHeight: 1.5,
             }}>
-              上传数据前请先点击上方「记录开始时间」。蓝牙/手工须先记录开始时间才能手输或连接采集；图像识别在点击「拍照识别」时校验；上传时若尚未记录将弹出提示。
+              上传数据前请先点击上方「记录开始时间」；未记录时提交会提示。记录开始时间前须已选择至少一台设备，否则将提示。蓝牙/手工须先记录开始时间才能手输或连接采集；图像识别在点击「拍照识别」时校验。
             </div>
           )}
           {isAutoDirect && !canRecordStart && (
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              设备直连 · 试验开始时间由上位机回传，无需手动记录
+              {hasSelectedDevice
+                ? '设备直连 · 试验开始时间由上位机回传，无需手动记录'
+                : '请先在设备信息中选择至少一台设备。选中后，试验开始时间由上位机回传。'}
             </div>
           )}
         </div>

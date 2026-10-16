@@ -2,7 +2,7 @@ import React from 'react';
 import { AppBar, Button, Card, CollectBadge, FieldRow } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import { EnvInfoSection, getOcrReferenceAttachments, mergeRecordEnvVals, RecordEnvFields, resolveEnvMock } from './collect-env.jsx';
-import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
+import { ConfiguredDeviceSelect, defaultRecordedIds, snapshotDevices, SubmittedDeviceTrace } from './ConfiguredDeviceSelect.jsx';
 import { resolveInspectStampState } from './collect-model.js';
 import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
@@ -47,13 +47,12 @@ function CollectLite({ ctx, onBack, onDone }) {
   const demoVals = ctx.item?.doneVals || {};
   const N = ctx.item?.count ?? 1;
 
-  const itemDevices = React.useMemo(() => M.getDeviceDrawerPool(ctx.item), [ctx.item]);
-
-  const initialDev = M.resolveLiteDevice(ctx.item) || ctx.device || itemDevices[0] || { name: '手工录入', code: '—', model: '—', method: 'manual' };
-
-  const [dev, setDev] = React.useState(initialDev);
-  const [devSwitchOpen, setDevSwitchOpen] = React.useState(false);
-  const method = dev.method || ctx.method || ctx.item?.method || 'manual';
+  const configuredDevices = React.useMemo(() => M.getConfiguredDevices(ctx.item), [ctx.item]);
+  const dev = M.resolveLiteDevice(ctx.item) || ctx.device || configuredDevices[0] || { name: '手工录入', code: '—', model: '—', method: 'manual' };
+  const method = ctx.method || ctx.item?.method || dev.method || 'manual';
+  const presetUploaded = isReview;
+  const [selectedIds, setSelectedIds] = React.useState(() => (presetUploaded ? defaultRecordedIds(configuredDevices, ctx.item) : []));
+  const [submittedDevices, setSubmittedDevices] = React.useState(() => (presetUploaded ? snapshotDevices(configuredDevices, defaultRecordedIds(configuredDevices, ctx.item)) : null));
 
   const ocrScenarios = React.useMemo(() => M.resolveOcrScenarios(ctx.item, dev), [ctx.item, dev]);
   const passedScenarios = getPassedScenarios(ocrScenarios);
@@ -72,7 +71,6 @@ function CollectLite({ ctx, onBack, onDone }) {
   const [editUnlocked, setEditUnlocked] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const galleryInputRef = React.useRef(null);
-  const prevDevIdRef = React.useRef(dev.id);
 
   const [demoFlow, setDemoFlow] = React.useState(null);
   const flow = demoFlow ? DEMO_FLOWS[demoFlow] : (ctx.flow || ctx.item?.flow || { node: '试验检测' });
@@ -102,8 +100,10 @@ function CollectLite({ ctx, onBack, onDone }) {
   const uploadedCount = uploaded ? 1 : 0;
   const allUploaded = uploaded;
   const isAutoDirect = method === 'auto';
-  const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
-  const { guardStartForUpload, guardStartForOcr, guardStartForManual, requireStartBeforeCollect } = timingCtl;
+  const hasSelectedDevice = selectedIds.length > 0;
+  const selectionLockReason = flowLocked ? 'flow' : uploaded ? 'uploaded' : null;
+  const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect, hasSelectedDevice });
+  const { guardStartForUpload, guardStartForOcr, guardStartForManual, requireStartBeforeCollect, notify, clearEndedOnReset } = timingCtl;
   const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
   const filled = measureFields.some((f) => String(vals[f.key] || '').trim() !== '');
   const ocrField = method === 'ocr' && ocrReady;
@@ -161,17 +161,15 @@ function CollectLite({ ctx, onBack, onDone }) {
     setScene((prev) => (prev && passedScenarios.some((s) => s.name === prev) ? prev : def.name));
   }, [method, hasPassedRule, ocrScenarios, passedScenarios]);
 
-  React.useEffect(() => {
-    if (prevDevIdRef.current === dev.id) return;
-    prevDevIdRef.current = dev.id;
-    setScene('');
-    setAttachments([]);
-    setEditUnlocked(false);
-    setShootOpen(false);
-    setShootScenario(null);
-    setShotPhase('idle');
-    setBusy(false);
-  }, [dev.id]);
+  function toggleDevice(id) {
+    if (selectionLockReason) {
+      notify(selectionLockReason === 'uploaded'
+        ? '已有试验数据上传，不能更改设备。请先重置清除全部已上传数据'
+        : '流程已锁定，不能更改设备');
+      return;
+    }
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  }
 
   function openOcrShoot() {
     if (!guardStartForOcr()) return;
@@ -284,13 +282,26 @@ function CollectLite({ ctx, onBack, onDone }) {
     setVals((prev) => ({ ...prev, [key]: value }));
   }
 
+  function resetAll() {
+    if (flowLocked) return;
+    setUploaded(false);
+    setSubmittedDevices(null);
+    clearEndedOnReset();
+  }
+
   function upload() {
     if (!guardStartForUpload()) return;
+    if (!hasSelectedDevice) {
+      notify('请先选择至少一台设备');
+      return;
+    }
+    const snap = snapshotDevices(configuredDevices, selectedIds);
     touchReturn();
     setUploading(true);
     setTimeout(() => {
       setUploading(false);
       setUploaded(true);
+      setSubmittedDevices(snap);
     }, 600);
   }
 
@@ -322,20 +333,20 @@ function CollectLite({ ctx, onBack, onDone }) {
           </div>
         </Section>
 
+        <AnnotatedWrapper id="deviceInfo" layout="block">
         <Section title="设备信息" icon="cpu" extra={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <CollectBadge method={method} size="sm" />
-            {!flowLocked && !isReview && itemDevices.length > 1 && (
-              <Button size="sm" variant="secondary" onClick={() => setDevSwitchOpen(true)} style={{ height: 28, padding: '0 12px' }}>切换设备</Button>
-            )}
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>已选 {selectedIds.length} 台</span>
           </div>
         }>
-          <Grid items={[
-            ['检测设备', dev.name || '—'],
-            ['设备编号', dev.code || '—'],
-            ['设备型号', dev.model || '—'],
-            ['所属工位', M.stationLabel(dev.station)],
-          ]} />
+          <ConfiguredDeviceSelect
+            devices={configuredDevices}
+            selectedIds={selectedIds}
+            locked={!!selectionLockReason}
+            lockReason={selectionLockReason}
+            onToggle={toggleDevice}
+          />
           {dev.visual && (
             <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               目测 · 不连接设备，参数与结论由检测员手工录入（采集方式同手工录入）
@@ -367,6 +378,7 @@ function CollectLite({ ctx, onBack, onDone }) {
             </div>
           )}
         </Section>
+        </AnnotatedWrapper>
 
         <EnvInfoSection
           envMock={envMock}
@@ -384,6 +396,7 @@ function CollectLite({ ctx, onBack, onDone }) {
           confirmOverwrite={timingCtl.confirmOverwrite}
           requireStartBeforeCollect={timingCtl.requireStartBeforeCollect}
           isAutoDirect={timingCtl.isAutoDirect}
+          hasSelectedDevice={hasSelectedDevice}
           onRecordStartClick={timingCtl.handleRecordStartClick}
           onConfirmOverwrite={timingCtl.recordStart}
           onCancelOverwrite={timingCtl.cancelOverwrite}
@@ -397,6 +410,9 @@ function CollectLite({ ctx, onBack, onDone }) {
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>共 {N} 次</span>
           </div>
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <AnnotatedWrapper id="cellDeviceTrace" layout="block">
+              <SubmittedDeviceTrace uploaded={uploaded} devices={uploaded ? (submittedDevices || []) : snapshotDevices(configuredDevices, selectedIds)} />
+            </AnnotatedWrapper>
             {methodHint && (
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{methodHint}</div>
             )}
@@ -536,6 +552,7 @@ function CollectLite({ ctx, onBack, onDone }) {
 
       <AnnotatedWrapper id="uploadActions" layout="block">
       <div style={{ display: 'flex', gap: 12, padding: 'var(--gap-page)', borderTop: '1px solid var(--border-default)', background: 'var(--white)' }}>
+        {!flowLocked && <Button variant="secondary" block onClick={resetAll}>重置全部</Button>}
         {flowLocked
           ? <Button block onClick={onBack}>返回（数据已锁定）</Button>
           : isReview && !flowLocked
@@ -545,16 +562,6 @@ function CollectLite({ ctx, onBack, onDone }) {
           : <Button block disabled={uploading} onClick={upload}>{uploading ? '上传中…' : '上传结果'}</Button>}
       </div>
       </AnnotatedWrapper>
-
-      {devSwitchOpen && (
-        <DeviceSwitchDrawer
-          devices={itemDevices}
-          currentId={dev.id}
-          onSelect={(d) => { setDev(d); setDevSwitchOpen(false); }}
-          onClose={() => setDevSwitchOpen(false)}
-          isBlocked={(d) => M.isDeviceBlockedForTest(ctx.item?.name, d)}
-        />
-      )}
 
       {shootOpen && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 200, background: '#0b0d10', display: 'flex', flexDirection: 'column' }}>

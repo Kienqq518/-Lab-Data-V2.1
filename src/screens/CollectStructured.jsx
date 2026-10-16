@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppBar, Button, Card, CollectBadge, FieldRow, SearchBar } from '../design-system.js';
+import { AppBar, Button, Card, FieldRow } from '../design-system.js';
 import { MOCK } from '../mock.js';
 import {
   PHASES,
@@ -11,7 +11,6 @@ import {
   isFlowReturned,
   markCellFilled,
   markCellUploaded,
-  normalizeDevice,
   resolveInspectStampState,
   summarizeCells,
   toCellMap,
@@ -26,6 +25,7 @@ import { TimingToast } from '../../components/data-display/TimingToast.jsx';
 import { OcrCaptureBar } from './OcrCaptureBar.jsx';
 import { OcrImagePreview } from './OcrImagePreview.jsx';
 import { OcrAttachmentThumb } from './OcrAttachmentThumb.jsx';
+import { ConfiguredDeviceSelect, defaultRecordedIds, snapshotDevices, SubmittedDeviceTrace } from './ConfiguredDeviceSelect.jsx';
 import { getCameraOrientationConfig } from '../camera-orientation-config.js';
 import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
 import {
@@ -34,8 +34,8 @@ import {
 } from './ocr-scenario.js';
 
 /* 采集详情（L4·复合试验项 · 物资版 LIMS+数采）
-   试验子项只决定采集字段与次数，设备作为当前采集资源独立切换。
-   每条采集记录保存采集时使用的设备，避免后续换设备影响历史读数。
+   试验子项决定采集字段、次数与采集方式。设备区展示数采 Web「设备采集配置」关联设备，可多选。
+   提交某条试验数据时记录当时选中的设备；任一条已上传后，选中锁定，直到全部已上传数据被重置清除。
    轻量版 LIMS+数采无多试验子项，不进入本页。 */
 
 const FIXED = { jg: '紧压绞合圆形', jsdbffs: '两层金属带间隙绕包' };
@@ -46,18 +46,7 @@ const DEMO_FLOWS = {
   returned: { node: '试验检测', returned: true, returnReason: '绝缘厚度测量第 2 个点位与标准限值偏差较大，请复核后重新上传', returnedFrom: '数据审核', by: '张伟', role: '数据审核', at: '07-04 10:20' },
   locked: { node: '组内审核' },
 };
-const DEVICE_ORDER = ['cal', 'mech', 'tmk'];
 const CONDUCTOR_STRUCTURE_OPTIONS = ['实心导体', '非紧压绞合圆形', '紧压绞合圆形', '绞合成型'];
-const STATION_OPTIONS = [
-  { value: 'zy', label: '电缆制样工位' },
-  { value: 'sz', label: '水煮试验工位' },
-  { value: 'ny', label: '耐压工位' },
-  { value: 'ld', label: '雷电冲击工位' },
-  { value: 'rs', label: '电缆燃烧工位' },
-  { value: 'by', label: '变压器工位' },
-  { value: 'none', label: '未绑定工位' },
-];
-const DRAWER_MOCK_DEVICES = MOCK.drawerDevices;
 
 function fillScenarioValues(sub, cell, fieldKeys) {
   const index = cellIndexFor(cell);
@@ -81,35 +70,25 @@ function genVal(field, cellIndex) {
 function CollectStructured({ ctx, onBack, onDone }) {
   const baseSubs = React.useMemo(() => getSubItems(ctx), [ctx]);
   const subs = baseSubs;
-  const configuredDevices = React.useMemo(() => sortDevicePool(uniqueDevices(
-    baseSubs.flatMap((sub) => [sub.device, ...(sub.candidateDevices || [])])
-  )), [baseSubs]);
-  const deviceCatalog = React.useMemo(() => sortDevicePool(uniqueDevices([
-    ...MOCK.devices.map((device) => enrichDevice(device, device.method)),
-    ...DRAWER_MOCK_DEVICES.map((device) => enrichDevice(device, device.method)),
-  ])), []);
-  const [pooledDeviceIds, setPooledDeviceIds] = React.useState(() => configuredDevices.map((device) => device.id));
-  const availableDevices = React.useMemo(
-    () => deviceCatalog.filter((device) => pooledDeviceIds.includes(device.id)),
-    [deviceCatalog, pooledDeviceIds]
-  );
-  const [selectedDevices, setSelectedDevices] = React.useState(() => {
-    const initial = {};
-    baseSubs.forEach((sub) => {
-      const ref = configuredDevices.find((device) => device.id === sub.device?.id) || sub.device;
-      initial[sub.id] = normalizeDevice(ref, sub.method);
-    });
-    return initial;
-  });
-  const [deviceDrawerOpen, setDeviceDrawerOpen] = React.useState(false);
+  const configuredDevices = React.useMemo(() => MOCK.getConfiguredDevices(ctx.item), [ctx.item]);
+  const presetUploaded = ctx.status === 'done' || isFlowReturned(ctx.flow || ctx.item?.flow);
+  const initialSelectedIds = presetUploaded ? defaultRecordedIds(configuredDevices, ctx.item) : [];
+  const [selectedIds, setSelectedIds] = React.useState(initialSelectedIds);
 
   const [returnTouched, setReturnTouched] = React.useState(false);
   const [activeSubId, setActiveSubId] = React.useState(subs[0]?.id || '');
-  const [cells, setCells] = React.useState(() => toCellMap(createCollectCells(ctx)));
+  const [cells, setCells] = React.useState(() => {
+    const map = toCellMap(createCollectCells(ctx));
+    if (!presetUploaded) return map;
+    const snap = snapshotDevices(configuredDevices, initialSelectedIds);
+    return Object.fromEntries(Object.entries(map).map(([key, cell]) => [
+      key,
+      cell.status === 'uploaded' ? { ...cell, submittedDevices: snap } : cell,
+    ]));
+  });
   const [activeCellKey, setActiveCellKey] = React.useState('');
   const [busy, setBusy] = React.useState(null);
   const [demoFlow, setDemoFlow] = React.useState(null);
-  const [deviceError, setDeviceError] = React.useState('');
   const [editCells, setEditCells] = React.useState({}); // 拍照识别：{ [cellKey]: true } 表示已解锁可编辑
   const [cellScenarios, setCellScenarios] = React.useState({}); // { [cellKey]: scenarioName }
   const [previewAttach, setPreviewAttach] = React.useState(null);
@@ -124,18 +103,17 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const flowLocked = isFlowLocked(flow);
   const flowReturned = isFlowReturned(flow);
   const summary = summarizeCells(cells);
-  const isAutoDirect = subs.length > 0 && subs.every((sub) => {
-    const assigned = selectedDevices[sub.id];
-    const m = assigned?.method || sub.method || sub.device?.method || 'manual';
-    return m === 'auto';
-  });
+  const isAutoDirect = subs.length > 0 && subs.every((sub) => (sub.method || sub.device?.method || 'manual') === 'auto');
+  const hasSelectedDevice = selectedIds.length > 0;
+  const selectionLockReason = flowLocked ? 'flow' : summary.uploaded > 0 ? 'uploaded' : null;
   const timingCtl = useTestItemTiming(ctx, {
     uploadedCount: summary.uploaded,
     allUploaded: summary.allUploaded,
     flowLocked,
     isAutoDirect,
+    hasSelectedDevice,
   });
-  const { guardStartForUpload, guardStartForOcr, guardStartForManual, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
+  const { guardStartForUpload, guardStartForOcr, guardStartForManual, clearEndedOnReset, requireStartBeforeCollect, notify } = timingCtl;
 
   function guardHandInputRequired(cellMethod) {
     const m = cellMethod || method;
@@ -159,26 +137,39 @@ function CollectStructured({ ctx, onBack, onDone }) {
   const activeSub = subs.find((sub) => sub.id === activeSubId) || subs[0];
   const activeCells = React.useMemo(() => sortCells(Object.values(cells).filter((cell) => cell.subItemId === activeSub?.id)), [cells, activeSub?.id]);
   const activeCell = cells[activeCellKey] || activeCells[0];
-  const activeAssigned = selectedDevices[activeSub?.id] || null;
-  const hasAssignment = !!activeAssigned;
-  const activeDevice = activeAssigned || normalizeDevice(null);
-  const method = hasAssignment ? (activeDevice.method || 'manual') : null;
+  const activeDevice = activeSub?.device || null;
+  const method = activeSub?.method || activeDevice?.method || 'manual';
   const handInputBlocked = requireStartBeforeCollect && (method === 'manual' || method === 'ble');
   const ocrScenarios = React.useMemo(
-    () => MOCK.resolveOcrScenarios(ctx.item, activeAssigned),
-    [ctx.item, activeAssigned],
+    () => MOCK.resolveOcrScenarios(ctx.item, activeDevice),
+    [ctx.item, activeDevice],
   );
   const passedScenarios = getPassedScenarios(ocrScenarios);
   const hasPassedRule = passedScenarios.length > 0;
   const caps = getMethodCapabilities(method, hasPassedRule, ocrScenarios);
   const mainTimes = Math.max(1, ...subs.map((sub) => Object.values(cells).filter((cell) => cell.subItemId === sub.id).length));
 
-  function deviceHasData(deviceId) {
-    return Object.values(cells).some((cell) => cell.deviceId === deviceId && cell.status !== 'idle');
+  function currentDeviceSnap() {
+    return snapshotDevices(configuredDevices, selectedIds);
   }
 
-  function deviceForSub(sub) {
-    return selectedDevices[sub?.id] || null;
+  function guardSubmit() {
+    if (!guardStartForUpload()) return false;
+    if (!hasSelectedDevice) {
+      notify('请先选择至少一台设备');
+      return false;
+    }
+    return true;
+  }
+
+  function toggleDevice(id) {
+    if (selectionLockReason) {
+      notify(selectionLockReason === 'uploaded'
+        ? '已有试验数据上传，不能更改设备。请先重置清除全部已上传数据'
+        : '流程已锁定，不能更改设备');
+      return;
+    }
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   }
 
   /** 退回复测：回填上次提交的试验数据 */
@@ -193,7 +184,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         const index = cell.repeatIndex ?? 0;
         const vals = {};
         sub.fields.forEach((field) => { vals[field.key] = genVal(field, index); });
-        next[cell.key] = { ...cell, status: 'uploaded', vals };
+        next[cell.key] = { ...cell, status: 'uploaded', vals, submittedDevices: cell.submittedDevices || currentDeviceSnap() };
       });
       return next;
     });
@@ -263,18 +254,19 @@ function CollectStructured({ ctx, onBack, onDone }) {
   }, [env.wd, env.sd, envMock]);
 
   function captureSub(sub) {
-    const device = deviceForSub(sub);
-    if (!sub || flowLocked || !device) return;
+    if (!sub || flowLocked) return;
+    const source = sub.method || sub.device?.method || 'manual';
+    if (source === 'auto' && !guardSubmit()) return;
+    const snap = currentDeviceSnap();
     touchReturn();
-    const source = device.method || 'manual';
     setBusy('all-' + sub.id);
     setTimeout(() => {
       setCells((prev) => {
         let next = prev;
         sortCells(Object.values(prev).filter((cell) => cell.subItemId === sub.id)).forEach((cell) => {
           if (cell.status !== 'uploaded' || flowReturned) {
-            next = markCellFilled(next, cell.key, fillValues(sub, cell), { deviceId: device.id, source });
-            if (source === 'auto') next = markCellUploaded(next, cell.key);
+            next = markCellFilled(next, cell.key, fillValues(sub, cell), { source });
+            if (source === 'auto') next = markCellUploaded(next, cell.key, { submittedDevices: snap });
           }
         });
         return next;
@@ -284,9 +276,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
   }
 
   function collectOne(sub, cell) {
-    const device = deviceForSub(sub);
-    if (!sub || !cell || flowLocked || !device) return;
-    const source = device.method || 'manual';
+    if (!sub || !cell || flowLocked) return;
+    const source = sub.method || sub.device?.method || 'manual';
     if (source === 'ocr' && !guardStartForOcr()) return;
     if (source === 'ble' && !guardStartForManual()) return;
     const scenario = selectedScenarioFor(cell.key);
@@ -304,7 +295,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         const cur = prev[cell.key];
         const partial = source === 'ocr' ? fillScenarioValues(sub, cell, meta.fieldKeys) : fillValues(sub, cell);
         const merged = source === 'ocr' ? mergeOcrFields(cur?.vals, partial, meta.fieldKeys) : partial;
-        let next = markCellFilled(prev, cell.key, merged, { deviceId: device.id, source });
+        let next = markCellFilled(prev, cell.key, merged, { source });
         if (source === 'ocr') {
           next = updateCell(next, cell.key, (c) => ({
             ...c,
@@ -344,7 +335,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
         status: 'filled',
         uploadedAt: null,
         collectedAt: cur.collectedAt || '2026-07-04 12:00:00',
-        deviceId: cur.deviceId || deviceForSub(activeSub)?.id,
         source: cur.source || method,
       };
     }));
@@ -352,25 +342,27 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
   function uploadCell(cellKey) {
     if (flowLocked) return;
-    if (!guardStartForUpload()) return;
+    if (!guardSubmit()) return;
+    const snap = currentDeviceSnap();
     touchReturn();
     setBusy('up-' + cellKey);
     setTimeout(() => {
-      setCells((prev) => markCellUploaded(prev, cellKey));
+      setCells((prev) => markCellUploaded(prev, cellKey, { submittedDevices: snap }));
       setBusy(null);
     }, 700);
   }
 
   function uploadAll() {
     if (flowLocked) return;
-    if (!guardStartForUpload()) return;
+    if (!guardSubmit()) return;
+    const snap = currentDeviceSnap();
     touchReturn();
     setBusy('upload-all');
     setTimeout(() => {
       setCells((prev) => {
         let next = prev;
         Object.values(prev).forEach((cell) => {
-          if (cell.status === 'filled' || cell.status === 'failed') next = markCellUploaded(next, cell.key);
+          if (cell.status === 'filled' || cell.status === 'failed') next = markCellUploaded(next, cell.key, { submittedDevices: snap });
         });
         return next;
       });
@@ -391,7 +383,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
         attachments: [],
         uploadedAt: null,
         collectedAt: null,
-        deviceId: null,
+        submittedDevices: null,
         source: null,
       },
     ])));
@@ -403,15 +395,13 @@ function CollectStructured({ ctx, onBack, onDone }) {
     const existingAttach = getAttachmentForScenario(cell.attachments, scenario);
     if (!sub || !cell || flowLocked || !meta || !existingAttach) return;
     touchReturn();
-    const device = deviceForSub(sub);
-    if (!device) return;
-    const source = device.method || 'manual';
+    const source = sub.method || 'manual';
     setBusy('c-' + cell.key);
     runOcrCapturePipeline({ file: null, attachment: existingAttach, mockDelayMs: 950 }).then(() => {
       setCells((prev) => {
         const cur = prev[cell.key];
         const partial = fillScenarioValues(sub, cell, meta.fieldKeys);
-        return markCellFilled(prev, cell.key, mergeOcrFields(cur?.vals, partial, meta.fieldKeys), { deviceId: device.id, source });
+        return markCellFilled(prev, cell.key, mergeOcrFields(cur?.vals, partial, meta.fieldKeys), { source });
       });
       setEditCells((prev) => ({ ...prev, [cell.key]: false }));
       setBusy(null);
@@ -428,7 +418,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
       attachments: [],
       uploadedAt: null,
       collectedAt: null,
-      deviceId: null,
+      submittedDevices: null,
       source: null,
     })));
     setEditCells((prev) => {
@@ -467,45 +457,6 @@ function CollectStructured({ ctx, onBack, onDone }) {
     }
   }
 
-  function assignDevice(device) {
-    if (!activeSub || flowLocked) return;
-    const normalized = normalizeDevice(device, device.method);
-    if (activeAssigned && activeAssigned.id === normalized.id) return;
-    const collected = activeCells.some((cell) => cell.status !== 'idle');
-    setSelectedDevices((prev) => ({ ...prev, [activeSub.id]: normalized }));
-    setCells((prev) => Object.fromEntries(Object.values(prev).map((cell) => {
-      if (cell.subItemId !== activeSub.id || cell.status !== 'idle') return [cell.key, cell];
-      return [cell.key, { ...cell, deviceId: normalized.id, source: normalized.method }];
-    })));
-    setDeviceError(collected ? '该子项已采集的数据保留原采集设备，新采集的数据将使用当前指派设备' : '');
-  }
-
-  function removePoolDevice(device) {
-    if (deviceHasData(device.id)) {
-      setDeviceError(`「${device.name}」已有采集数据，请先清空或退回该设备数据后再删除`);
-      return;
-    }
-    setDeviceError('');
-    setPooledDeviceIds((prev) => prev.filter((id) => id !== device.id));
-    setSelectedDevices((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((subId) => { if (next[subId] && next[subId].id === device.id) next[subId] = null; });
-      return next;
-    });
-  }
-
-  function confirmDeviceDrawer(nextIds) {
-    const idSet = new Set(nextIds);
-    setPooledDeviceIds(nextIds);
-    setSelectedDevices((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((subId) => { if (next[subId] && !idSet.has(next[subId].id)) next[subId] = null; });
-      return next;
-    });
-    setDeviceDrawerOpen(false);
-    setDeviceError('');
-  }
-
   if (!subs.length) {
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
@@ -517,12 +468,9 @@ function CollectStructured({ ctx, onBack, onDone }) {
     );
   }
 
-  const deviceMissing = !hasAssignment;
-  const methodMissing = hasAssignment && !method;
+  const methodMissing = !method;
   const fieldMissing = !activeSub.fields.length;
-  const methodHint = !hasAssignment
-    ? '请先为当前子项指派设备后再采集'
-    : ({
+  const methodHint = ({
         auto: '设备直连 · 上位机算毕整批写库后 App 自动回填，不可手输',
         ocr: caps.ocrReady ? '拍照识别 · 选择场景后拍摄，多场景图片合并识别字段' : '该设备与试验项下不存在验证通过的识别规则，已回退手工录入',
         ble: '蓝牙数显卡尺 · 逐相连接同步读数，也可手动输入',
@@ -565,24 +513,16 @@ function CollectStructured({ ctx, onBack, onDone }) {
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <AnnotatedWrapper id="structuredDeviceInfo" layout="block">
-          <Section title="设备信息" icon="cpu" compact extra={<CollectBadge method={method || 'manual'} size="sm" />}>
-            <DevicePool
-              devices={availableDevices}
-              activeDevice={activeDevice}
-              hasAssignment={hasAssignment}
-              deviceHasData={deviceHasData}
-              flowLocked={flowLocked}
-              onAssign={assignDevice}
-              onRemove={removePoolDevice}
-              onOpenDrawer={() => setDeviceDrawerOpen(true)}
+          <Section title="设备信息" icon="cpu" compact extra={
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>已选 {selectedIds.length} 台</span>
+          }>
+            <ConfiguredDeviceSelect
+              devices={configuredDevices}
+              selectedIds={selectedIds}
+              locked={!!selectionLockReason}
+              lockReason={selectionLockReason}
+              onToggle={toggleDevice}
             />
-            {deviceError && (
-              <div style={{ margin: '0 0 6px', fontSize: 'var(--fs-xs)', color: deviceError.includes('保留') || deviceError.includes('请先') ? 'var(--status-pending-fg,#97640f)' : 'var(--danger,#e23b3b)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                {deviceError.includes('保留') || deviceError.includes('请先') ? <InfoIcon /> : <AlertCircleIcon />}
-                <span>{deviceError}</span>
-              </div>
-            )}
-            <DeviceMeta subName={activeSub.name} device={hasAssignment ? activeDevice : null} />
           </Section>
         </AnnotatedWrapper>
 
@@ -604,16 +544,17 @@ function CollectStructured({ ctx, onBack, onDone }) {
           confirmOverwrite={timingCtl.confirmOverwrite}
           requireStartBeforeCollect={timingCtl.requireStartBeforeCollect}
           isAutoDirect={timingCtl.isAutoDirect}
+          hasSelectedDevice={hasSelectedDevice}
           onRecordStartClick={timingCtl.handleRecordStartClick}
           onConfirmOverwrite={timingCtl.recordStart}
           onCancelOverwrite={timingCtl.cancelOverwrite}
         />
         </AnnotatedWrapper>
 
-        {(deviceMissing || methodMissing || fieldMissing) && (
+        {(methodMissing || fieldMissing) && (
           <ConfigError
-            title={deviceMissing ? '当前子项未指派设备' : '当前配置异常'}
-            body={deviceMissing ? '当前子项尚未指派设备，请点上方设备指派，或点「切换设备」按工位添加设备。' : methodMissing ? '缺少设备采集方式，请先维护采集方式。' : '缺少试验字段模板，请先维护字段配置。'}
+            title="当前配置异常"
+            body={methodMissing ? '缺少设备采集方式，请先维护采集方式。' : '缺少试验字段模板，请先维护字段配置。'}
           />
         )}
 
@@ -626,7 +567,7 @@ function CollectStructured({ ctx, onBack, onDone }) {
               </div>
               <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>已上传 {summary.uploaded}/{summary.total}</span>
             </div>
-            <SubItemSwitches subs={subs} activeSub={activeSub} summary={summary} onSelect={(id) => { setActiveSubId(id); setDeviceError(''); }} />
+            <SubItemSwitches subs={subs} activeSub={activeSub} summary={summary} onSelect={setActiveSubId} />
           </div>
         </AnnotatedWrapper>
 
@@ -686,8 +627,8 @@ function CollectStructured({ ctx, onBack, onDone }) {
                       busy={busy}
                       flowLocked={flowLocked}
                       flowReturned={flowReturned}
-                      currentDevice={activeDevice}
-                      deviceCatalog={deviceCatalog}
+                      traceDevices={activeCell.status === 'uploaded' ? (activeCell.submittedDevices || []) : currentDeviceSnap()}
+                      traceUploaded={activeCell.status === 'uploaded'}
                       env={env}
                       envMock={envMock}
                       handInputBlocked={handInputBlocked}
@@ -740,107 +681,12 @@ function CollectStructured({ ctx, onBack, onDone }) {
         </div>
       </AnnotatedWrapper>
 
-      {deviceDrawerOpen && (
-        <DeviceDrawer
-          devices={deviceCatalog}
-          pooledDeviceIds={pooledDeviceIds}
-          defaultStation={ctx.stationId}
-          deviceHasData={deviceHasData}
-          configuredAutoIds={MOCK.deviceCollectConfig[ctx.item?.name] || []}
-          onClose={() => setDeviceDrawerOpen(false)}
-          onConfirm={confirmDeviceDrawer}
-        />
-      )}
-
       <OcrImagePreview
         open={!!previewAttach}
         scenario={previewAttach?.scenario}
         onClose={() => setPreviewAttach(null)}
       />
       <TimingToast message={timingCtl.toast} />
-    </div>
-  );
-}
-
-function DevicePool({ devices, activeDevice, hasAssignment, deviceHasData, flowLocked, onAssign, onRemove, onOpenDrawer }) {
-  return (
-    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-      <div style={{ flex: '1 1 300px', minWidth: 0 }}>
-        {devices.length ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {devices.map((device) => {
-              const on = hasAssignment && device.id === activeDevice.id;
-              const locked = deviceHasData(device.id);
-              return (
-                <div key={device.id} style={{
-                  display: 'inline-flex', alignItems: 'center', minHeight: 28, borderRadius: 'var(--radius-pill)',
-                  border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                  background: on ? 'var(--surface-selected)' : 'var(--white)',
-                  overflow: 'hidden',
-                }}>
-                  <button onClick={() => onAssign(device)} disabled={flowLocked} title="指派给当前子项" style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 26, padding: '3px 8px 3px 10px',
-                    border: 'none', background: 'transparent', color: on ? 'var(--brand-action)' : 'var(--text-body)',
-                    fontSize: 'var(--fs-sm)', fontWeight: on ? 600 : 400, cursor: flowLocked ? 'not-allowed' : 'pointer', minWidth: 0,
-                  }}>
-                    <CollectDot method={device.method} on={on} />
-                    <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
-                  </button>
-                  {!flowLocked && (
-                    <button aria-label={`移除${device.name}`} onClick={() => onRemove(device)} title={locked ? '已有采集数据，需先清空或退回后再删除' : '移除设备'} style={{
-                      width: 25, height: 26, border: 'none', borderLeft: '1px solid var(--border-default)',
-                      background: 'transparent', color: locked ? 'var(--text-placeholder)' : 'var(--text-tertiary,#9aa3b2)', cursor: 'pointer',
-                      fontSize: 15, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>×</button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div style={{ minHeight: 28, display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>暂无可用设备，请切换设备添加</div>
-        )}
-      </div>
-      <div style={{ flex: 'none' }}>
-        {!flowLocked && <Button size="sm" variant="secondary" onClick={onOpenDrawer} style={{ height: 30, padding: '0 12px' }}>切换设备</Button>}
-      </div>
-    </div>
-  );
-}
-
-function DeviceMeta({ subName, device }) {
-  const itemStyle = { display: 'flex', gap: 8, fontSize: 'var(--fs-sm)', minWidth: 0 };
-  const labelStyle = { color: 'var(--text-secondary)', flex: 'none' };
-  const valueStyle = { color: 'var(--text-title)', fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
-  const stationText = device ? MOCK.stationLabel(device.station) : '—';
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 14px' }}>
-        <div style={itemStyle}>
-          <span style={labelStyle}>当前子项</span>
-          <span title={subName} style={valueStyle}>{subName}</span>
-        </div>
-        <div style={itemStyle}>
-          <span style={labelStyle}>检测设备</span>
-          <span title={device ? device.name : '未指派'} style={valueStyle}>{device ? device.name : '未指派'}</span>
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 14px' }}>
-        <div style={itemStyle}>
-          <span style={labelStyle}>设备编号</span>
-          <span title={device ? device.code : '—'} style={valueStyle}>{device ? device.code : '—'}</span>
-        </div>
-        <div style={itemStyle}>
-          <span style={labelStyle}>设备型号</span>
-          <span title={device ? device.model : '—'} style={valueStyle}>{device ? device.model : '—'}</span>
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 14px' }}>
-        <div style={itemStyle}>
-          <span style={labelStyle}>所属工位</span>
-          <span title={stationText} style={valueStyle}>{stationText}</span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -871,154 +717,8 @@ function SubItemSwitches({ subs, activeSub, summary, onSelect }) {
   );
 }
 
-function DeviceDrawer({ devices, pooledDeviceIds, defaultStation, deviceHasData, configuredAutoIds = [], onClose, onConfirm }) {
-  const hasStation = STATION_OPTIONS.some((item) => item.value === defaultStation);
-  const [station, setStation] = React.useState(hasStation ? defaultStation : null);
-  const [checked, setChecked] = React.useState(() => new Set(pooledDeviceIds));
-  const [q, setQ] = React.useState('');
-  const ql = q.trim().toLowerCase();
-  // 采集关系过滤：仅对「设备直连(auto)」生效，未在数采「设备采集配置」为本试验项配置采集关系的 auto 设备不可选
-  const notConfigured = (device) => device.method === 'auto' && !configuredAutoIds.includes(device.id);
-  const visibleDevices = devices.filter((device) => {
-    if (station && (device.station || 'none') !== station) return false;
-    if (ql && !((device.name || '').toLowerCase().includes(ql) || (device.code || '').toLowerCase().includes(ql))) return false;
-    return true;
-  });
-  const stationCounts = React.useMemo(() => STATION_OPTIONS.reduce((acc, item) => {
-    acc[item.value] = devices.filter((device) => (device.station || 'none') === item.value).length;
-    return acc;
-  }, {}), [devices]);
 
-  function toggle(device) {
-    if (deviceHasData(device.id) || notConfigured(device)) return;
-    setChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(device.id)) next.delete(device.id); else next.add(device.id);
-      return next;
-    });
-  }
-
-  return (
-    <React.Fragment>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, zIndex: 80, background: 'rgba(15,23,42,0.28)' }} />
-      <div style={{
-        position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 90, background: 'var(--white)',
-        borderRadius: '18px 18px 0 0', boxShadow: '0 -14px 34px rgba(15,23,42,0.20)', overflow: 'hidden',
-        maxHeight: '84%', display: 'flex', flexDirection: 'column',
-      }}>
-        <div style={{ width: 44, height: 4, borderRadius: 'var(--radius-pill)', background: 'var(--border-strong,#cfd6e2)', margin: '10px auto 6px' }} />
-        <AnnotatedWrapper id="structuredDeviceDrawer" layout="block">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 16px 12px', borderBottom: '1px solid var(--divider)' }}>
-            <div>
-              <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-title)' }}>切换设备</div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 3 }}>按工位筛选实验室设备，可多选加入设备池（物资版多子项）</div>
-            </div>
-            <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>已选 {checked.size} 台</span>
-          </div>
-        </AnnotatedWrapper>
-        <AnnotatedWrapper id="structuredDeviceFilter" layout="block">
-          <div>
-            <div style={{ padding: '0 16px 10px' }}>
-              <SearchBar value={q} onChange={(event) => setQ(event.target.value)} placeholder="请输入设备名称、编号搜索" />
-            </div>
-            <div style={{ padding: '0 16px 10px', borderBottom: '1px solid var(--divider)' }}>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-title)', marginBottom: 8 }}>选择工位</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <button onClick={() => setStation(null)} style={{
-                  minHeight: 32, padding: '5px 10px', borderRadius: 'var(--radius-pill)',
-                  border: '1px solid ' + (!station ? 'var(--brand-action)' : 'var(--border-default)'),
-                  background: !station ? 'var(--surface-selected)' : 'var(--white)', color: !station ? 'var(--brand-action)' : 'var(--text-title)',
-                  fontSize: 'var(--fs-sm)', fontWeight: !station ? 700 : 600, cursor: 'pointer',
-                }}>全部</button>
-                {STATION_OPTIONS.map((item) => {
-                  const on = station === item.value;
-                  return (
-                    <button key={item.value} onClick={() => setStation(on ? null : item.value)} style={{
-                      minHeight: 32, padding: '5px 10px', borderRadius: 'var(--radius-pill)',
-                      border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                      background: on ? 'var(--surface-selected)' : 'var(--white)', color: on ? 'var(--brand-action)' : 'var(--text-title)',
-                      fontSize: 'var(--fs-sm)', fontWeight: on ? 700 : 600, cursor: 'pointer',
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                    }}>
-                      <PinIcon on={on} />
-                      <span>{item.label}</span>
-                      <span style={{ fontSize: 10, color: on ? 'var(--brand-action)' : 'var(--text-tertiary,#9aa3b2)', fontVariantNumeric: 'tabular-nums' }}>{stationCounts[item.value] || 0}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </AnnotatedWrapper>
-        <AnnotatedWrapper id="structuredDeviceList" layout="flex">
-          <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
-            {visibleDevices.length ? visibleDevices.map((device) => {
-              const on = checked.has(device.id);
-              const locked = deviceHasData(device.id);
-              const blocked = notConfigured(device);
-              const disabled = locked || blocked;
-              const stationText = MOCK.stationLabel(device.station);
-              return (
-                <button key={device.id} onClick={() => toggle(device)} disabled={disabled} style={{
-                  width: '100%', minHeight: 58, padding: '10px 12px', borderRadius: 'var(--radius-md)',
-                  border: '1px solid ' + (on ? 'var(--brand-action)' : 'var(--border-default)'),
-                  background: on ? 'var(--surface-selected)' : blocked ? 'var(--surface-sunken,#f5f6f8)' : 'var(--white)', cursor: disabled ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, textAlign: 'left', opacity: disabled ? 0.6 : 1,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    {blocked
-                      ? <span style={{ width: 20, height: 20, flex: 'none', borderRadius: 6, border: '1.5px dashed var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-placeholder)' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18 M6 6l12 12"/></svg></span>
-                      : <CheckBox on={on} />}
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 650, color: on ? 'var(--brand-action)' : 'var(--text-title)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.name}</span>
-                        <CollectBadge method={device.method} size="sm" />
-                      </div>
-                      <div style={{ marginTop: 3, fontSize: 'var(--fs-xs)', color: blocked ? 'var(--status-pending-fg,#97640f)' : locked ? 'var(--status-pending-fg,#97640f)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {blocked ? '未配置采集关系 · 请先在数采「设备采集配置」维护'
-                          : locked ? '已有采集数据 · 不可移出设备池'
-                          : `${device.code} · ${device.model}`}
-                      </div>
-                      {!blocked && (
-                        <div style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary,#9aa3b2)' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                          {stationText}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            }) : (
-              <div style={{ minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
-                当前筛选下暂无可选设备
-              </div>
-            )}
-          </div>
-        </AnnotatedWrapper>
-        <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--divider)', display: 'flex', gap: 10 }}>
-          <Button variant="secondary" block onClick={onClose}>取消</Button>
-          <Button block onClick={() => onConfirm(Array.from(checked))}>确定（{checked.size}）</Button>
-        </div>
-      </div>
-    </React.Fragment>
-  );
-}
-
-function CheckBox({ on }) {
-  return (
-    <span style={{
-      width: 20, height: 20, flex: 'none', borderRadius: 6,
-      border: '1.5px solid ' + (on ? 'var(--brand-action)' : 'var(--border-strong)'),
-      background: on ? 'var(--brand-action)' : 'var(--white)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      {on && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 5 5 9-9" /></svg>}
-    </span>
-  );
-}
-
-function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, currentDevice, deviceCatalog, env, envMock, handInputBlocked = false, onHandInputBlocked, ocrScenarios, selectedScenario, onScenarioChange, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach, onPreviewAttach }) {
+function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, traceDevices, traceUploaded, env, envMock, handInputBlocked = false, onHandInputBlocked, ocrScenarios, selectedScenario, onScenarioChange, ocrUnlocked, onCollect, onReRecognize, onSetOcrUnlocked, onChange, onUpload, onReset, onAddAttach, onRemoveAttach, onPreviewAttach }) {
   const busyCell = busy === 'c-' + cell.key;
   const uploading = busy === 'up-' + cell.key;
   const filled = cell.status === 'filled' || cell.status === 'uploaded' || cell.status === 'failed';
@@ -1026,9 +726,6 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
   const ocrLocked = ocrField && filled && !ocrUnlocked && !flowLocked && (cell.status !== 'uploaded' || flowReturned);
   const readOnly = flowLocked || caps.isReadOnlySource || (cell.status === 'uploaded' && !flowReturned);
   const canEdit = !readOnly && caps.canEdit && !ocrLocked && !handInputBlocked;
-  const recordDevice = deviceCatalog.find((device) => device.id === cell.deviceId);
-  const traceDevice = recordDevice || (filled && cell.deviceId ? { name: cell.deviceId, code: '—', method: cell.source || method } : currentDevice);
-  const traceMethod = filled ? (traceDevice.method || cell.source || method) : method;
   const showCollectActions = !flowLocked && cell.status !== 'uploaded' && (method === 'ble' || method === 'ocr');
 
   return (
@@ -1052,13 +749,7 @@ function CellEditor({ sub, cell, method, caps, busy, flowLocked, flowReturned, c
         ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'ocr' ? '正在识别读数…' : '正在连接设备…'}</div></div>
         : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <AnnotatedWrapper id="cellDeviceTrace" layout="block">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 34, padding: '7px 10px', borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken,#f5f6f8)', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', minWidth: 0 }}>
-                <CollectDot method={traceMethod} on />
-                <span style={{ flex: 'none' }}>{filled ? '采集于' : '待采设备'}</span>
-                {filled && <span style={{ flex: 'none', color: methodColor(traceMethod), fontWeight: 600 }}>{methodLabel(traceMethod)}</span>}
-                <span style={{ color: 'var(--text-title)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traceDevice.name}</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{traceDevice.code}</span>
-              </div>
+              <SubmittedDeviceTrace uploaded={traceUploaded} devices={traceDevices} />
             </AnnotatedWrapper>
             {sub.fields.map((field) => {
               if (field.multi) {
@@ -1391,52 +1082,6 @@ function cellLabel(sub, cell) {
   return `第 ${cell.repeatIndex + 1} 次`;
 }
 
-function enrichDevice(device, method) {
-  const base = normalizeDevice(device, method);
-  const ref = MOCK.devices.find((d) => d.id === base.id);
-  return { ...base, station: device?.station ?? ref?.station ?? null };
-}
-
-function uniqueDevices(devices) {
-  const seen = new Set();
-  return devices.filter(Boolean).map((d, i) => normalizeDevice(d, d.method, i)).filter((device) => {
-    if (seen.has(device.id)) return false;
-    seen.add(device.id);
-    return true;
-  });
-}
-
-function sortDevicePool(devices) {
-  return devices.slice().sort((a, b) => {
-    const ai = DEVICE_ORDER.includes(a.id) ? DEVICE_ORDER.indexOf(a.id) : 99;
-    const bi = DEVICE_ORDER.includes(b.id) ? DEVICE_ORDER.indexOf(b.id) : 99;
-    return ai - bi || a.name.localeCompare(b.name, 'zh-CN');
-  });
-}
-
-function uniqueStations(devices) {
-  const seen = new Set();
-  return devices.reduce((acc, device) => {
-    const value = device.station || 'none';
-    if (seen.has(value)) return acc;
-    seen.add(value);
-    acc.push({ value, label: stationLabel(value) });
-    return acc;
-  }, []);
-}
-
-function stationLabel(station) {
-  return {
-    zy: '电缆制样工位',
-    sz: '水煮试验工位',
-    ny: '耐压工位',
-    ld: '雷电冲击工位',
-    rs: '电缆燃烧工位',
-    by: '变压器工位',
-    none: '未绑定工位',
-  }[station] || station;
-}
-
 function statusText(status) {
   return { idle: '待采集', filled: '待上传', uploaded: '已上传', failed: '上传失败' }[status] || '待采集';
 }
@@ -1453,14 +1098,6 @@ function methodColor(method) {
   return { auto: 'var(--collect-auto,#1d54c4)', ble: 'var(--collect-ble,#0a8a96)', manual: 'var(--collect-manual,#828c9c)', ocr: 'var(--collect-ocr,#b06a00)', external: 'var(--collect-ble,#0a8a96)' }[method] || 'var(--text-secondary)';
 }
 
-function methodLabel(method) {
-  return { auto: '设备直采', ble: '蓝牙采集', manual: '手工录入', ocr: '拍照识别', external: '外部程序' }[method] || '采集';
-}
-
-function CollectDot({ method, on }) {
-  return <span style={{ width: 8, height: 8, borderRadius: '50%', background: methodColor(method), flex: 'none', opacity: on ? 1 : 0.7 }} />;
-}
-
 function TimeStatusIcon({ state }) {
   if (state === 'uploaded') return <CheckCircleIcon />;
   if (state === 'failed') return <AlertCircleIcon />;
@@ -1473,9 +1110,6 @@ function Spinner() {
 
 function InfoIcon() {
   return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4 M12 8h.01"/></svg>;
-}
-function PinIcon({ on }) {
-  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={on ? 'var(--brand-action)' : 'var(--text-tertiary,#9aa3b2)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
 }
 function GridIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand-action)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z"/></svg>;

@@ -8,7 +8,7 @@ import { useTestItemTiming } from './useTestItemTiming.js';
 import { TestItemTimingSection } from '../../components/data-display/TestItemTimingSection.jsx';
 import { TimingToast } from '../../components/data-display/TimingToast.jsx';
 import { EnvInfoSection, getOcrReferenceAttachments, mergeRecordEnvVals, RecordEnvFields, resolveEnvMock } from './collect-env.jsx';
-import { DeviceSwitchDrawer } from './DeviceSwitchDrawer.jsx';
+import { ConfiguredDeviceSelect, defaultRecordedIds, snapshotDevices, SubmittedDeviceTrace } from './ConfiguredDeviceSelect.jsx';
 import { AnnotatedWrapper } from '../annotation/index.js';
 import { SampleLabelQrLink } from './SampleLabelQr.jsx';
 import { OcrCaptureBar } from './OcrCaptureBar.jsx';
@@ -76,14 +76,16 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
     if (ctx.item?.limsLite) {
       return <CollectLite ctx={ctx} onBack={onBack} onDone={onDone} />;
     }
-    // 含「试验子项」的试验项（如 结构尺寸检查—导体&绝缘厚度&金属屏蔽）走专用的子项/设备切换体验
+    // 含「试验子项」的试验项（如 结构尺寸检查—导体&绝缘厚度&金属屏蔽）走复合采集页
     if (isCompositeItem(ctx.item)) {
       return <CollectStructured ctx={ctx} onBack={onBack} onDone={onDone} />;
     }
-    const [dev, setDev] = React.useState(ctx.device || {});
-    const [devSwitchOpen, setDevSwitchOpen] = React.useState(false);
-    const method = dev.method || ctx.method || (ctx.device && ctx.device.method) || 'auto';
-    const itemDevices = React.useMemo(() => M.getDeviceDrawerPool(ctx.item), [ctx.item]);
+    const dev = ctx.device || {};
+    const method = ctx.method || dev.method || 'auto';
+    const configuredDevices = React.useMemo(() => M.getConfiguredDevices(ctx.item), [ctx.item]);
+    const presetFlow = ctx.flow || ctx.item?.flow;
+    const presetUploaded = ctx.status === 'done' || isFlowReturned(presetFlow) || !!(ctx.status === 'testing' && ctx.item?.uploadedPhases?.length);
+    const [selectedIds, setSelectedIds] = React.useState(() => (presetUploaded ? defaultRecordedIds(configuredDevices, ctx.item) : []));
     const tpl = ctx.item?.tpl ? M.fieldTpl[ctx.item.tpl] : M.fieldTpl.size;
     const rule = (M.testRules && M.testRules[ctx.item?.name]) || {};
     const isDensityTpl = ctx.item?.tpl === 'density';
@@ -224,13 +226,9 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
     }
 
     React.useEffect(() => {
-      if (initialReturned) {
-        const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
-        setTimes(ts);
-        return;
-      }
-      if (ctx.status === 'done') {
-        const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
+      const snap = snapshotDevices(configuredDevices, selectedIds);
+      if (initialReturned || ctx.status === 'done') {
+        const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true, devices: snap }));
         setTimes(ts);
         return;
       }
@@ -240,9 +238,9 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
         const ts = Array.from({ length: N }, (_, i) => {
           const ph = phaseOf(i);
           if (ph && uploadedSet.has(ph)) {
-            return { status: 'filled', vals: fillTime(i), uploaded: true };
+            return { status: 'filled', vals: fillTime(i), uploaded: true, devices: snap };
           }
-          return { status: 'idle', vals: {}, uploaded: false };
+          return { status: 'idle', vals: {}, uploaded: false, devices: null };
         });
         setTimes(ts);
       }
@@ -254,9 +252,34 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
     const uploadedCount = times.filter((t) => t.uploaded).length;
     const allUploaded = N > 0 && uploadedCount === N;
     const isAutoDirect = method === 'auto';
+    const hasSelectedDevice = selectedIds.length > 0;
+    const selectionLockReason = flowLocked ? 'flow' : uploadedCount > 0 ? 'uploaded' : null;
 
-    const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect });
-    const { guardStartForUpload, guardStartForOcr, guardStartForManual, clearEndedOnReset, requireStartBeforeCollect } = timingCtl;
+    const timingCtl = useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect, hasSelectedDevice });
+    const { guardStartForUpload, guardStartForOcr, guardStartForManual, clearEndedOnReset, requireStartBeforeCollect, notify } = timingCtl;
+
+    function currentDeviceSnap() {
+      return snapshotDevices(configuredDevices, selectedIds);
+    }
+
+    function guardSubmit() {
+      if (!guardStartForUpload()) return false;
+      if (!hasSelectedDevice) {
+        notify('请先选择至少一台设备');
+        return false;
+      }
+      return true;
+    }
+
+    function toggleDevice(id) {
+      if (selectionLockReason) {
+        notify(selectionLockReason === 'uploaded'
+          ? '已有试验数据上传，不能更改设备。请先重置清除全部已上传数据'
+          : '流程已锁定，不能更改设备');
+        return;
+      }
+      setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+    }
 
     function openOcrShoot(i) {
       if (!guardStartForOcr()) return;
@@ -323,9 +346,11 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
     }
     // 串口（电子天平）：工业平板串口程序已采写库，本端一键读取整批展示，直接为已上传状态（不在本端采集/上传）
     function collectSerial() {
+      if (!guardSubmit()) return;
+      const snap = currentDeviceSnap();
       setBusy('all');
       setTimeout(() => {
-        const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true }));
+        const ts = Array.from({ length: N }, (_, i) => ({ status: 'filled', vals: fillTime(i), uploaded: true, devices: snap }));
         setTimes(ts);
         setBusy(null); setPhase('filled');
       }, 1000);
@@ -411,21 +436,23 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
       }, 950);
     }
     function upload() {
-      if (!guardStartForUpload()) return;
+      if (!guardSubmit()) return;
+      const snap = currentDeviceSnap();
       touchReturn();
       setPhase('uploading');
       setTimeout(() => {
-        setTimes((prev) => prev.map((t) => (t.status === 'filled' ? { ...t, uploaded: true } : t)));
+        setTimes((prev) => prev.map((t) => (t.status === 'filled' ? { ...t, uploaded: true, devices: snap } : t)));
         setPhase('idle');
       }, 1100);
     }
     // 拍照识别/蓝牙：逐条采集完一次即可单独上传该次
     function uploadTime(i) {
-      if (!guardStartForUpload()) return;
+      if (!guardSubmit()) return;
+      const snap = currentDeviceSnap();
       touchReturn();
       setBusy('up' + i);
       setTimeout(() => {
-        setTimes((prev) => prev.map((t, idx) => (idx === i ? { ...t, uploaded: true } : t)));
+        setTimes((prev) => prev.map((t, idx) => (idx === i ? { ...t, uploaded: true, devices: snap } : t)));
         setBusy(null);
       }, 800);
     }
@@ -524,17 +551,16 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
           <Section title="设备信息" icon="cpu" extra={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CollectBadge method={method} size="sm" />
-              {!flowLocked && itemDevices.length > 1 && (
-                <Button size="sm" variant="secondary" onClick={() => setDevSwitchOpen(true)} style={{ height: 28, padding: '0 12px' }}>切换设备</Button>
-              )}
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>已选 {selectedIds.length} 台</span>
             </div>
           }>
-            <Grid items={[
-              ['检测设备', dev.name || '—'],
-              ['设备编号', dev.code || '—'],
-              ['设备型号', dev.model || '—'],
-              ['所属工位', M.stationLabel(dev.station)],
-            ]} />
+            <ConfiguredDeviceSelect
+              devices={configuredDevices}
+              selectedIds={selectedIds}
+              locked={!!selectionLockReason}
+              lockReason={selectionLockReason}
+              onToggle={toggleDevice}
+            />
             {isExternal && (
               <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--collect-ble,#0a8a96)', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4 M12 18v4 M2 12h4 M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>
@@ -568,6 +594,7 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
             confirmOverwrite={timingCtl.confirmOverwrite}
             requireStartBeforeCollect={timingCtl.requireStartBeforeCollect}
             isAutoDirect={timingCtl.isAutoDirect}
+            hasSelectedDevice={hasSelectedDevice}
             onRecordStartClick={timingCtl.handleRecordStartClick}
             onConfirmOverwrite={timingCtl.recordStart}
             onCancelOverwrite={timingCtl.cancelOverwrite}
@@ -669,7 +696,7 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
                         ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--brand-action)' }}><Spinner /><div style={{ fontSize: 'var(--fs-sm)', marginTop: 10 }}>{method === 'ble' ? '正在连接设备…' : '正在识别读数…'}</div></div>
                         : filled
                         ? <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <CellDeviceTrace filled={filled} method={method} device={dev} />
+                            <CellDeviceTrace uploaded={!!t.uploaded} devices={t.uploaded ? (t.devices || []) : currentDeviceSnap()} />
                             {isCable && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)' }}>相别</label>
@@ -770,7 +797,7 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
                             </div>
                           </div>
                         : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <CellDeviceTrace filled={filled} method={method} device={dev} />
+                            <CellDeviceTrace uploaded={!!t.uploaded} devices={t.uploaded ? (t.devices || []) : currentDeviceSnap()} />
                             {isCable && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <label style={{ width: 110, flex: 'none', fontSize: 'var(--fs-base)', color: 'var(--text-body)' }}>相别</label>
@@ -843,17 +870,6 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
           </Button>
         </div>
         </AnnotatedWrapper>
-
-        {/* 切换设备底部抽屉（统一单选样式） */}
-        {devSwitchOpen && (
-          <DeviceSwitchDrawer
-            devices={itemDevices}
-            currentId={dev.id}
-            onSelect={(d) => { setDev(d); setDevSwitchOpen(false); }}
-            onClose={() => setDevSwitchOpen(false)}
-            isBlocked={(d) => M.isDeviceBlockedForTest(ctx.item?.name, d)}
-          />
-        )}
 
         {/* 拍照识别取景页（可拍照 / 选择图片） */}
         {shootIdx !== null && (
@@ -1036,29 +1052,10 @@ import { runOcrCapturePipeline } from '../ocr-image-pipeline.js';
     );
   }
 
-  function methodColor(method) {
-    return { auto: 'var(--collect-auto,#1d54c4)', ble: 'var(--collect-ble,#0a8a96)', manual: 'var(--collect-manual,#828c9c)', ocr: 'var(--collect-ocr,#b06a00)', external: 'var(--collect-ble,#0a8a96)' }[method] || 'var(--text-secondary)';
-  }
-
-  function methodLabel(method) {
-    return { auto: '设备直采', ble: '蓝牙采集', manual: '手工录入', ocr: '拍照识别', external: '外部程序' }[method] || '采集';
-  }
-
-  function CollectDot({ method, on }) {
-    return <span style={{ width: 8, height: 8, borderRadius: '50%', background: methodColor(method), flex: 'none', opacity: on ? 1 : 0.7 }} />;
-  }
-
-  function CellDeviceTrace({ filled, method, device }) {
-    const traceDevice = device || {};
+  function CellDeviceTrace({ uploaded, devices }) {
     return (
       <AnnotatedWrapper id="cellDeviceTrace" layout="block">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 34, padding: '7px 10px', borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken,#f5f6f8)', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', minWidth: 0 }}>
-          <CollectDot method={method} on />
-          <span style={{ flex: 'none' }}>{filled ? '采集于' : '待采设备'}</span>
-          {filled && <span style={{ flex: 'none', color: methodColor(method), fontWeight: 600 }}>{methodLabel(method)}</span>}
-          <span style={{ color: 'var(--text-title)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{traceDevice.name || '—'}</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{traceDevice.code || '—'}</span>
-        </div>
+        <SubmittedDeviceTrace uploaded={uploaded} devices={devices} />
       </AnnotatedWrapper>
     );
   }

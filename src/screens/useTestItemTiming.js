@@ -7,7 +7,7 @@ import { nowISO } from './collect-model.js';
  * @param {object} ctx - collect context
  * @param {{ uploadedCount: number, allUploaded: boolean, flowLocked: boolean, isAutoDirect?: boolean }} options
  */
-export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect = false }) {
+export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked, isAutoDirect = false, hasSelectedDevice = true }) {
   const [timing, setTiming] = React.useState(() => MOCK.resolveTestItemTiming(ctx));
   const [recording, setRecording] = React.useState(false);
   const [confirmOverwrite, setConfirmOverwrite] = React.useState(false);
@@ -24,7 +24,7 @@ export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked,
   }, [toast]);
 
   React.useEffect(() => {
-    if (!isAutoDirect || timing.startedAt) return undefined;
+    if (!isAutoDirect || timing.startedAt || !hasSelectedDevice) return undefined;
     let cancelled = false;
     MOCK.fetchAutoTestStartTime(ctx).then((startedAt) => {
       if (!cancelled && startedAt) {
@@ -32,7 +32,7 @@ export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked,
       }
     });
     return () => { cancelled = true; };
-  }, [isAutoDirect, timing.startedAt, ctx]);
+  }, [isAutoDirect, timing.startedAt, hasSelectedDevice, ctx]);
 
   React.useEffect(() => {
     if (!allUploaded || !timing.startedAt || timing.endedAt || endRecordedRef.current) return;
@@ -66,14 +66,27 @@ export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked,
     return true;
   }
 
+  function notify(message) {
+    if (message) setToast(message);
+  }
+
   function handleRecordStartClick() {
     if (!canRecordStart || recording) return;
+    if (!hasSelectedDevice) {
+      setToast('请先选择至少一台设备');
+      return;
+    }
     if (timing.startedAt) setConfirmOverwrite(true);
     else recordStart();
   }
 
   function recordStart() {
     if (!canRecordStart) return;
+    if (!hasSelectedDevice) {
+      setToast('请先选择至少一台设备');
+      setConfirmOverwrite(false);
+      return;
+    }
     setRecording(true);
     setConfirmOverwrite(false);
     MOCK.recordTestTimingStart(ctx, { overwrite: !!timing.startedAt })
@@ -106,6 +119,7 @@ export function useTestItemTiming(ctx, { uploadedCount, allUploaded, flowLocked,
     guardStartForUpload,
     guardStartForOcr,
     guardStartForManual,
+    notify,
     clearEndedOnReset,
     syncAutoStartFromHost,
   };
