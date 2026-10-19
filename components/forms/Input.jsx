@@ -6,7 +6,7 @@ import React from 'react';
  */
 export function Input({
   value, onChange, placeholder, disabled = false, readOnly = false,
-  prefix, suffix, unit, size = 'md', style, ...rest
+  prefix, suffix, unit, size = 'md', invalid = false, style, ...rest
 }) {
   const [focus, setFocus] = React.useState(false);
   const h = size === 'lg' ? 'var(--control-h)' : size === 'sm' ? 'var(--control-h-sm)' : 44;
@@ -15,7 +15,7 @@ export function Input({
       display: 'flex', alignItems: 'center', gap: 8, height: h,
       padding: '0 12px', borderRadius: 'var(--radius-md)',
       background: readOnly ? 'var(--surface-sunken)' : 'var(--white)',
-      border: `1px solid ${focus ? 'var(--border-focus)' : 'var(--border-default)'}`,
+      border: `1px solid ${invalid ? 'var(--danger)' : focus ? 'var(--border-focus)' : 'var(--border-default)'}`,
       boxShadow: focus ? 'var(--shadow-focus)' : 'none',
       transition: 'border var(--dur-fast), box-shadow var(--dur-fast)',
       opacity: disabled ? 0.5 : 1, ...style,

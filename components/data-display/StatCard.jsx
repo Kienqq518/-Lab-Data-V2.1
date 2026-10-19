@@ -14,11 +14,17 @@ const TONE = {
 
 export function StatCard({ label, value, tone = 'brand', onClick, style }) {
   const c = TONE[tone] || TONE.brand;
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <div onClick={onClick} style={{
-      flex: 1, background: 'var(--surface-card)', border: '1px solid var(--border-default)',
+    <Tag
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      aria-label={onClick ? `${label} ${value}` : undefined}
+      style={{
+      flex: 1, minWidth: 0, width: onClick ? '100%' : undefined, textAlign: 'left', font: 'inherit',
+      background: 'var(--surface-card)', border: '1px solid var(--border-default)',
       borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)',
-      padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 6,
+      padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 44,
       cursor: onClick ? 'pointer' : 'default', ...style,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -26,6 +32,6 @@ export function StatCard({ label, value, tone = 'brand', onClick, style }) {
         <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>{label}</span>
       </div>
       <span style={{ font: 'var(--font-numeric)', fontSize: 32, fontWeight: 700, color: c, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{value}</span>
-    </div>
+    </Tag>
   );
 }

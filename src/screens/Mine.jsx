@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppBar, Card, SectionTitle } from '../design-system.js';
+import { AppBar, Button, Card, SectionTitle } from '../design-system.js';
 import { MOCK as M } from '../mock.js';
 import logoMark from '../../assets/logo-mark.png';
 import {
@@ -39,7 +39,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
       <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-section)' }}>
         {/* 用户信息头（点击进入个人资料） */}
         <Card padding="0" style={{ overflow: 'hidden' }}>
-          <button onClick={() => setView('profile')} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 20, background: 'var(--blue-700)', color: '#fff', width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+          <button type="button" aria-label={`查看个人资料，${U.name}`} onClick={() => setView('profile')} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 20, minHeight: 44, background: 'var(--blue-700)', color: '#fff', width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
             <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#fff', color: 'var(--blue-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, flex: 'none' }}>{U.initial}</div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 20, fontWeight: 600 }}>{U.name}</div>
@@ -50,6 +50,9 @@ import { AnnotatedWrapper } from '../annotation/index.js';
             </div>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
           </button>
+          <div style={{ padding: '10px 18px', fontSize: 'var(--fs-sm)', color: 'var(--text-body)', background: 'var(--surface-sunken)', lineHeight: 1.5 }}>
+            账号信息由 TestOS 维护，此处只读
+          </div>
           <InfoRow label="部门" value={U.dept} />
           <InfoRow label="手机号" value={U.phone} last />
         </Card>
@@ -59,10 +62,10 @@ import { AnnotatedWrapper } from '../annotation/index.js';
           <Card padding="0">
             <Row icon="bell" label="消息通知" badge={unread} onClick={onOpenNotify} />
             <Row icon="settings" label="设置" onClick={() => setView('settings')} />
-            <Row icon="help" label="帮助与反馈" onClick={() => setView('help')} />
-            <Row icon="logout" label="退出登录" danger onClick={onLogout} last />
+            <Row icon="help" label="帮助与反馈" onClick={() => setView('help')} last />
           </Card>
         </div>
+        <Button variant="secondary" block size="lg" onClick={onLogout} style={{ color: 'var(--danger)', borderColor: 'var(--danger)', background: 'var(--white)' }}>退出登录</Button>
       </div>
     );
 
@@ -70,7 +73,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
       <div style={{ position: 'relative', height: '100%', minHeight: '100%' }}>
         {screen}
         {toast && (
-          <div style={{ position: 'absolute', left: '50%', bottom: 40, transform: 'translateX(-50%)', zIndex: 120, maxWidth: '80%', padding: '10px 18px', borderRadius: 'var(--radius-pill)', background: 'rgba(15,23,42,0.9)', color: '#fff', fontSize: 'var(--fs-sm)', textAlign: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+          <div role="status" style={{ position: 'absolute', left: '50%', bottom: 40, transform: 'translateX(-50%)', zIndex: 120, maxWidth: '80%', padding: '10px 18px', borderRadius: 'var(--radius-pill)', background: 'rgba(15,23,42,0.9)', color: '#fff', fontSize: 'var(--fs-sm)', textAlign: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
             {toast}
           </div>
         )}
@@ -87,6 +90,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
           <Card>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0 4px' }}>
               <div style={{ width: 76, height: 76, borderRadius: '50%', background: 'var(--blue-700)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 700 }}>{user.initial}</div>
+              <div style={{ marginTop: 10, fontSize: 'var(--fs-sm)', color: 'var(--text-body)' }}>账号信息由 TestOS 维护，此处只读</div>
             </div>
           </Card>
 
@@ -324,11 +328,13 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '13px 16px', borderBottom: last ? 'none' : '1px solid var(--divider)', opacity: disabled ? 0.5 : 1 }}>
         <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-title)' }}>{label}</span>
-        <button onClick={() => !disabled && onChange(!on)} disabled={disabled} style={{
-          width: 46, height: 26, flex: 'none', borderRadius: 13, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
-          background: on ? 'var(--brand-action)' : 'var(--border-strong,#cfd6e2)', position: 'relative', transition: 'background var(--dur-base)',
+        <button type="button" aria-label={label} aria-pressed={!!on} onClick={() => !disabled && onChange(!on)} disabled={disabled} style={{
+          width: 48, height: 44, flex: 'none', padding: 0, border: 'none', background: 'transparent', cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left var(--dur-base)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+          <span aria-hidden="true" style={{ width: 46, height: 26, borderRadius: 13, background: on ? 'var(--brand-action)' : 'var(--border-strong,#cfd6e2)', position: 'relative', transition: 'background var(--dur-base)' }}>
+            <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left var(--dur-base)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+          </span>
         </button>
       </div>
     );
@@ -360,8 +366,10 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     const color = danger ? 'var(--danger)' : 'var(--text-body)';
     const Tag = isStatic ? 'div' : 'button';
     return (
-      <Tag onClick={isStatic ? undefined : onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '15px 16px', border: 'none', borderBottom: last ? 'none' : '1px solid var(--divider)', background: 'transparent', cursor: isStatic ? 'default' : 'pointer', textAlign: 'left' }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
+      <Tag type={isStatic ? undefined : 'button'} aria-label={!isStatic && badge > 0 ? `${label}，${badge} 条未读` : undefined} onClick={isStatic ? undefined : onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 52, padding: '8px 16px', border: 'none', borderBottom: last ? 'none' : '1px solid var(--divider)', background: 'transparent', cursor: isStatic ? 'default' : 'pointer', textAlign: 'left', font: 'inherit' }}>
+        <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', background: danger ? '#fde3e3' : 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
+        </span>
         <span style={{ flex: 1, fontSize: 'var(--fs-base)', color }}>{label}</span>
         {note && <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', flex: 'none' }}>{note}</span>}
         {badge > 0 && (

@@ -3,13 +3,13 @@ export const homeAnnotations = {
   notifyBell: {
     title: '消息通知铃铛',
     requirementLogic: '登录后的检测员在首页右上角可见通知入口。未读数量来自通知中心中 read=false 的条数汇总，与「我的-消息通知」共用同一数据源。仅统计当前登录检测员可见的通知，不含已归档历史。',
-    displayRule: '铃铛图标常显；未读数 > 0 时在右上角展示红色圆形角标并显示数字；无未读时不展示角标。角标数字超过 99 时可按产品约定截断为 99+。',
+    displayRule: '铃铛图标常显，点击区 44px。未读数 > 0 时在右上角展示红色圆形角标并显示数字；无未读时不展示角标。角标数字超过 99 时截断为 99+。按钮名称包含未读条数。',
     interactionLogic: '点击后打开消息通知全屏 overlay：先进入通知列表，点击单条进入详情。通知按委托任务为单位；详情页「去处理」深链到对应任务 L3，展示该任务下分配给当前检测员的样品试验项。',
   },
   companyHeader: {
     title: '公司标题栏',
     requirementLogic: '展示当前登录用户所属检测机构/公司全称，用于建立首页品牌与组织上下文，与 LIMS 下发任务中的委托方字段无直接联动。',
-    displayRule: 'SectionTitle 左对齐单行展示；与右侧通知铃铛同一行两端对齐；超长时可省略但不换行。',
+    displayRule: '标题行上方一行问候「你好，姓名」及角色。SectionTitle 左对齐单行展示公司全称，超长省略不换行；与右侧通知铃铛同一行两端对齐。',
     interactionLogic: '纯展示，不可点击，无跳转。',
   },
   brandBanner: {
@@ -33,7 +33,7 @@ export const homeAnnotations = {
   inspectorStats: {
     title: '个人检测统计',
     requirementLogic: '展示当前检测员本人负责的样品检测量与试验检测量趋势，用于自我工作量感知。数据范围仅限本人，不含班组汇总。',
-    displayRule: '顶部日期区间（只读）+ 本年/本季/本月 SegmentedSwitch；下方两张折线图 Card：样品检测量（蓝）、试验检测量（橙）。',
+    displayRule: '顶部只读日期区间（纯文本，不是输入框）+ 本年/本季/本月 SegmentedSwitch；下方两张折线图 Card：样品检测量（蓝）、试验检测量（橙），图例为当前检测员姓名，并给出区间合计。',
     interactionLogic: '切换时间区间刷新 mock 折线数据；点击折线图数据点展示该点 Y 轴具体数值 tooltip；图表不支持钻取到任务明细。',
   },
 };

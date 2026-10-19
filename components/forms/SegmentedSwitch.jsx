@@ -5,7 +5,7 @@ import React from 'react';
  * options: [{ value, label }]；受控 value + onChange。
  */
 export function SegmentedSwitch({ options = [], value, onChange, size = 'md', style, ...rest }) {
-  const h = size === 'sm' ? 32 : 38;
+  const h = size === 'lg' ? 44 : size === 'sm' ? 32 : 38;
   const idx = Math.max(0, options.findIndex((o) => o.value === value));
   return (
     <div style={{
@@ -24,7 +24,7 @@ export function SegmentedSwitch({ options = [], value, onChange, size = 'md', st
       {options.map((o) => {
         const active = o.value === value;
         return (
-          <button key={o.value} onClick={() => onChange?.(o.value)}
+          <button key={o.value} type="button" aria-pressed={active} onClick={() => onChange?.(o.value)}
             style={{
               position: 'relative', zIndex: 1, flex: 1, border: 'none', background: 'transparent',
               padding: '0 18px', cursor: 'pointer', whiteSpace: 'nowrap',

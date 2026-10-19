@@ -236,3 +236,23 @@ textarea {
     transform: none;
   }
 }
+
+.ds-frame button:focus-visible,
+.ds-frame [role="button"]:focus-visible,
+.ds-frame a:focus-visible {
+  outline: 2px solid var(--brand-action);
+  outline-offset: 2px;
+}
+
+.home-quick:active {
+  background: var(--surface-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade,
+  .home-quick,
+  .ds-frame button {
+    animation: none;
+    transition: none;
+  }
+}

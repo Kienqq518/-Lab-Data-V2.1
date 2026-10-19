@@ -14,18 +14,24 @@ import { AnnotatedWrapper } from '../annotation/index.js';
 
     return (
       <div style={{ padding: 'var(--gap-page)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-section)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <AnnotatedWrapper id="companyHeader" layout="flex">
-            <SectionTitle style={{ marginBottom: 0 }}>杭州数蚕智能科技有限公司</SectionTitle>
-          </AnnotatedWrapper>
-          <AnnotatedWrapper id="notifyBell" layout="inline" placement="bottom">
-            <button type="button" onClick={onOpenNotify} aria-label="消息通知" style={{ position: 'relative', width: 40, height: 40, flex: 'none', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-title)' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-              {unread > 0 && (
-                <span style={{ position: 'absolute', top: 4, right: 4, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: 'var(--danger,#e23b3b)', color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: '16px', textAlign: 'center' }}>{unread}</span>
-              )}
-            </button>
-          </AnnotatedWrapper>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-body)', lineHeight: 1.4 }}>
+            你好，{M.currentUser.name}
+            <span style={{ marginLeft: 8 }}>{M.currentUser.role}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <AnnotatedWrapper id="companyHeader" layout="flex">
+              <SectionTitle ellipsis style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>杭州数蚕智能科技有限公司</SectionTitle>
+            </AnnotatedWrapper>
+            <AnnotatedWrapper id="notifyBell" layout="inline" placement="bottom">
+              <button type="button" onClick={onOpenNotify} aria-label={unread > 0 ? `消息通知，${unread} 条未读` : '消息通知'} style={{ position: 'relative', width: 44, height: 44, flex: 'none', border: 'none', borderRadius: 'var(--radius-md)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-title)' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                {unread > 0 && (
+                  <span aria-hidden="true" style={{ position: 'absolute', top: 2, right: 2, minWidth: 18, height: 18, padding: '0 4px', borderRadius: 9, background: 'var(--danger,#e23b3b)', color: '#fff', fontSize: 11, fontWeight: 700, lineHeight: '18px', textAlign: 'center' }}>{unread > 99 ? '99+' : unread}</span>
+                )}
+              </button>
+            </AnnotatedWrapper>
+          </div>
         </div>
 
         {/* 品牌条（压扁） */}
@@ -89,7 +95,7 @@ import { AnnotatedWrapper } from '../annotation/index.js';
       check: 'M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4 12 14.01l-3-3',
     };
     return (
-      <button onClick={onClick} style={{ flex: 1, border: '1px solid var(--border-default)', background: 'var(--white)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '16px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      <button type="button" className="home-quick" aria-label={`${label} ${count}`} onClick={onClick} style={{ flex: 1, minHeight: 44, border: '1px solid var(--border-default)', background: 'var(--white)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', padding: '16px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[icon]} /></svg>
         </div>
@@ -106,41 +112,37 @@ import { AnnotatedWrapper } from '../annotation/index.js';
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* 时间区间 + 快捷切换 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 240 }}>
-            <DateField text={cfg.start} /><span style={{ color: 'var(--text-placeholder)' }}>—</span><DateField text={cfg.end} />
+          <div aria-label={`统计区间 ${cfg.start} 至 ${cfg.end}，只读`} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 240, minHeight: 36, color: 'var(--text-body)', fontSize: 'var(--fs-sm)', fontVariantNumeric: 'tabular-nums' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4 M8 2v4 M3 10h18"/></svg>
+            <span>{cfg.start}</span>
+            <span style={{ color: 'var(--text-placeholder)' }}>—</span>
+            <span>{cfg.end}</span>
           </div>
-          <SegmentedSwitch value={range} onChange={setRange}
+          <SegmentedSwitch size="lg" value={range} onChange={setRange}
             options={[{ value: 'year', label: '本年' }, { value: 'quarter', label: '本季' }, { value: 'month', label: '本月' }]} />
         </div>
-        <ChartCard title="样品检测量" color="var(--blue-500)" data={cfg.sample} labels={cfg.labels} />
-        <ChartCard title="试验检测量" color="#f59e0b" data={cfg.test} labels={cfg.labels} />
+        <ChartCard title="样品检测量" color="var(--blue-500)" data={cfg.sample} labels={cfg.labels} who={M.currentUser.name} />
+        <ChartCard title="试验检测量" color="#f59e0b" data={cfg.test} labels={cfg.labels} who={M.currentUser.name} />
       </div>
     );
   }
 
-  function ChartCard({ title, color, data, labels }) {
+  function ChartCard({ title, color, data, labels, who }) {
+    const total = data.reduce((sum, value) => sum + value, 0);
     return (
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{title}</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-            <span style={{ position: 'relative', width: 20, height: 2, background: color, display: 'inline-block' }}>
+            <span aria-hidden="true" style={{ position: 'relative', width: 20, height: 2, background: color, display: 'inline-block' }}>
               <span style={{ position: 'absolute', left: 6, top: -3, width: 8, height: 8, borderRadius: '50%', border: '2px solid ' + color, background: '#fff' }} />
             </span>
-            检测员1（仅本人）
+            {who}（仅本人）
           </span>
+          <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>合计 {total}</span>
         </div>
         <LineChart data={data} labels={labels} color={color} />
       </Card>
-    );
-  }
-
-  function DateField({ text }) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, height: 36, padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', background: 'var(--white)', color: 'var(--text-body)', fontSize: 'var(--fs-sm)', fontVariantNumeric: 'tabular-nums' }}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4 M8 2v4 M3 10h18"/></svg>
-        {text}
-      </div>
     );
   }
 
@@ -167,7 +169,8 @@ import { AnnotatedWrapper } from '../annotation/index.js';
     const [activePoint, setActivePoint] = React.useState(null);
     const n = data.length;
     const max = Math.max.apply(null, data.concat(1));
-    const niceMax = Math.max(50, Math.ceil(max / 50) * 50);
+    const step = max <= 10 ? 2 : max <= 20 ? 5 : max <= 50 ? 10 : 50;
+    const niceMax = Math.max(step, Math.ceil(max / step) * step);
     const plotW = W - padL - padR, plotH = H - padT - padB;
     const X = (i) => padL + (n <= 1 ? 0 : (i * plotW) / (n - 1));
     const Y = (v) => padT + plotH - (v / niceMax) * plotH;
@@ -186,25 +189,46 @@ import { AnnotatedWrapper } from '../annotation/index.js';
           {ticks.map((t, k) => (
             <g key={k}>
               <line x1={padL} y1={Y(t)} x2={W - padR} y2={Y(t)} stroke="var(--gray-200)" strokeWidth="1" />
-              <text x={padL - 6} y={Y(t) + 4} textAnchor="end" fontSize="11" fill="var(--text-secondary)">{Math.round(t)}</text>
+              <text x={padL - 6} y={Y(t) + 4} textAnchor="end" fontSize="12" fill="var(--text-body)">{Math.round(t)}</text>
             </g>
           ))}
           <path d={dPath} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-          {data.map((v, i) => (
-            <circle
-              key={i}
-              cx={X(i)}
-              cy={Y(v)}
-              r={activePoint?.i === i ? 5 : 3.2}
-              fill={activePoint?.i === i ? color : '#fff'}
-              stroke={color}
-              strokeWidth="1.5"
-              style={{ cursor: 'pointer' }}
-              onClick={(e) => handlePointClick(i, v, e)}
-            />
-          ))}
+          {data.map((v, i) => {
+            const pointLabel = labels.find((l) => l.i === i)?.text || `第 ${i + 1} 点`;
+            const on = activePoint?.i === i;
+            return (
+              <g key={i}>
+                <circle
+                  cx={X(i)}
+                  cy={Y(v)}
+                  r="12"
+                  fill="transparent"
+                  style={{ cursor: 'pointer' }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${pointLabel}，检测量 ${v}`}
+                  onClick={(e) => handlePointClick(i, v, e)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handlePointClick(i, v, e);
+                    }
+                  }}
+                />
+                <circle
+                  cx={X(i)}
+                  cy={Y(v)}
+                  r={on ? 5 : 3.2}
+                  fill={on ? color : '#fff'}
+                  stroke={color}
+                  strokeWidth="1.5"
+                  pointerEvents="none"
+                />
+              </g>
+            );
+          })}
           {labels.map((l, k) => (
-            <text key={k} x={X(l.i)} y={H - 6} textAnchor="middle" fontSize="11" fill="var(--text-secondary)">{l.text}</text>
+            <text key={k} x={X(l.i)} y={H - 6} textAnchor="middle" fontSize="12" fill="var(--text-body)">{l.text}</text>
           ))}
           {activePoint && (
             <g pointerEvents="none">
